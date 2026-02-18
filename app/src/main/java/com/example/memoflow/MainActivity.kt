@@ -34,6 +34,7 @@ import com.example.memoflow.ui.theme.MemoFlowTheme
 import kotlinx.coroutines.delay
 import com.airbnb.lottie.compose.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.tooling.preview.Preview
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -226,4 +227,12 @@ fun PixelExplosion(atX: Float, atY: Float, onFinished: () -> Unit) {
 
 fun Modifier.neonGlow(color: Color) = this.drawBehind {
     drawCircle(color = color.copy(alpha = 0.25f), radius = size.maxDimension * 0.85f, center = center)
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun HomePreview() {
+    MemoFlowTheme {
+        HomeScreen() // Ele desenha a tela aqui mesmo no editor!
+    }
 }
