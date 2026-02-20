@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,11 +31,20 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.intl.Locale
+import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 //import com.google.android.libraries.places.api.model.LocalDate
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.example.memoflow.R
+
 
 
 @Composable
@@ -110,8 +120,11 @@ fun Modifier.neonGlow(color: Color) = this.drawBehind {
 }
 
 @Composable
-fun HomeHeader(date: String) {
-
+fun HomeHeader(
+    date: String,
+    userPhotoUrl: String?,
+    onProfileClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -119,7 +132,6 @@ fun HomeHeader(date: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Column {
             Text(
                 "Meu Diário",
@@ -127,7 +139,6 @@ fun HomeHeader(date: String) {
                 fontSize = 30.sp,
                 fontWeight = FontWeight.ExtraBold
             )
-
             Text(
                 date,
                 color = Color(0xFFAAAAAA),
@@ -135,11 +146,24 @@ fun HomeHeader(date: String) {
             )
         }
 
-        Box(
+        // A BOLA VERDE AGORA É UM BOTÃO DE PERFIL
+        Surface(
             modifier = Modifier
                 .size(48.dp)
-                .background(Color(0xFF00FFC2), CircleShape)
-        )
+                .clickable { onProfileClick() },
+            shape = CircleShape,
+            color = Color(0xFF00FFC2) // Cor padrão se não tiver foto
+        ) {
+            if (userPhotoUrl != null) {
+                AsyncImage(
+                    model = userPhotoUrl,
+                    contentDescription = "Foto de Perfil",
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            // Se userPhotoUrl for null, ele mostra apenas o fundo verde neon
+        }
     }
 }
 
@@ -226,6 +250,121 @@ fun EmptyState() {
             "Nenhuma memória no vácuo deste dia...",
             color = Color(0xFF666666),
             fontSize = 14.sp
+        )
+    }
+}
+
+
+@Composable
+fun MoodChartCard(neonGreen: Color) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Humor da Semana",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Área do Gráfico
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .background(Color(0xFF0F0F0F), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                // Linhas de fundo do gráfico para dar o estilo "Grid"
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val gridAlpha = 0.05f
+                    // Linhas horizontais
+                    drawLine(Color.White.copy(gridAlpha), Offset(0f, size.height * 0.33f), Offset(size.width, size.height * 0.33f))
+                    drawLine(Color.White.copy(gridAlpha), Offset(0f, size.height * 0.66f), Offset(size.width, size.height * 0.66f))
+                }
+
+                Text("Gráfico em progresso...", color = Color.DarkGray, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun DiaryNoteCard(emoji: String, time: String, content: String, neonGreen: Color) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Círculo do Emoji
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .background(Color(0xFF222222), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = emoji, fontSize = 24.sp)
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column {
+                Text(
+                    text = time,
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = content,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1 // Corta o texto se for muito longo
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyStateLottie() {
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.layout_vazio))
+    val progress by animateLottieCompositionAsState(
+        composition,
+        iterations = LottieConstants.IterateForever
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            modifier = Modifier.size(280.dp)
+        )
+        Text(
+            text = "Nenhuma memória no vácuo deste dia...",
+            color = Color.Gray.copy(alpha = 0.6f),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }
