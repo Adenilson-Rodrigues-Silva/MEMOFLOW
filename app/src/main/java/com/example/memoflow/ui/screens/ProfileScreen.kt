@@ -27,183 +27,142 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
 import androidx.compose.ui.layout.ContentScale
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
     onSecurityClick: () -> Unit,
     onBackupClick: () -> Unit
 ) {
+    // --- ESTADOS ---
+    var showTimePicker by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showAppearanceSheet by remember { mutableStateOf(false) }
+
+    val timePickerState = rememberTimePickerState(initialHour = 20, initialMinute = 0, is24Hour = true)
+    var reminderDisplayText by remember { mutableStateOf("Desativado") }
+    var isReminderActive by remember { mutableStateOf(false) }
+    var selectedColor by remember { mutableStateOf(Color(0xFF00FFC2)) }
     val neonGreen = Color(0xFF00FFC2)
     var userBio by remember { mutableStateOf("Escrevendo para não esquecer quem eu era.") }
-
-    // ESTRATÉGICO: Variável que guarda o endereço da foto escolhida
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // ESTRATÉGICO: O "Contrato" que abre a galeria do Android
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        // Quando o usuário escolhe a foto, o endereço (uri) cai aqui
-        selectedImageUri = uri
-    }
+    ) { uri: Uri? -> selectedImageUri = uri }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
-        // Toolbar superior
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color.White)
+    // --- LAYOUT PRINCIPAL ---
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Toolbar
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
+                }
+                Text("Configurações", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
             }
-            Text(
-                "Configurações",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 16.dp)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                item {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    // Foto de Perfil
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Surface(
+                            modifier = Modifier.size(120.dp).clickable { galleryLauncher.launch("image/*") },
+                            shape = CircleShape,
+                            color = neonGreen
+                        ) {
+                            if (selectedImageUri == null) {
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(25.dp), tint = Color.Black)
+                            } else {
+                                AsyncImage(model = selectedImageUri, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                            }
+                        }
+                        SmallFloatingActionButton(onClick = { galleryLauncher.launch("image/*") }, containerColor = Color.White, shape = CircleShape, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Dono do Chronos", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(text = userBio, color = Color.Gray, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+                    Text("membro desde fev 2026", color = neonGreen.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(40.dp))
+                }
+
+                item {
+                    SectionTitle("Privacidade")
+                    ProfileOptionItem(title = "Segurança", subtitle = "Biometria e PIN", icon = Icons.Default.Lock, onClick = onSecurityClick)
+                }
+
+                item {
+                    SectionTitle("Personalização")
+                    ProfileOptionItem(title = "Aparência", subtitle = "Tema e Cores", icon = Icons.Default.Palette, onClick = { showAppearanceSheet = true })
+
+                    // AQUI O SUBTITLE ATUALIZA
+                    ProfileOptionItem(
+                        title = "Lembrete Diário",
+                        subtitle = if (isReminderActive) "Definido para $reminderDisplayText" else "Toque para ativar",
+                        icon = Icons.Default.Notifications,
+                        onClick = { showTimePicker = true }
+                    )
+                }
+
+                item {
+                    SectionTitle("Dados")
+                    ProfileOptionItem(title = "Backup", subtitle = "Nuvem e Exportação PDF", icon = Icons.Default.CloudUpload, onClick = onBackupClick)
+                    ProfileOptionItem(title = "Limpar Diário", subtitle = "Apagar todas as memórias", icon = Icons.Default.DeleteForever, color = Color.Red.copy(alpha = 0.8f), onClick = { showDeleteDialog = true })
+                    Spacer(modifier = Modifier.height(50.dp))
+                }
+            }
+        }
+
+        // --- COMPONENTES OVERLAY (Dialogs e Sheets) ---
+
+        if (showAppearanceSheet) {
+            AppearanceBottomSheet(onDismiss = { showAppearanceSheet = false }, onColorSelected = { selectedColor = it; showAppearanceSheet = false })
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                containerColor = Color(0xFF1A1A1A),
+                title = { Text("Apagar todas as memórias?", color = Color.White) },
+                text = { Text("Esta ação é irreversível.", color = Color.Gray) },
+                confirmButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("APAGAR TUDO", color = Color.Red) } },
+                dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("CANCELAR", color = Color.White) } }
             )
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Foto de Perfil Grande
-                Box(contentAlignment = Alignment.BottomEnd) {
-                    Surface(
-                        modifier = Modifier
-                            .size(120.dp)
-                            // ESTRATÉGICO: Clicar na bola também abre a galeria
-                            .clickable { galleryLauncher.launch("image/*") },
-                        shape = CircleShape,
-                        color = neonGreen
-                    ) {
-                        // ESTRATÉGICO: Lógica de exibição da imagem
-                        if (selectedImageUri == null) {
-                            // Se não houver foto, mostra o ícone de pessoa
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.padding(25.dp),
-                                tint = Color.Black
-                            )
-                        } else {
-                            // Se houver foto, o Coil (AsyncImage) carrega ela
-                            AsyncImage(
-                                model = selectedImageUri,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop // Garante que a foto preencha o círculo
-                            )
-                        }
-                    }
-
-                    // Botão flutuante para editar a foto (Lápis)
-                    SmallFloatingActionButton(
-                        // ESTRATÉGICO: Abre a galeria ao clicar no lápis
-                        onClick = { galleryLauncher.launch("image/*") },
-                        containerColor = Color.White,
-                        shape = CircleShape,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
+        if (showTimePicker) {
+            AlertDialog(
+                onDismissRequest = { showTimePicker = false },
+                containerColor = Color(0xFF1A1A1A),
+                confirmButton = {
+                    TextButton(onClick = {
+                        // LÓGICA CORRETA NO LUGAR CERTO
+                        val h = timePickerState.hour.toString().padStart(2, '0')
+                        val m = timePickerState.minute.toString().padStart(2, '0')
+                        reminderDisplayText = "$h:$m"
+                        isReminderActive = true
+                        showTimePicker = false
+                    }) { Text("DEFINIR", color = neonGreen) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { isReminderActive = false; showTimePicker = false }) { Text("REMOVER", color = Color.Red) }
+                },
+                text = {
+                    Column {
+                        Text("Horário do lembrete", color = Color.White, modifier = Modifier.padding(bottom = 16.dp))
+                        TimePicker(state = timePickerState, colors = TimePickerDefaults.colors(selectorColor = neonGreen, containerColor = Color(0xFF1A1A1A)))
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    "Dono do Chronos",
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // Campo de Bio (Frase de Inspiração)
-                Text(
-                    text = userBio,
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .padding(top = 8.dp, bottom = 4.dp)
-                        .clickable { /* TODO: Abrir Dialog para editar Bio */ }
-                )
-
-                Text(
-                    "membro desde fev 2026",
-                    color = neonGreen.copy(alpha = 0.7f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(40.dp))
-            }
-
-            // --- SEÇÕES DE CONFIGURAÇÃO ---
-
-            item {
-                SectionTitle("Privacidade")
-                ProfileOptionItem(
-                    title = "Segurança",
-                    subtitle = "Biometria e PIN",
-                    icon = Icons.Default.Lock,
-                    onClick = { onSecurityClick() } // chama a função aqui
-                )
-            }
-
-            item {
-                SectionTitle("Personalização")
-                ProfileOptionItem(
-                    title = "Aparência",
-                    subtitle = "Tema e Cores",
-                    icon = Icons.Default.Palette,
-                    onClick = { /* TODO: Abrir BottomSheet de Temas */ }
-                )
-                ProfileOptionItem(
-                    title = "Lembrete Diário",
-                    subtitle = "Definir horário de notificação",
-                    icon = Icons.Default.Notifications,
-                    onClick = { /* TODO: Abrir TimePicker */ }
-                )
-            }
-
-            item {
-                SectionTitle("Dados")
-                ProfileOptionItem(
-                    title = "Backup",
-                    subtitle = "Nuvem e Exportação PDF",
-                    icon = Icons.Default.CloudUpload,
-                    onClick = { onBackupClick() } // <-- 2. CONECTE O CLIQUE AQUI PARA A TELA DE EM CONSTRUÇÃO
-                )
-                ProfileOptionItem(
-                    title = "Limpar Diário",
-                    subtitle = "Apagar todas as memórias",
-                    icon = Icons.Default.DeleteForever,
-                    color = Color.Red.copy(alpha = 0.8f),
-                    onClick = { /* TODO: Abrir Dialog de Confirmação */ }
-                )
-                Spacer(modifier = Modifier.height(50.dp))
-            }
+            )
         }
     }
 }
@@ -277,7 +236,8 @@ fun ProfileScreenPreview() {
         ProfileScreen(
             onBack = { },
             onSecurityClick = { },
-            onBackupClick = { } )// <-- ADICIONE ISSO)
+            onBackupClick = { })// <-- ADICIONE ISSO)
 
     }
 }
+
