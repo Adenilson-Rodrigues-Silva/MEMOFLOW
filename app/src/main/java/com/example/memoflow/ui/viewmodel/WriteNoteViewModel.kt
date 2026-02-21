@@ -6,21 +6,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.ViewModel
+import com.mohamedrejeb.richeditor.model.RichTextState // CERTIFIQUE-SE DESTE IMPORT
+
+
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
+
 
 data class WriteNoteUiState(
     val title: String = "Hoje",
-    val content: TextFieldValue = TextFieldValue(""),
     val selectedEmoji: String = "😊",
     val selectedHumor: String = "Feliz",
-    val isBold: Boolean = false,
-    val isItalic: Boolean = false,
-    val isUnderline: Boolean = false,
     val images: List<Uri> = emptyList(),
     val audioUri: Uri? = null,
     val isRecording: Boolean = false
@@ -28,27 +26,23 @@ data class WriteNoteUiState(
 
 class WriteNoteViewModel : ViewModel() {
 
+    // 1. O Estado da UI (título, emojis, imagens)
     var uiState by mutableStateOf(WriteNoteUiState())
         private set
 
+    // 2. O ESTADO DO RICH TEXT (Faltava isto aqui!)
+    // Ele é um val porque o objeto em si não muda, apenas o seu conteúdo interno
+    val richTextState = RichTextState()
+
     fun updateTitle(newTitle: String) {
         uiState = uiState.copy(title = newTitle)
-    }
-
-    // CORREÇÃO: Esta função agora protege a AnnotatedString com unhas e dentes
-    fun updateContent(newValue: TextFieldValue) {
-        val currentContent = uiState.content
-
-        // Se o texto mudou, o Android manda uma AnnotatedString "limpa".
-        // Precisamos garantir que não estamos perdendo metadados importantes.
-        uiState = uiState.copy(content = newValue)
     }
 
     fun updateEmoji(emoji: String, humor: String) {
         uiState = uiState.copy(selectedEmoji = emoji, selectedHumor = humor)
     }
 
-    // Lógica para as imagens (Máximo 3) - Já implementado como solicitado
+    // Lógica para as imagens (Máximo 3)
     fun addImage(uri: Uri) {
         if (uiState.images.size < 3) {
             uiState = uiState.copy(images = uiState.images + uri)
@@ -59,57 +53,33 @@ class WriteNoteViewModel : ViewModel() {
         uiState = uiState.copy(images = uiState.images - uri)
     }
 
-    fun setAudio(uri: Uri) {
-        uiState = uiState.copy(audioUri = uri)
-    }
+    // --- FUNÇÕES QUE ESTAVAM A VERMELHO ---
 
-    fun removeAudio() {
-        uiState = uiState.copy(audioUri = null)
-    }
+    // --- FUNÇÕES CORRIGIDAS ---
 
     fun toggleBold() {
-        applyStyleToSelection(SpanStyle(fontWeight = FontWeight.Bold))
-        uiState = uiState.copy(isBold = !uiState.isBold)
+        // Usamos o SpanStyle nativo para aplicar o Negrito
+        richTextState.toggleSpanStyle(
+            SpanStyle(fontWeight = FontWeight.Bold)
+        )
     }
 
     fun toggleItalic() {
-        applyStyleToSelection(SpanStyle(fontStyle = FontStyle.Italic))
-        uiState = uiState.copy(isItalic = !uiState.isItalic)
+        // Usamos o SpanStyle nativo para aplicar o Itálico
+        richTextState.toggleSpanStyle(
+            SpanStyle(fontStyle = FontStyle.Italic)
+        )
     }
 
     fun toggleUnderline() {
-        applyStyleToSelection(SpanStyle(textDecoration = TextDecoration.Underline))
-        uiState = uiState.copy(isUnderline = !uiState.isUnderline)
+        // Usamos o SpanStyle nativo para aplicar o Sublinhado
+        richTextState.toggleSpanStyle(
+            SpanStyle(textDecoration = TextDecoration.Underline)
+        )
     }
 
     fun applyMarker(color: Color) {
-        applyStyleToSelection(SpanStyle(background = color))
-    }
-
-    // CORREÇÃO: Nova lógica de aplicação de estilo para garantir permanência
-    private fun applyStyleToSelection(style: SpanStyle) {
-        val selection = uiState.content.selection
-        val currentAnnotatedString = uiState.content.annotatedString
-
-        if (!selection.collapsed) {
-            val newAnnotatedString = buildAnnotatedString {
-                // Primeiro, trazemos TUDO o que já existia (estilos antigos)
-                append(currentAnnotatedString)
-
-                // Depois, aplicamos o novo estilo no intervalo da seleção
-                addStyle(
-                    style = style,
-                    start = selection.min,
-                    end = selection.max
-                )
-            }
-
-            uiState = uiState.copy(
-                content = TextFieldValue(
-                    annotatedString = newAnnotatedString,
-                    selection = selection
-                )
-            )
-        }
+        // Aplica a cor de fundo neon que escolhemos
+        richTextState.toggleSpanStyle(SpanStyle(background = color))
     }
 }

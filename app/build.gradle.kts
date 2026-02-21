@@ -82,4 +82,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation("androidx.compose.material:material-icons-extended")
+
+    // A biblioteca de Rich Text que comentamos
+    implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-beta05")
 }
