@@ -9,7 +9,9 @@ import androidx.navigation.compose.rememberNavController
 import com.example.memoflow.navigation.Screen
 import com.example.memoflow.ui.screens.HomeScreen
 import com.example.memoflow.ui.screens.ProfileScreen
+import com.example.memoflow.ui.screens.SecurityScreen
 import com.example.memoflow.ui.screens.SplashScreen
+import com.example.memoflow.ui.screens.UnderConstructionScreen
 import com.example.memoflow.ui.theme.MemoFlowTheme
 
 class MainActivity : ComponentActivity() {
@@ -42,11 +44,19 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // Rota da Profile Screen
+                    // Use apenas ESTE bloco. Pode apagar o outro que está duplicado embaixo.
+                    // Dentro do seu NavHost na MainActivity
                     composable(Screen.Profile.route) {
-                        ProfileScreen(onBack = {
-                            // Volta para a tela anterior (Home)
-                            navController.popBackStack()
-                        })
+                        ProfileScreen(
+                            onBack = { navController.popBackStack() },
+                            onSecurityClick = { navController.navigate("security") },
+                            onBackupClick = { navController.navigate("construction") } // <-- 3. DIRECIONE PARA A ROTA
+                        )
+                    }
+
+// 4. REGISTRE A TELA DE CONSTRUÇÃO
+                    composable("construction") {
+                        UnderConstructionScreen(onBack = { navController.popBackStack() })
                     }
                 }
             }
