@@ -36,6 +36,7 @@ import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WriteNoteScreen(
+
     onBack: () -> Unit,
     viewModel: WriteNoteViewModel = viewModel()
 ) {
@@ -57,7 +58,12 @@ fun WriteNoteScreen(
                 title = { Text("Entrada", color = Color.White, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.KeyboardArrowLeft, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft,
+                            null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
                     }
                 },
                 actions = {
@@ -71,26 +77,25 @@ fun WriteNoteScreen(
         bottomBar = {
             Column {
                 // Menu de Formatação (Negrito, Itálico, Sublinhado)
+                // Menu de Formatação Atualizado
                 AnimatedVisibility(visible = showFormatMenu) {
                     FloatingFormatMenu(
                         onBoldClick = { viewModel.toggleBold() },
                         onItalicClick = { viewModel.toggleItalic() },
                         onUnderlineClick = { viewModel.toggleUnderline() },
-                        // A biblioteca já nos diz se o estilo está ativo:
+                        onBulletClick = { viewModel.toggleBulletList() }, // Nova função
+                        onQuoteClick = { viewModel.toggleQuote() },       // Nova função
+                        onSizeClick = { size -> viewModel.updateFontSize(size) }, // Nova função
                         isBoldActive = richTextState.currentSpanStyle.fontWeight == FontWeight.Bold,
-                        isItalicActive = richTextState.currentSpanStyle.fontStyle == FontStyle.Italic,
-                        isUnderlineActive = richTextState.currentSpanStyle.textDecoration?.contains(TextDecoration.Underline) == true,
                         neonGreen = neonGreen
                     )
                 }
 
-                // Menu de Marcadores (Marker)
+                // Menu de Cores Atualizado (Substituindo o antigo FloatingMarkerMenu)
                 AnimatedVisibility(visible = showMarkerMenu) {
-                    FloatingMarkerMenu(
-                        onColorSelected = { color ->
-                            viewModel.applyMarker(color)
-                            showMarkerMenu = false
-                        },
+                    FloatingColorMenu(
+                        onTextColorSelected = { color -> viewModel.updateTextColor(color) },
+                        onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
                         neonGreen = neonGreen
                     )
                 }
@@ -159,10 +164,18 @@ fun WriteNoteScreen(
                             androidx.compose.foundation.text.BasicTextField(
                                 value = state.title,
                                 onValueChange = { viewModel.updateTitle(it) },
-                                textStyle = TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold),
+                                textStyle = TextStyle(
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
                                 cursorBrush = SolidColor(neonGreen)
                             )
-                            Text("Humor: ${state.selectedHumor}", color = neonGreen, fontSize = 14.sp)
+                            Text(
+                                "Humor: ${state.selectedHumor}",
+                                color = neonGreen,
+                                fontSize = 14.sp
+                            )
                         }
                         Text(state.selectedEmoji, fontSize = 40.sp)
                     }
@@ -172,7 +185,9 @@ fun WriteNoteScreen(
                     // O EDITOR DE TEXTO RICO (Onde a mágica acontece)
                     RichTextEditor(
                         state = richTextState,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 150.dp),
                         colors = RichTextEditorDefaults.richTextEditorColors(
                             containerColor = Color.Transparent,
                             cursorColor = neonGreen,
@@ -240,11 +255,15 @@ fun NoteBottomToolbar(
 ) {
     Surface(
         color = Color(0xFF121212),
-        modifier = Modifier.fillMaxWidth().height(80.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -259,7 +278,9 @@ fun NoteBottomToolbar(
                 onClick = { /* Save Room */ },
                 containerColor = accentColor,
                 shape = CircleShape,
-                modifier = Modifier.size(56.dp).offset(y = (-10).dp)
+                modifier = Modifier
+                    .size(56.dp)
+                    .offset(y = (-10).dp)
             ) {
                 Icon(Icons.Default.Check, null, tint = Color.Black)
             }
@@ -276,28 +297,115 @@ fun ToolbarButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
 
 @Composable
 fun FloatingFormatMenu(
-    onBoldClick: () -> Unit, onItalicClick: () -> Unit, onUnderlineClick: () -> Unit,
-    isBoldActive: Boolean, isItalicActive: Boolean, isUnderlineActive: Boolean, neonGreen: Color
+    onBoldClick: () -> Unit,
+    onItalicClick: () -> Unit,
+    onUnderlineClick: () -> Unit,
+    onBulletClick: () -> Unit,
+    onQuoteClick: () -> Unit,
+    onSizeClick: (androidx.compose.ui.unit.TextUnit) -> Unit,
+    isBoldActive: Boolean,
+    neonGreen: Color
 ) {
-    Surface(color = Color(0xFF2A2A2A), shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(16.dp)) {
-        Row(modifier = Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconButton(onClick = onBoldClick) { Icon(Icons.Default.FormatBold, null, tint = if(isBoldActive) neonGreen else Color.White) }
-            IconButton(onClick = onItalicClick) { Icon(Icons.Default.FormatItalic, null, tint = if(isItalicActive) neonGreen else Color.White) }
-            IconButton(onClick = onUnderlineClick) { Icon(Icons.Default.FormatUnderlined, null, tint = if(isUnderlineActive) neonGreen else Color.White) }
+    Surface(
+        color = Color(0xFF2A2A2A),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(onClick = onBoldClick) {
+                    Icon(
+                        Icons.Default.FormatBold,
+                        null,
+                        tint = if (isBoldActive) neonGreen else Color.White
+                    )
+                }
+                IconButton(onClick = onItalicClick) {
+                    Icon(
+                        Icons.Default.FormatItalic,
+                        null,
+                        tint = Color.White
+                    )
+                }
+                IconButton(onClick = onUnderlineClick) {
+                    Icon(
+                        Icons.Default.FormatUnderlined,
+                        null,
+                        tint = Color.White
+                    )
+                }
+                IconButton(onClick = onBulletClick) {
+                    Icon(
+                        Icons.Default.FormatListBulleted,
+                        null,
+                        tint = neonGreen
+                    )
+                }
+                IconButton(onClick = onQuoteClick) {
+                    Icon(
+                        Icons.Default.FormatQuote,
+                        null,
+                        tint = neonGreen
+                    )
+                }
+            }
+            Divider(
+                color = Color.Gray.copy(alpha = 0.3f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "Tam:",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
+                TextButton(onClick = { onSizeClick(14.sp) }) { Text("P", color = Color.White) }
+                TextButton(onClick = { onSizeClick(18.sp) }) { Text("M", color = Color.White) }
+                TextButton(onClick = { onSizeClick(24.sp) }) { Text("G", color = Color.White) }
+            }
         }
     }
 }
 
 @Composable
-fun FloatingMarkerMenu(onColorSelected: (Color) -> Unit, neonGreen: Color) {
-    val colors = listOf(neonGreen, Color(0xFFFF00E5), Color(0xFF00B2FF), Color(0xFFE6FB04))
-    Surface(color = Color(0xFF2A2A2A), shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(16.dp)) {
-        Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            colors.forEach { color ->
-                Box(
-                    modifier = Modifier.size(30.dp).background(color.copy(alpha = 0.4f), CircleShape)
-                        .border(2.dp, color, CircleShape).clickable { onColorSelected(color.copy(alpha = 0.3f)) }
-                )
+fun FloatingColorMenu(
+    onTextColorSelected: (Color) -> Unit,
+    onMarkerColorSelected: (Color) -> Unit,
+    neonGreen: Color
+) {
+    val colors =
+        listOf(neonGreen, Color(0xFFFF00E5), Color(0xFF00B2FF), Color(0xFFE6FB04), Color.White)
+    Surface(
+        color = Color(0xFF2A2A2A),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Cor do Texto", color = Color.Gray, fontSize = 11.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                colors.forEach { color ->
+                    Box(
+                        modifier = Modifier
+                            .size(25.dp)
+                            .background(color, CircleShape)
+                            .clickable { onTextColorSelected(color) })
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Marcador (Fundo)", color = Color.Gray, fontSize = 11.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                colors.forEach { color ->
+                    Box(
+                        modifier = Modifier
+                            .size(25.dp)
+                            .border(1.dp, color, CircleShape)
+                            .background(color.copy(alpha = 0.3f), CircleShape)
+                            .clickable { onMarkerColorSelected(color) })
+                }
             }
         }
     }
@@ -305,11 +413,31 @@ fun FloatingMarkerMenu(onColorSelected: (Color) -> Unit, neonGreen: Color) {
 
 @Composable
 fun FloatingEmojiMenu(onEmojiSelected: (String, String) -> Unit, neonGreen: Color) {
-    val emojis = listOf("😊" to "Feliz", "😭" to "Triste", "😍" to "Apaixonado", "😎" to "Confiante", "🤔" to "Pensativo")
-    Surface(color = Color(0xFF2A2A2A), shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(16.dp)) {
-        Row(modifier = Modifier.padding(8.dp).horizontalScroll(rememberScrollState())) {
+    val emojis = listOf(
+        "😊" to "Feliz",
+        "😭" to "Triste",
+        "😍" to "Apaixonado",
+        "😎" to "Confiante",
+        "🤔" to "Pensativo"
+    )
+    Surface(
+        color = Color(0xFF2A2A2A),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(8.dp)
+                .horizontalScroll(rememberScrollState())
+        ) {
             emojis.forEach { (emoji, humor) ->
-                Text(emoji, modifier = Modifier.clickable { onEmojiSelected(emoji, humor) }.padding(8.dp), fontSize = 28.sp)
+                Text(
+                    emoji,
+                    modifier = Modifier
+                        .clickable { onEmojiSelected(emoji, humor) }
+                        .padding(8.dp),
+                    fontSize = 28.sp
+                )
             }
         }
     }
@@ -317,11 +445,27 @@ fun FloatingEmojiMenu(onEmojiSelected: (String, String) -> Unit, neonGreen: Colo
 
 @Composable
 fun AudioPlayerComponent(accentColor: Color) {
-    Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        color = Color.White.copy(alpha = 0.05f),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.PlayArrow, null, tint = Color.White)
-            Text("0:00 / 0:30", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
-            LinearProgressIndicator(progress = 0.3f, modifier = Modifier.weight(1f).height(4.dp), color = accentColor, trackColor = Color.DarkGray)
+            Text(
+                "0:00 / 0:30",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+            LinearProgressIndicator(
+                progress = 0.3f,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(4.dp),
+                color = accentColor,
+                trackColor = Color.DarkGray
+            )
         }
     }
 }

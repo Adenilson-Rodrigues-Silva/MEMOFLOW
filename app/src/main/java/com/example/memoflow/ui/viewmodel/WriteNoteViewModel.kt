@@ -79,7 +79,29 @@ class WriteNoteViewModel : ViewModel() {
     }
 
     fun applyMarker(color: Color) {
-        // Aplica a cor de fundo neon que escolhemos
-        richTextState.toggleSpanStyle(SpanStyle(background = color))
+        // Cor suave (Alpha 0.3) para o fundo (marcador)
+        richTextState.toggleSpanStyle(SpanStyle(background = color.copy(alpha = 0.3f)))
+    }
+    // --- NOVAS FUNÇÕES DE TEXTO ---
+
+    // 1. Listas (Bullets e Números)
+    fun toggleBulletList() = richTextState.toggleUnorderedList()
+    fun toggleOrderedList() = richTextState.toggleOrderedList()
+
+    // 2. Tamanhos de Fonte (Sugestão: 14sp, 18sp, 24sp)
+    fun updateFontSize(size: androidx.compose.ui.unit.TextUnit) {
+        richTextState.toggleSpanStyle(SpanStyle(fontSize = size))
+    }
+
+    // 3. Cores da Fonte (As mesmas do marcador, mas para a letra)
+    fun updateTextColor(color: Color) {
+        // Cor forte (Alpha 1.0) para a letra
+        richTextState.toggleSpanStyle(SpanStyle(color = color.copy(alpha = 1f)))
+    }
+    // 4. Citação (Blockquote)
+// A biblioteca costuma usar um recuo ou estilo de parágrafo para isso
+    fun toggleQuote() {
+        // Podemos simular uma citação com itálico + recuo ou usar o método da lib se disponível
+        richTextState.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic, background = Color.White.copy(alpha = 0.1f)))
     }
 }
