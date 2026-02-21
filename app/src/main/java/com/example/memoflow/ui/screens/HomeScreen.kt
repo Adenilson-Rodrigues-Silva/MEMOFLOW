@@ -6,10 +6,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +28,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.memoflow.ui.components.*
 import com.example.memoflow.ui.viewmodel.HomeViewModel
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 
 import java.time.LocalDate
@@ -40,12 +45,13 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     val neonGreen = Color(0xFF00FFC2)
-    val isMenuExpanded by viewModel.isMenuExpanded.collectAsState()
+    var isMenuExpanded by remember { mutableStateOf(false) }
 
-    val rotation by animateFloatAsState(
-        targetValue = if (isMenuExpanded) 135f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "FabRotation"
+
+
+   val rotation by animateFloatAsState(
+        targetValue = if (isMenuExpanded) 45f else 0f,
+        label = "fab_rotation"
     )
 
     Box(
@@ -57,10 +63,11 @@ fun HomeScreen(
             containerColor = Color.Transparent,
             floatingActionButton = {
                 FabMenu(
+                    navController = navController,
                     isMenuExpanded = isMenuExpanded,
                     rotation = rotation,
                     neonGreen = neonGreen,
-                    onToggle = { viewModel.toggleMenu() }
+                    onToggle = { isMenuExpanded = !isMenuExpanded }
                 )
             }
         ) { padding ->
@@ -149,6 +156,7 @@ fun HomeContent(
 
 @Composable
 fun FabMenu(
+    navController: androidx.navigation.NavController, // Adicionado para navegar
     isMenuExpanded: Boolean,
     rotation: Float,
     neonGreen: Color,
@@ -156,24 +164,42 @@ fun FabMenu(
 ) {
     Column(
         horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.padding(end = 16.dp, bottom = 16.dp)
     ) {
         AnimatedVisibility(
             visible = isMenuExpanded,
             enter = slideInVertically { it / 2 } + fadeIn(),
             exit = slideOutVertically { it / 2 } + fadeOut()
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Adicionei o ícone de microfone aqui para combinar com o projeto
-                HubButton(Icons.Default.Add, "Voz", neonGreen) { /* Ação Áudio */ }
-                HubButton(Icons.Default.Edit, "Texto", neonGreen) { /* Ação Texto */ }
-                HubButton(Icons.Default.Add, "Novo", neonGreen) { /* Ação Geral */ }
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 1. BOTÃO ESTATÍSTICAS
+                HubButton(Icons.Default.BarChart, "Status", neonGreen) {
+                    onToggle() // Fecha o menu
+                    navController.navigate("construction")
+                }
+
+                // 2. BOTÃO METAS
+                HubButton(Icons.Default.Flag, "Metas", neonGreen) {
+                    onToggle()
+                    navController.navigate("construction")
+                }
+
+                // 3. BOTÃO NOTAS (O que você quer testar)
+                HubButton(Icons.Default.Edit, "Nota", neonGreen) {
+                    onToggle()
+                    navController.navigate("write_note") // CHAMA A TELA DE ESCRITA
+                }
             }
         }
 
         FloatingActionButton(
             onClick = onToggle,
             containerColor = neonGreen,
+            shape = CircleShape,
             modifier = Modifier
                 .size(64.dp)
                 .graphicsLayer(rotationZ = rotation)
@@ -181,7 +207,8 @@ fun FabMenu(
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = null,
-                tint = Color.Black
+                tint = Color.Black,
+                modifier = Modifier.size(32.dp)
             )
         }
     }
