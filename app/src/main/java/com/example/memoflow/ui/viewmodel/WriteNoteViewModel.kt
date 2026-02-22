@@ -14,6 +14,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 
+import android.media.MediaRecorder
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.File
+import android.media.MediaPlayer
+
 
 data class WriteNoteUiState(
 
@@ -33,10 +41,28 @@ data class WriteNoteUiState(
     val selectedHumor: String = "Feliz",
     val images: List<Uri> = emptyList(),
     val audioUri: Uri? = null,
-    val isRecording: Boolean = false
+    val isRecording: Boolean = false,
+    val recordingTime: Int = 0, // Tempo em segundos (0 a 30)
+    val audioPath: String? = null // Caminho do arquivo gravado
+
+
 )
 
 class WriteNoteViewModel : ViewModel() {
+
+    private var progressJob: Job? = null
+
+    var isPlaying by mutableStateOf(false)
+        private set
+
+
+    // ... dentro da classe WriteNoteViewModel
+    private var mediaPlayer: android.media.MediaPlayer? = null
+
+    private var mediaRecorder: MediaRecorder? = null
+    private var timerJob: Job? = null
+
+    private var tempPath: String? = null // Variável temporária
 
     // 1. O Estado da UI (título, emojis, imagens)
     var uiState by mutableStateOf(WriteNoteUiState())
@@ -117,11 +143,17 @@ class WriteNoteViewModel : ViewModel() {
         // Cor forte (Alpha 1.0) para a letra
         richTextState.toggleSpanStyle(SpanStyle(color = color.copy(alpha = 1f)))
     }
+
     // 4. Citação (Blockquote)
 // A biblioteca costuma usar um recuo ou estilo de parágrafo para isso
     fun toggleQuote() {
         // Podemos simular uma citação com itálico + recuo ou usar o método da lib se disponível
-        richTextState.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic, background = Color.White.copy(alpha = 0.1f)))
+        richTextState.toggleSpanStyle(
+            SpanStyle(
+                fontStyle = FontStyle.Italic,
+                background = Color.White.copy(alpha = 0.1f)
+            )
+        )
     }
 
     fun onImageSelected(uri: android.net.Uri?) {
@@ -131,6 +163,7 @@ class WriteNoteViewModel : ViewModel() {
             }
         }
     }
+
     fun saveNote() {
         // Acessamos o texto através do uiState [cite: 2026-02-08]
         val textoDaNota = uiState.richTextState.annotatedString.text
@@ -146,5 +179,158 @@ class WriteNoteViewModel : ViewModel() {
         // Aqui no futuro faremos o INSERT no banco de dados [cite: 2026-02-08]
     }
 
+    fun onVoiceClick(cacheDir: File) {
+        if (uiState.isRecording) {
+            stopRecording()
+        } else {
+            startRecording(cacheDir)
+        }
+    }
 
+    private fun startRecording(cacheDir: File) {
+        val audioFile = File(cacheDir, "temp_note_audio.mp3")
+        tempPath = audioFile.absolutePath // Guarda no temporário primeiro
+
+        mediaRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setOutputFile(tempPath)
+
+            try {
+                prepare()
+                start()
+                // NÃO salvamos o audioPath no uiState ainda! [cite: 2026-02-08]
+                uiState = uiState.copy(
+                    isRecording = true,
+                    recordingTime = 0
+                    // audioPath continua null aqui
+                )
+                startTimer()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun stopRecording() {
+        try {
+            mediaRecorder?.stop()
+            mediaRecorder?.release()
+            // SÓ AGORA o áudio existe de fato, então passamos para o estado [cite: 2026-02-08]
+            uiState = uiState.copy(isRecording = false, audioPath = tempPath)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            uiState = uiState.copy(isRecording = false)
+        } finally {
+            mediaRecorder = null
+            timerJob?.cancel()
+        }
+    }
+
+
+    fun playAudio() {
+        val path = uiState.audioPath
+        if (path == null || uiState.isRecording) return
+
+        // 1. LÓGICA DE PAUSE: Se já está tocando, apenas pausa
+        if (mediaPlayer?.isPlaying == true) {
+            mediaPlayer?.pause()
+            this@WriteNoteViewModel.isPlaying = false
+            progressJob?.cancel() // Para de atualizar a barra enquanto pausado
+            return
+        }
+
+        // 2. LÓGICA DE RESUME: Se estava pausado, apenas continua
+        if (mediaPlayer != null && !this@WriteNoteViewModel.isPlaying) {
+            mediaPlayer?.start()
+            this@WriteNoteViewModel.isPlaying = true
+            startProgressUpdate() // Volta a atualizar a barra
+            return
+        }
+
+        // 3. LÓGICA DE START: Começa do zero
+        try {
+            mediaPlayer?.release()
+            mediaPlayer = android.media.MediaPlayer().apply {
+                setDataSource(path)
+
+                setAudioAttributes(
+                    android.media.AudioAttributes.Builder()
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+
+                setOnPreparedListener {
+                    this@WriteNoteViewModel.isPlaying = true
+                    start()
+                    startProgressUpdate()
+                }
+
+                setOnCompletionListener {
+                    this@WriteNoteViewModel.isPlaying = false
+                    progressJob?.cancel()
+                    // Opcional: Voltar o tempo para zero quando acabar
+                    uiState = uiState.copy(recordingTime = 0)
+                }
+
+                prepareAsync()
+            }
+        } catch (e: Exception) {
+            this@WriteNoteViewModel.isPlaying = false
+            android.util.Log.e("CHRONOS", "Erro: ${e.message}")
+        }
+    }
+
+    // Função auxiliar para fazer a barra "andar"
+    private fun startProgressUpdate() {
+        progressJob?.cancel()
+        progressJob = viewModelScope.launch {
+            while (this@WriteNoteViewModel.isPlaying) {
+                mediaPlayer?.let {
+                    val currentSec = it.currentPosition / 1000
+                    uiState = uiState.copy(recordingTime = currentSec)
+                }
+                delay(500)
+            }
+        }
+    }
+
+    fun deleteAudio() {
+        // 1. Paramos o áudio se ele estiver tocando
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+
+        // 2. Apagamos o arquivo físico se ele existir [cite: 2026-02-08]
+        uiState.audioPath?.let { path ->
+            val file = java.io.File(path)
+            if (file.exists()) file.delete()
+        }
+
+        // 3. Resetamos o estado na UI para permitir nova gravação [cite: 2026-02-08]
+        uiState = uiState.copy(
+            audioPath = null,
+            recordingTime = 0
+        )
+    }
+
+    private fun startTimer() {
+        timerJob?.cancel() // Cancela qualquer cronômetro antigo antes de começar
+        timerJob = viewModelScope.launch {
+            while (uiState.recordingTime < 30 && uiState.isRecording) {
+                delay(1000)
+                // Incrementamos o tempo atual criando uma nova cópia do estado
+                uiState = uiState.copy(recordingTime = uiState.recordingTime + 1)
+            }
+
+            // Se atingir 30 segundos, para a gravação automaticamente
+            if (uiState.recordingTime >= 30) {
+                stopRecording()
+            }
+        }
+    }
 }
+
+

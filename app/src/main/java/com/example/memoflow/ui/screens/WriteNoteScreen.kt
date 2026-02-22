@@ -26,10 +26,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -38,41 +36,47 @@ import com.example.memoflow.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun WriteNoteScreen(
-
     onBack: () -> Unit,
     viewModel: WriteNoteViewModel = viewModel()
 ) {
 
 
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) {uri: android.net.Uri? ->
-        viewModel.onImageSelected(uri)
-    }
-
+    val context = androidx.compose.ui.platform.LocalContext.current
     val state = viewModel.uiState
     val richTextState = viewModel.richTextState
 
     val neonGreen = Color(0xFF00FFC2)
     val surfaceDark = Color(0xFF1E1E1E)
 
-    // Estados de interface (Menus)
+    // Estados de interface (Menus e Diálogos)
     var showFormatMenu by remember { mutableStateOf(false) }
     var showEmojiMenu by remember { mutableStateOf(false) }
     var showMarkerMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var imageToDelete by remember { mutableStateOf<android.net.Uri?>(null) }
+    var showAudioDeleteDialog by remember { mutableStateOf(false) } // NOVO: Estado para confirmação do áudio
+    var indexToDelete by remember { mutableStateOf(-1) }
 
-    var indexToDelete by remember { mutableStateOf(-1) } // -1 significa nenhum selecionado
+    // Launcher para permissão de áudio
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) viewModel.onVoiceClick(context.cacheDir)
+    }
+
+    // Launcher para Galeria de Imagens
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        viewModel.onImageSelected(uri)
+    }
 
     Scaffold(
-
         containerColor = Color.Black,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Entrada", color = Color.White, fontSize = 18.sp) },
@@ -96,24 +100,23 @@ fun WriteNoteScreen(
         },
         bottomBar = {
             Column {
-                // Menu de Formatação (Negrito, Itálico, Sublinhado)
-                // Menu de Formatação Atualizado
-                AnimatedVisibility(visible = showFormatMenu) {
-                    FloatingFormatMenu(
-                        onBoldClick = { viewModel.toggleBold() },
-                        onItalicClick = { viewModel.toggleItalic() },
-                        onUnderlineClick = { viewModel.toggleUnderline() },
-                        onBulletClick = { viewModel.toggleBulletList() }, // Nova função
-                        onQuoteClick = { viewModel.toggleQuote() },       // Nova função
-                        onSizeClick = { size -> viewModel.updateFontSize(size) }, // Nova função
-                        isBoldActive = richTextState.currentSpanStyle.fontWeight == FontWeight.Bold,
-                        neonGreen = neonGreen
-                    )
-                }
+                // Menu de Formatação
+                // Localize a linha 113. Onde você chama o AudioPlayerComponent:
+                /*AudioPlayerComponent(
+                    accentColor = neonGreen,
+                    isRecording = state.isRecording,
+                    isPlaying = viewModel.isPlaying, // <--- ADICIONE ESTA LINHA EXATAMENTE AQUI
+                    currentTime = state.recordingTime,
+                    audioPath = state.audioPath,
+                    onPlayClick = {
+                        viewModel.playAudio()
+                    },
+                    onDeleteClick = {
+                        showAudioDeleteDialog = true
+                    }
+                )*/
 
-
-
-                // Menu de Cores Atualizado (Substituindo o antigo FloatingMarkerMenu)
+                // Menu de Cores/Marcador
                 AnimatedVisibility(visible = showMarkerMenu) {
                     FloatingColorMenu(
                         onTextColorSelected = { color -> viewModel.updateTextColor(color) },
@@ -134,7 +137,7 @@ fun WriteNoteScreen(
                 }
 
                 NoteBottomToolbar(
-                    imageCount = state.images.size, // Resolve o erro de 'imageCount' [cite: 2026-02-08]
+                    imageCount = state.images.size,
                     accentColor = neonGreen,
                     onFormatClick = {
                         showFormatMenu = !showFormatMenu
@@ -152,31 +155,42 @@ fun WriteNoteScreen(
                         showEmojiMenu = false
                     },
                     onAddImageClick = {
-                        launcher.launch("image/*")  // [cite: 2026-02-08]
-                        // Lógica para abrir galeria (Máximo 3 fotos) [cite: 2026-02-08]
-                        // viewModel.pickImage()
+                        launcher.launch("image/*")
                     },
                     onVoiceClick = {
-                        // Lógica do microfone (Projeto de Amanhã!) [cite: 2026-02-08]
+                        // Se estiver gravando, o clique deve PARAR (independente de já existir áudio ou não)
+                        if (state.isRecording) {
+                            viewModel.onVoiceClick(context.cacheDir)
+                        }
+                        // Se não estiver gravando, mas o arquivo já existe, ele avisa
+                        else if (state.audioPath != null) {
+                            android.widget.Toast.makeText(context, "Já existe um áudio. Apague para gravar outro.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        // Se estiver tudo limpo, ele inicia a gravação normalmente
+                        else {
+                            val permission = android.Manifest.permission.RECORD_AUDIO
+                            val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+                                context, permission
+                            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+                            if (isGranted) {
+                                viewModel.onVoiceClick(context.cacheDir)
+                            } else {
+                                permissionLauncher.launch(permission)
+                            }
+                        }
                     },
                     onSaveClick = {
-
-                        if (state.richTextState.annotatedString.text.isNotBlank()) {
+                        if (richTextState.annotatedString.text.isNotBlank()) {
                             viewModel.saveNote()
                             onBack()
+                        } else {
+                            onBack()
                         }
-
-
-                        // Lógica para salvar a nota no banco de dados
-                        onBack() // Por enquanto, apenas volta para a tela anterior
                     }
                 )
             }
-
         }
-
-
-
     ) { padding ->
         Column(
             modifier = Modifier
@@ -186,7 +200,7 @@ fun WriteNoteScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "11 DE FEVEREIRO DE 2026", // Data dinâmica para o Chronos Diary
+                text = "11 DE FEVEREIRO DE 2026",
                 color = Color.Gray,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -206,7 +220,6 @@ fun WriteNoteScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            // Título ainda usa BasicTextField por ser simples (sem Rich Text)
                             androidx.compose.foundation.text.BasicTextField(
                                 value = state.title,
                                 onValueChange = { viewModel.updateTitle(it) },
@@ -228,7 +241,7 @@ fun WriteNoteScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // O EDITOR DE TEXTO RICO (Onde a mágica acontece)
+                    // EDITOR DE TEXTO RICO
                     RichTextEditor(
                         state = richTextState,
                         modifier = Modifier
@@ -246,8 +259,7 @@ fun WriteNoteScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // --- SLOT PARA AS 3 IMAGENS (Pilar do Projeto) ---
-                    // --- SLOT PARA AS 3 IMAGENS (Corrigido sem Skydoves) ---
+                    // SLOT PARA AS 3 IMAGENS
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -261,13 +273,11 @@ fun WriteNoteScreen(
                                     .aspectRatio(1f)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color.DarkGray.copy(alpha = 0.3f))
-                                    // DETECÇÃO DE TOQUE LONGO PARA APAGAR [cite: 2026-02-08]
                                     .combinedClickable(
-                                        onClick = { /* Opcional: abrir imagem cheia */ },
+                                        onClick = { },
                                         onLongClick = {
                                             if (imageUri != null) {
-                                                indexToDelete =
-                                                    i // Agora salvamos a POSIÇÃO [cite: 2026-02-08]
+                                                indexToDelete = i
                                                 showDeleteDialog = true
                                             }
                                         }
@@ -277,7 +287,7 @@ fun WriteNoteScreen(
                                 if (imageUri != null) {
                                     AsyncImage(
                                         model = imageUri,
-                                        contentDescription = "Imagem da nota",
+                                        contentDescription = null,
                                         modifier = Modifier.fillMaxSize(),
                                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                     )
@@ -289,7 +299,24 @@ fun WriteNoteScreen(
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    AudioPlayerComponent(neonGreen)
+
+                    // PLAYER DE ÁUDIO CORRIGIDO
+                    AudioPlayerComponent(
+                        accentColor = neonGreen,
+                        isRecording = state.isRecording,
+                        isPlaying = viewModel.isPlaying,
+                        currentTime = state.recordingTime,
+                        audioPath = state.audioPath,
+                        onPlayClick = {
+                            // CORREÇÃO: Chama o play da ViewModel
+                            viewModel.playAudio()
+                        },
+                        onDeleteClick = {
+                            // CORREÇÃO: Agora abre o diálogo em vez de apagar direto
+                            showAudioDeleteDialog = true
+                        }
+                    )
+
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
@@ -306,23 +333,42 @@ fun WriteNoteScreen(
         }
     }
 
-    if (showDeleteDialog) {
+    // --- DIÁLOGOS DE CONFIRMAÇÃO ---
+
+    // 1. Diálogo para Imagens
+    if (showAudioDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Apagar Imagem?") },
+            onDismissRequest = { showAudioDeleteDialog = false },
+            title = { Text("Apagar Gravação?") },
+            text = { Text("Deseja remover o áudio desta nota para gravar um novo?") },
             confirmButton = {
                 TextButton(onClick = {
-                    if (indexToDelete != -1) {
-                        viewModel.removeImageAtIndex(indexToDelete)
-                    }
-                    showDeleteDialog = false
-                    indexToDelete = -1
+                    viewModel.deleteAudio()
+                    showAudioDeleteDialog = false
+                }) { Text("Apagar", color = Color.Red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAudioDeleteDialog = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // 2. Diálogo para Áudio (NOVO E CORRIGIDO)
+    if (showAudioDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showAudioDeleteDialog = false },
+            title = { Text("Apagar Gravação?") },
+            text = { Text("Deseja remover o áudio desta nota para gravar um novo?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteAudio()
+                    showAudioDeleteDialog = false
                 }) {
                     Text("Apagar", color = Color.Red)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(onClick = { showAudioDeleteDialog = false }) {
                     Text("Cancelar")
                 }
             }
@@ -334,77 +380,48 @@ fun WriteNoteScreen(
 
 @Composable
 fun NoteBottomToolbar(
-    imageCount: Int,               // Conta quantas fotos já foram adicionadas (Máximo 3) [cite: 2026-02-08]
-    accentColor: Color,            // A cor Neon Green que define o estilo do app
-    onFormatClick: () -> Unit,     // Abre o menu de Negrito, Listas e Tamanhos
-    onEmojiClick: () -> Unit,      // Abre o menu dos 7 sentimentos
-    onMarkerClick: () -> Unit,     // Abre o menu de cores e marcador
-    onAddImageClick: () -> Unit,   // Função para abrir a galeria
-    onVoiceClick: () -> Unit,      // Aciona o sensor de áudio de 30s [cite: 2026-02-08]
-    onSaveClick: () -> Unit        // Salva a nota no banco de dados e sai
+    imageCount: Int,
+    accentColor: Color,
+    onFormatClick: () -> Unit,
+    onEmojiClick: () -> Unit,
+    onMarkerClick: () -> Unit,
+    onAddImageClick: () -> Unit,
+    onVoiceClick: () -> Unit,
+    onSaveClick: () -> Unit
 ) {
-    // REGRA DE NEGÓCIO: Só permite adicionar imagem se tiver menos de 3 [cite: 2026-02-08]
     val canAddMoreImages = imageCount < 3
 
     Surface(
-        color = Color(0xFF121212), // Fundo escuro profundo para contraste Cyberpunk
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(80.dp),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp) // Cantos arredondados no topo
+        color = Color(0xFF121212),
+        modifier = Modifier.fillMaxWidth().height(80.dp),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // GRUPO DE FERRAMENTAS (Esquerda e Centro)
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                // 1. MICROFONE: Para transcrição de voz (Projeto de amanhã) [cite: 2026-02-08]
+            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
                 ToolbarButton(Icons.Default.Mic, "Voz", onClick = onVoiceClick)
-
-                // 2. FORMATAR: Negrito, Itálico, Listas e Fontes
                 ToolbarButton(Icons.Default.FormatBold, "Formatar", onClick = onFormatClick)
-
-                // 3. EMOJI: Seleção de humor (Os 7 sentimentos) [cite: 2026-02-08]
                 ToolbarButton(Icons.Default.Face, "Emoji", onClick = onEmojiClick)
 
-                // 4. IMAGEM: Com trava de segurança para limite de 3 [cite: 2026-02-08]
-                IconButton(
-                    onClick = onAddImageClick,
-                    enabled = canAddMoreImages
-                ) {
+                IconButton(onClick = onAddImageClick, enabled = canAddMoreImages) {
                     Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = "Adicionar Imagem",
-                        // Se estiver travado, o ícone fica mais escuro/transparente
+                        Icons.Default.Image, null,
                         tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f)
                     )
                 }
-
-                // 5. MARCADOR: Pincel para cores neon e fundo de texto
                 ToolbarButton(Icons.Default.Brush, "Marcador", onClick = onMarkerClick)
             }
 
-            // BOTÃO SALVAR (Check FAB) - Canto Direito
             FloatingActionButton(
                 onClick = onSaveClick,
-                containerColor = accentColor, // Usa o Neon Green
+                containerColor = accentColor,
                 shape = CircleShape,
-                modifier = Modifier
-                    .size(56.dp)
-                    .offset(y = (-10).dp) // Efeito visual de estar "saindo" da barra
+                modifier = Modifier.size(56.dp).offset(y = (-10).dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Salvar Nota",
-                    tint = Color.Black // Contraste preto no fundo neon
-                )
+                Icon(Icons.Default.Check, null, tint = Color.Black)
             }
         }
     }
@@ -426,7 +443,8 @@ fun FloatingFormatMenu(
     onQuoteClick: () -> Unit,
     onSizeClick: (androidx.compose.ui.unit.TextUnit) -> Unit,
     isBoldActive: Boolean,
-    neonGreen: Color
+    neonGreen: Color,
+    isPlaying: Boolean
 ) {
     Surface(
         color = Color(0xFF2A2A2A),
@@ -436,55 +454,16 @@ fun FloatingFormatMenu(
         Column(modifier = Modifier.padding(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconButton(onClick = onBoldClick) {
-                    Icon(
-                        Icons.Default.FormatBold,
-                        null,
-                        tint = if (isBoldActive) neonGreen else Color.White
-                    )
+                    Icon(Icons.Default.FormatBold, null, tint = if (isBoldActive) neonGreen else Color.White)
                 }
-                IconButton(onClick = onItalicClick) {
-                    Icon(
-                        Icons.Default.FormatItalic,
-                        null,
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onUnderlineClick) {
-                    Icon(
-                        Icons.Default.FormatUnderlined,
-                        null,
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onBulletClick) {
-                    Icon(
-                        Icons.Default.FormatListBulleted,
-                        null,
-                        tint = neonGreen
-                    )
-                }
-                IconButton(onClick = onQuoteClick) {
-                    Icon(
-                        Icons.Default.FormatQuote,
-                        null,
-                        tint = neonGreen
-                    )
-                }
+                IconButton(onClick = onItalicClick) { Icon(Icons.Default.FormatItalic, null, tint = Color.White) }
+                IconButton(onClick = onUnderlineClick) { Icon(Icons.Default.FormatUnderlined, null, tint = Color.White) }
+                IconButton(onClick = onBulletClick) { Icon(Icons.Default.FormatListBulleted, null, tint = neonGreen) }
+                IconButton(onClick = onQuoteClick) { Icon(Icons.Default.FormatQuote, null, tint = neonGreen) }
             }
-            Divider(
-                color = Color.Gray.copy(alpha = 0.3f),
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    "Tam:",
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
+            Divider(color = Color.Gray.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 4.dp))
+            Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+                Text("Tam:", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.align(Alignment.CenterVertically))
                 TextButton(onClick = { onSizeClick(14.sp) }) { Text("P", color = Color.White) }
                 TextButton(onClick = { onSizeClick(18.sp) }) { Text("M", color = Color.White) }
                 TextButton(onClick = { onSizeClick(24.sp) }) { Text("G", color = Color.White) }
@@ -499,34 +478,20 @@ fun FloatingColorMenu(
     onMarkerColorSelected: (Color) -> Unit,
     neonGreen: Color
 ) {
-    val colors =
-        listOf(neonGreen, Color(0xFFFF00E5), Color(0xFF00B2FF), Color(0xFFE6FB04), Color.White)
-    Surface(
-        color = Color(0xFF2A2A2A),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.padding(16.dp)
-    ) {
+    val colors = listOf(neonGreen, Color(0xFFFF00E5), Color(0xFF00B2FF), Color(0xFFE6FB04), Color.White)
+    Surface(color = Color(0xFF2A2A2A), shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(16.dp)) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text("Cor do Texto", color = Color.Gray, fontSize = 11.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 colors.forEach { color ->
-                    Box(
-                        modifier = Modifier
-                            .size(25.dp)
-                            .background(color, CircleShape)
-                            .clickable { onTextColorSelected(color) })
+                    Box(modifier = Modifier.size(25.dp).background(color, CircleShape).clickable { onTextColorSelected(color) })
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text("Marcador (Fundo)", color = Color.Gray, fontSize = 11.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 colors.forEach { color ->
-                    Box(
-                        modifier = Modifier
-                            .size(25.dp)
-                            .border(1.dp, color, CircleShape)
-                            .background(color.copy(alpha = 0.3f), CircleShape)
-                            .clickable { onMarkerColorSelected(color) })
+                    Box(modifier = Modifier.size(25.dp).border(1.dp, color, CircleShape).background(color.copy(alpha = 0.3f), CircleShape).clickable { onMarkerColorSelected(color) })
                 }
             }
         }
@@ -534,60 +499,23 @@ fun FloatingColorMenu(
 }
 
 @Composable
-fun FloatingEmojiMenu(
-    onEmojiSelected: (String, String) -> Unit, // Retorna o emoji e o nome do humor (ex: "😊", "Feliz")
-    neonGreen: Color                           // Cor de destaque para o estilo do app
-) {
-    // 1. LISTA OFICIAL DE SENTIMENTOS [cite: 2026-02-08]
+fun FloatingEmojiMenu(onEmojiSelected: (String, String) -> Unit, neonGreen: Color) {
     val diaryEmojis = listOf(
-        "😭" to "Muito Triste",
-        "😢" to "Triste",
-        "😐" to "Neutro",
-        "😊" to "Feliz",
-        "🤩" to "Muito Feliz",
-        "😫" to "Estressado",
-        "😡" to "Bravo"
+        "😭" to "Muito Triste", "😢" to "Triste", "😐" to "Neutro",
+        "😊" to "Feliz", "🤩" to "Muito Feliz", "😫" to "Estressado", "😡" to "Bravo"
     )
-
-    // 2. CONTAINER DO MENU FLUTUANTE
     Surface(
-        color = Color(0xFF2A2A2A), // Cinza escuro para destacar do fundo preto
+        color = Color(0xFF2A2A2A),
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth()
-            .border(1.dp, neonGreen.copy(alpha = 0.3f), RoundedCornerShape(16.dp)) // Borda neon suave
+        modifier = Modifier.padding(16.dp).fillMaxWidth().border(1.dp, neonGreen.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Título interno do menu
-            Text(
-                text = "Como você está se sentindo?",
-                color = Color.Gray,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
-            )
-
-            // 3. LINHA DE EMOJIS COM ROLAGEM HORIZONTAL
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()), // Permite deslizar os 7 emojis
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Text("Como você está se sentindo?", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp))
+            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 diaryEmojis.forEach { (emoji, humor) ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onEmojiSelected(emoji, humor) } // Atualiza o topo da nota [cite: 2026-02-08]
-                            .padding(8.dp)
-                    ) {
-                        Text(text = emoji, fontSize = 32.sp) // Emoji grande para facilitar o toque
-                        Text(
-                            text = humor,
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 10.sp
-                        )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onEmojiSelected(emoji, humor) }.padding(8.dp)) {
+                        Text(text = emoji, fontSize = 32.sp)
+                        Text(text = humor, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
                     }
                 }
             }
@@ -596,28 +524,78 @@ fun FloatingEmojiMenu(
 }
 
 @Composable
-fun AudioPlayerComponent(accentColor: Color) {
+fun AudioPlayerComponent(
+    accentColor: Color,
+    isRecording: Boolean,
+    isPlaying: Boolean, // A "chave" que adicionamos
+    currentTime: Int,
+    audioPath: String?,
+    onPlayClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
     Surface(
         color = Color.White.copy(alpha = 0.05f),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.PlayArrow, null, tint = Color.White)
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // BOTÃO DE PLAY/PAUSE/MIC
+            IconButton(
+                onClick = { onPlayClick() },
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = when {
+                        isRecording -> Icons.Default.Mic
+                        isPlaying -> Icons.Default.Pause
+                        else -> Icons.Default.PlayArrow
+                    },
+                    contentDescription = "Play/Pause",
+                    tint = when {
+                        isRecording -> Color.Red
+                        isPlaying -> accentColor // Fica Neon Green (0xFF00FFC2)
+                        else -> Color.White
+                    },
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            val timeText = if (currentTime < 10) "0:0$currentTime" else "0:$currentTime"
             Text(
-                "0:00 / 0:30",
-                color = Color.Gray,
+                text = "$timeText / 0:30",
+                color = Color.White,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
+
+            // BARRA DE PROGRESSO
             LinearProgressIndicator(
-                progress = 0.3f,
+                progress = currentTime / 30f,
                 modifier = Modifier
                     .weight(1f)
                     .height(4.dp),
-                color = accentColor,
+                color = when {
+                    isRecording -> Color.Red
+                    isPlaying -> accentColor
+                    else -> accentColor.copy(alpha = 0.5f)
+                },
                 trackColor = Color.DarkGray
             )
+
+            // LIXEIRA (Só aparece se tiver áudio e não estiver gravando)
+            if (audioPath != null && !isRecording) {
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        Icons.Default.Delete,
+                        null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         }
     }
 }
