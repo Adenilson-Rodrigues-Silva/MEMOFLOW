@@ -16,6 +16,18 @@ import androidx.compose.ui.text.style.TextDecoration
 
 
 data class WriteNoteUiState(
+
+    val diaryEmojis: List<Pair<String, String>> = listOf(
+        "😭" to "Muito Triste",
+        "😢" to "Triste",
+        "😐" to "Neutro",
+        "😊" to "Feliz",
+        "🤩" to "Muito Feliz",
+        "😫" to "Estressado",
+        "😡" to "Bravo"
+    ),
+
+    val richTextState: RichTextState = RichTextState(),
     val title: String = "Hoje",
     val selectedEmoji: String = "😊",
     val selectedHumor: String = "Feliz",
@@ -39,18 +51,25 @@ class WriteNoteViewModel : ViewModel() {
     }
 
     fun updateEmoji(emoji: String, humor: String) {
-        uiState = uiState.copy(selectedEmoji = emoji, selectedHumor = humor)
+        uiState = uiState.copy(
+            selectedEmoji = emoji,
+            selectedHumor = humor
+        )
     }
 
-    // Lógica para as imagens (Máximo 3)
+    // Lógica de Imagem com trava de 3
     fun addImage(uri: Uri) {
         if (uiState.images.size < 3) {
             uiState = uiState.copy(images = uiState.images + uri)
         }
     }
 
-    fun removeImage(uri: Uri) {
-        uiState = uiState.copy(images = uiState.images - uri)
+    fun removeImageAtIndex(index: Int) {
+        val newList = uiState.images.toMutableList()
+        if (index in newList.indices) {
+            newList.removeAt(index) // Remove apenas o slot específico [cite: 2026-02-08]
+            uiState = uiState.copy(images = newList)
+        }
     }
 
     // --- FUNÇÕES QUE ESTAVAM A VERMELHO ---
@@ -104,4 +123,28 @@ class WriteNoteViewModel : ViewModel() {
         // Podemos simular uma citação com itálico + recuo ou usar o método da lib se disponível
         richTextState.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic, background = Color.White.copy(alpha = 0.1f)))
     }
+
+    fun onImageSelected(uri: android.net.Uri?) {
+        uri?.let {
+            if (uiState.images.size < 3) {
+                uiState = uiState.copy(images = uiState.images + it)
+            }
+        }
+    }
+    fun saveNote() {
+        // Acessamos o texto através do uiState [cite: 2026-02-08]
+        val textoDaNota = uiState.richTextState.annotatedString.text
+        val emojiSelecionado = uiState.selectedEmoji
+        val quantidadeImagens = uiState.images.size
+
+        // Log para você ver no console do Android Studio que os dados estão corretos
+        println("--- SALVANDO NO CHRONOS DIARY ---")
+        println("Texto: $textoDaNota")
+        println("Humor Index: $emojiSelecionado")
+        println("Imagens anexadas: $quantidadeImagens")
+
+        // Aqui no futuro faremos o INSERT no banco de dados [cite: 2026-02-08]
+    }
+
+
 }

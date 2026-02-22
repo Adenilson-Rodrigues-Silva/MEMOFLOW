@@ -1,9 +1,13 @@
 package com.example.memoflow.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -29,17 +33,28 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.memoflow.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 
-@OptIn(ExperimentalMaterial3Api::class)
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun WriteNoteScreen(
 
     onBack: () -> Unit,
     viewModel: WriteNoteViewModel = viewModel()
 ) {
+
+
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) {uri: android.net.Uri? ->
+        viewModel.onImageSelected(uri)
+    }
+
     val state = viewModel.uiState
     val richTextState = viewModel.richTextState
 
@@ -50,8 +65,13 @@ fun WriteNoteScreen(
     var showFormatMenu by remember { mutableStateOf(false) }
     var showEmojiMenu by remember { mutableStateOf(false) }
     var showMarkerMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var imageToDelete by remember { mutableStateOf<android.net.Uri?>(null) }
+
+    var indexToDelete by remember { mutableStateOf(-1) } // -1 significa nenhum selecionado
 
     Scaffold(
+
         containerColor = Color.Black,
         topBar = {
             CenterAlignedTopAppBar(
@@ -91,6 +111,8 @@ fun WriteNoteScreen(
                     )
                 }
 
+
+
                 // Menu de Cores Atualizado (Substituindo o antigo FloatingMarkerMenu)
                 AnimatedVisibility(visible = showMarkerMenu) {
                     FloatingColorMenu(
@@ -112,6 +134,7 @@ fun WriteNoteScreen(
                 }
 
                 NoteBottomToolbar(
+                    imageCount = state.images.size, // Resolve o erro de 'imageCount' [cite: 2026-02-08]
                     accentColor = neonGreen,
                     onFormatClick = {
                         showFormatMenu = !showFormatMenu
@@ -127,10 +150,33 @@ fun WriteNoteScreen(
                         showMarkerMenu = !showMarkerMenu
                         showFormatMenu = false
                         showEmojiMenu = false
+                    },
+                    onAddImageClick = {
+                        launcher.launch("image/*")  // [cite: 2026-02-08]
+                        // Lógica para abrir galeria (Máximo 3 fotos) [cite: 2026-02-08]
+                        // viewModel.pickImage()
+                    },
+                    onVoiceClick = {
+                        // Lógica do microfone (Projeto de Amanhã!) [cite: 2026-02-08]
+                    },
+                    onSaveClick = {
+
+                        if (state.richTextState.annotatedString.text.isNotBlank()) {
+                            viewModel.saveNote()
+                            onBack()
+                        }
+
+
+                        // Lógica para salvar a nota no banco de dados
+                        onBack() // Por enquanto, apenas volta para a tela anterior
                     }
                 )
             }
+
         }
+
+
+
     ) { padding ->
         Column(
             modifier = Modifier
@@ -201,23 +247,40 @@ fun WriteNoteScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // --- SLOT PARA AS 3 IMAGENS (Pilar do Projeto) ---
+                    // --- SLOT PARA AS 3 IMAGENS (Corrigido sem Skydoves) ---
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         for (i in 0 until 3) {
                             val imageUri = state.images.getOrNull(i)
+
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .aspectRatio(1f)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color.DarkGray.copy(alpha = 0.3f))
-                                    .clickable { /* Futura Galeria */ },
+                                    // DETECÇÃO DE TOQUE LONGO PARA APAGAR [cite: 2026-02-08]
+                                    .combinedClickable(
+                                        onClick = { /* Opcional: abrir imagem cheia */ },
+                                        onLongClick = {
+                                            if (imageUri != null) {
+                                                indexToDelete =
+                                                    i // Agora salvamos a POSIÇÃO [cite: 2026-02-08]
+                                                showDeleteDialog = true
+                                            }
+                                        }
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (imageUri != null) {
-                                    Text("📸", fontSize = 20.sp) // Representação da foto
+                                    AsyncImage(
+                                        model = imageUri,
+                                        contentDescription = "Imagem da nota",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
                                 } else {
                                     Icon(Icons.Default.Add, null, tint = Color.Gray)
                                 }
@@ -242,23 +305,53 @@ fun WriteNoteScreen(
             Spacer(modifier = Modifier.height(100.dp))
         }
     }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Apagar Imagem?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (indexToDelete != -1) {
+                        viewModel.removeImageAtIndex(indexToDelete)
+                    }
+                    showDeleteDialog = false
+                    indexToDelete = -1
+                }) {
+                    Text("Apagar", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 // --- COMPONENTES AUXILIARES ---
 
 @Composable
 fun NoteBottomToolbar(
-    accentColor: Color,
-    onFormatClick: () -> Unit,
-    onEmojiClick: () -> Unit,
-    onMarkerClick: () -> Unit
+    imageCount: Int,               // Conta quantas fotos já foram adicionadas (Máximo 3) [cite: 2026-02-08]
+    accentColor: Color,            // A cor Neon Green que define o estilo do app
+    onFormatClick: () -> Unit,     // Abre o menu de Negrito, Listas e Tamanhos
+    onEmojiClick: () -> Unit,      // Abre o menu dos 7 sentimentos
+    onMarkerClick: () -> Unit,     // Abre o menu de cores e marcador
+    onAddImageClick: () -> Unit,   // Função para abrir a galeria
+    onVoiceClick: () -> Unit,      // Aciona o sensor de áudio de 30s [cite: 2026-02-08]
+    onSaveClick: () -> Unit        // Salva a nota no banco de dados e sai
 ) {
+    // REGRA DE NEGÓCIO: Só permite adicionar imagem se tiver menos de 3 [cite: 2026-02-08]
+    val canAddMoreImages = imageCount < 3
+
     Surface(
-        color = Color(0xFF121212),
+        color = Color(0xFF121212), // Fundo escuro profundo para contraste Cyberpunk
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp) // Cantos arredondados no topo
     ) {
         Row(
             modifier = Modifier
@@ -267,22 +360,51 @@ fun NoteBottomToolbar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
-                ToolbarButton(Icons.Default.Mic, "Voz") { /* Audio 30s */ }
-                ToolbarButton(Icons.Default.FormatBold, "Formatar") { onFormatClick() }
-                ToolbarButton(Icons.Default.Face, "Emoji") { onEmojiClick() }
-                ToolbarButton(Icons.Default.Image, "Imagem") { /* Add Imagem */ }
-                ToolbarButton(Icons.Default.Brush, "Marcador") { onMarkerClick() }
+            // GRUPO DE FERRAMENTAS (Esquerda e Centro)
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // 1. MICROFONE: Para transcrição de voz (Projeto de amanhã) [cite: 2026-02-08]
+                ToolbarButton(Icons.Default.Mic, "Voz", onClick = onVoiceClick)
+
+                // 2. FORMATAR: Negrito, Itálico, Listas e Fontes
+                ToolbarButton(Icons.Default.FormatBold, "Formatar", onClick = onFormatClick)
+
+                // 3. EMOJI: Seleção de humor (Os 7 sentimentos) [cite: 2026-02-08]
+                ToolbarButton(Icons.Default.Face, "Emoji", onClick = onEmojiClick)
+
+                // 4. IMAGEM: Com trava de segurança para limite de 3 [cite: 2026-02-08]
+                IconButton(
+                    onClick = onAddImageClick,
+                    enabled = canAddMoreImages
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Adicionar Imagem",
+                        // Se estiver travado, o ícone fica mais escuro/transparente
+                        tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f)
+                    )
+                }
+
+                // 5. MARCADOR: Pincel para cores neon e fundo de texto
+                ToolbarButton(Icons.Default.Brush, "Marcador", onClick = onMarkerClick)
             }
+
+            // BOTÃO SALVAR (Check FAB) - Canto Direito
             FloatingActionButton(
-                onClick = { /* Save Room */ },
-                containerColor = accentColor,
+                onClick = onSaveClick,
+                containerColor = accentColor, // Usa o Neon Green
                 shape = CircleShape,
                 modifier = Modifier
                     .size(56.dp)
-                    .offset(y = (-10).dp)
+                    .offset(y = (-10).dp) // Efeito visual de estar "saindo" da barra
             ) {
-                Icon(Icons.Default.Check, null, tint = Color.Black)
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Salvar Nota",
+                    tint = Color.Black // Contraste preto no fundo neon
+                )
             }
         }
     }
@@ -412,32 +534,62 @@ fun FloatingColorMenu(
 }
 
 @Composable
-fun FloatingEmojiMenu(onEmojiSelected: (String, String) -> Unit, neonGreen: Color) {
-    val emojis = listOf(
+fun FloatingEmojiMenu(
+    onEmojiSelected: (String, String) -> Unit, // Retorna o emoji e o nome do humor (ex: "😊", "Feliz")
+    neonGreen: Color                           // Cor de destaque para o estilo do app
+) {
+    // 1. LISTA OFICIAL DE SENTIMENTOS [cite: 2026-02-08]
+    val diaryEmojis = listOf(
+        "😭" to "Muito Triste",
+        "😢" to "Triste",
+        "😐" to "Neutro",
         "😊" to "Feliz",
-        "😭" to "Triste",
-        "😍" to "Apaixonado",
-        "😎" to "Confiante",
-        "🤔" to "Pensativo"
+        "🤩" to "Muito Feliz",
+        "😫" to "Estressado",
+        "😡" to "Bravo"
     )
+
+    // 2. CONTAINER DO MENU FLUTUANTE
     Surface(
-        color = Color(0xFF2A2A2A),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.padding(16.dp)
+        color = Color(0xFF2A2A2A), // Cinza escuro para destacar do fundo preto
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+            .border(1.dp, neonGreen.copy(alpha = 0.3f), RoundedCornerShape(16.dp)) // Borda neon suave
     ) {
-        Row(
-            modifier = Modifier
-                .padding(8.dp)
-                .horizontalScroll(rememberScrollState())
-        ) {
-            emojis.forEach { (emoji, humor) ->
-                Text(
-                    emoji,
-                    modifier = Modifier
-                        .clickable { onEmojiSelected(emoji, humor) }
-                        .padding(8.dp),
-                    fontSize = 28.sp
-                )
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Título interno do menu
+            Text(
+                text = "Como você está se sentindo?",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+            )
+
+            // 3. LINHA DE EMOJIS COM ROLAGEM HORIZONTAL
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()), // Permite deslizar os 7 emojis
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                diaryEmojis.forEach { (emoji, humor) ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onEmojiSelected(emoji, humor) } // Atualiza o topo da nota [cite: 2026-02-08]
+                            .padding(8.dp)
+                    ) {
+                        Text(text = emoji, fontSize = 32.sp) // Emoji grande para facilitar o toque
+                        Text(
+                            text = humor,
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
             }
         }
     }

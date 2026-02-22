@@ -85,4 +85,6 @@ dependencies {
 
     // A biblioteca de Rich Text que comentamos
     implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-beta05")
+
+    implementation("io.coil-kt:coil-compose:2.5.0")
 }
