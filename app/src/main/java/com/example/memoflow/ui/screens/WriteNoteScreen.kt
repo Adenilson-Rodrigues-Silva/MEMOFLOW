@@ -1,13 +1,17 @@
 package com.example.memoflow.ui.screens
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,14 +28,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.memoflow.ui.components.EmojiSelector
+import com.example.memoflow.ui.components.PhotoGrid
+import com.example.memoflow.ui.components.TextFormattingPanel
 import com.example.memoflow.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
@@ -45,9 +54,13 @@ fun WriteNoteScreen(
 
 
 
+
+
+
     val context = androidx.compose.ui.platform.LocalContext.current
     val state = viewModel.uiState
-    val richTextState = viewModel.richTextState
+    val richTextState = viewModel.richTextState // estado rich text
+    val uiState by viewModel.uiStateFlow.collectAsState()
 
     val neonGreen = Color(0xFF00FFC2)
     val surfaceDark = Color(0xFF1E1E1E)
@@ -59,6 +72,20 @@ fun WriteNoteScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAudioDeleteDialog by remember { mutableStateOf(false) } // NOVO: Estado para confirmação do áudio
     var indexToDelete by remember { mutableStateOf(-1) }
+    var isFormattingVisible by remember { mutableStateOf(false) }
+
+
+    var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
+
+
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        // Aqui está o segredo: avisar a ViewModel que uma imagem foi escolhida
+        uri?.let { viewModel.onImageSelected(it) }
+    }
+
 
     // Launcher para permissão de áudio
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -72,6 +99,30 @@ fun WriteNoteScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: android.net.Uri? ->
         viewModel.onImageSelected(uri)
+    }
+
+    // Define se o botão está habilitado (máximo 3 imagens) [cite: 2026-02-08]
+    val canAddMoreImages = uiState.images.size < 3
+
+// Define o que acontece ao clicar
+    val onAddImageClick = { galleryLauncher.launch("image/*") }
+    val onEmojiClick = {
+        // Inverte o estado: se está aberto, fecha; se está fechado, abre [cite: 2026-02-08]
+        showEmojiMenu = !showEmojiMenu
+    }
+
+
+
+    if (selectedImageFullScreen != null) {
+        Dialog(onDismissRequest = { selectedImageFullScreen = null }) {
+            Box(modifier = Modifier.fillMaxSize().clickable { selectedImageFullScreen = null }) {
+                AsyncImage(
+                    model = selectedImageFullScreen,
+                    contentDescription = null,
+                    modifier = Modifier.align(Alignment.Center).fillMaxWidth()
+                )
+            }
+        }
     }
 
     Scaffold(
@@ -99,24 +150,16 @@ fun WriteNoteScreen(
             )
         },
         bottomBar = {
-            Column {
-                // Menu de Formatação
-                // Localize a linha 113. Onde você chama o AudioPlayerComponent:
-                /*AudioPlayerComponent(
-                    accentColor = neonGreen,
-                    isRecording = state.isRecording,
-                    isPlaying = viewModel.isPlaying, // <--- ADICIONE ESTA LINHA EXATAMENTE AQUI
-                    currentTime = state.recordingTime,
-                    audioPath = state.audioPath,
-                    onPlayClick = {
-                        viewModel.playAudio()
-                    },
-                    onDeleteClick = {
-                        showAudioDeleteDialog = true
-                    }
-                )*/
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // 1. Menu de Formatação (B)
+                AnimatedVisibility(visible = showFormatMenu) {
+                    TextFormattingPanel(
+                        state = richTextState,
+                        isVisible = showFormatMenu
+                    )
+                }
 
-                // Menu de Cores/Marcador
+                // 2. Menu de Cores/Marcador
                 AnimatedVisibility(visible = showMarkerMenu) {
                     FloatingColorMenu(
                         onTextColorSelected = { color -> viewModel.updateTextColor(color) },
@@ -125,17 +168,35 @@ fun WriteNoteScreen(
                     )
                 }
 
-                // Menu de Emojis
-                AnimatedVisibility(visible = showEmojiMenu) {
-                    FloatingEmojiMenu(
-                        onEmojiSelected = { emoji, humor ->
-                            viewModel.updateEmoji(emoji, humor)
-                            showEmojiMenu = false
-                        },
-                        neonGreen = neonGreen
-                    )
+                // 3. Menu de Emojis (Corrigido para evitar o erro de Alignment)
+                AnimatedVisibility(
+                    visible = showEmojiMenu,
+                    enter = slideInVertically(initialOffsetY = { it }),
+                    exit = slideOutVertically(targetOffsetY = { it }),
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally) // CORREÇÃO: Usando CenterHorizontally para Column [cite: 2026-02-08]
+                        .padding(bottom = 15.dp)
+                ) {
+                    Surface(
+                        color = Color(0xFF1E1E1E),
+                        shape = RoundedCornerShape(24.dp),
+                        shadowElevation = 8.dp,
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                    ) {
+                        EmojiSelector(
+                            emojis = uiState.diaryEmojis,
+                            selectedEmoji = uiState.selectedEmoji,
+                            onEmojiSelected = { emoji, humor ->
+                                viewModel.updateEmoji(emoji, humor)
+                                showEmojiMenu = false // Fecha após escolher [cite: 2026-02-08]
+                            }
+                        )
+                    }
                 }
 
+                // 4. A Barra de Ferramentas Principal
                 NoteBottomToolbar(
                     imageCount = state.images.size,
                     accentColor = neonGreen,
@@ -144,11 +205,7 @@ fun WriteNoteScreen(
                         showEmojiMenu = false
                         showMarkerMenu = false
                     },
-                    onEmojiClick = {
-                        showEmojiMenu = !showEmojiMenu
-                        showFormatMenu = false
-                        showMarkerMenu = false
-                    },
+                    onEmojiClick = onEmojiClick, // Usando sua variável que inverte o estado [cite: 2026-02-08]
                     onMarkerClick = {
                         showMarkerMenu = !showMarkerMenu
                         showFormatMenu = false
@@ -158,16 +215,11 @@ fun WriteNoteScreen(
                         launcher.launch("image/*")
                     },
                     onVoiceClick = {
-                        // Se estiver gravando, o clique deve PARAR (independente de já existir áudio ou não)
                         if (state.isRecording) {
                             viewModel.onVoiceClick(context.cacheDir)
-                        }
-                        // Se não estiver gravando, mas o arquivo já existe, ele avisa
-                        else if (state.audioPath != null) {
+                        } else if (state.audioPath != null) {
                             android.widget.Toast.makeText(context, "Já existe um áudio. Apague para gravar outro.", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                        // Se estiver tudo limpo, ele inicia a gravação normalmente
-                        else {
+                        } else {
                             val permission = android.Manifest.permission.RECORD_AUDIO
                             val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
                                 context, permission
@@ -261,41 +313,15 @@ fun WriteNoteScreen(
 
                     // SLOT PARA AS 3 IMAGENS
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        for (i in 0 until 3) {
-                            val imageUri = state.images.getOrNull(i)
-
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.DarkGray.copy(alpha = 0.3f))
-                                    .combinedClickable(
-                                        onClick = { },
-                                        onLongClick = {
-                                            if (imageUri != null) {
-                                                indexToDelete = i
-                                                showDeleteDialog = true
-                                            }
-                                        }
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (imageUri != null) {
-                                    AsyncImage(
-                                        model = imageUri,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                    )
-                                } else {
-                                    Icon(Icons.Default.Add, null, tint = Color.Gray)
-                                }
-                            }
-                        }
+                        // Chame os 3 quadrados de uma vez só!
+                        PhotoGrid(
+                            images = uiState.images,
+                            onRemove = { uri -> viewModel.removeImage(uri) },
+                            onExpand = { uri -> selectedImageFullScreen = uri }
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -408,7 +434,8 @@ fun NoteBottomToolbar(
 
                 IconButton(onClick = onAddImageClick, enabled = canAddMoreImages) {
                     Icon(
-                        Icons.Default.Image, null,
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Adicionar Imagem",
                         tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f)
                     )
                 }
@@ -498,30 +525,6 @@ fun FloatingColorMenu(
     }
 }
 
-@Composable
-fun FloatingEmojiMenu(onEmojiSelected: (String, String) -> Unit, neonGreen: Color) {
-    val diaryEmojis = listOf(
-        "😭" to "Muito Triste", "😢" to "Triste", "😐" to "Neutro",
-        "😊" to "Feliz", "🤩" to "Muito Feliz", "😫" to "Estressado", "😡" to "Bravo"
-    )
-    Surface(
-        color = Color(0xFF2A2A2A),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.padding(16.dp).fillMaxWidth().border(1.dp, neonGreen.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("Como você está se sentindo?", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp))
-            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                diaryEmojis.forEach { (emoji, humor) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onEmojiSelected(emoji, humor) }.padding(8.dp)) {
-                        Text(text = emoji, fontSize = 32.sp)
-                        Text(text = humor, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun AudioPlayerComponent(

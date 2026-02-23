@@ -21,6 +21,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import android.media.MediaPlayer
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 
 data class WriteNoteUiState(
@@ -46,9 +48,18 @@ data class WriteNoteUiState(
     val audioPath: String? = null // Caminho do arquivo gravado
 
 
+
+
 )
 
 class WriteNoteViewModel : ViewModel() {
+
+    private val _uiState = MutableStateFlow(WriteNoteUiState())
+    val uiStateFlow = _uiState
+
+    private var state: WriteNoteUiState
+        get() = _uiState.value
+        set(value) { _uiState.value = value }
 
     private var progressJob: Job? = null
 
@@ -156,13 +167,7 @@ class WriteNoteViewModel : ViewModel() {
         )
     }
 
-    fun onImageSelected(uri: android.net.Uri?) {
-        uri?.let {
-            if (uiState.images.size < 3) {
-                uiState = uiState.copy(images = uiState.images + it)
-            }
-        }
-    }
+
 
     fun saveNote() {
         // Acessamos o texto através do uiState [cite: 2026-02-08]
@@ -331,6 +336,34 @@ class WriteNoteViewModel : ViewModel() {
             }
         }
     }
+
+
+
+    fun onImageSelected(uri: Uri?) {
+        uri?.let { selectedUri ->
+            _uiState.update { currentState ->
+                if (currentState.images.size < 3) {
+                    // Adiciona a nova imagem à lista atual [cite: 2026-02-08]
+                    currentState.copy(images = currentState.images + selectedUri)
+                } else {
+                    currentState
+                }
+            }
+        }
+    }
+
+    fun removeImage(uri: android.net.Uri) {
+        _uiState.update { currentState ->
+            // Criamos uma lista nova, mas removemos apenas a PRIMEIRA ocorrência dessa URI
+            val currentList = currentState.images.toMutableList()
+            currentList.remove(uri)
+
+            currentState.copy(images = currentList)
+        }
+    }
+
 }
+
+
 
 
