@@ -34,6 +34,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.memoflow.ui.components.EmojiSelector
+import com.example.memoflow.ui.components.FloatingColorMenu
 import com.example.memoflow.ui.components.PhotoGrid
 import com.example.memoflow.ui.components.TextFormattingPanel
 import com.example.memoflow.ui.components.VoiceNoteSection
@@ -142,7 +143,7 @@ fun WriteNoteScreen(
             )
         },
         bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth().imePadding()) {
                 // 1. Menu de Formatação (B)
                 AnimatedVisibility(visible = showFormatMenu) {
                     TextFormattingPanel(
@@ -152,10 +153,18 @@ fun WriteNoteScreen(
                 }
 
                 // 2. Menu de Cores/Marcador
+                // 2. Menu de Cores/Marcador
+                // 2. Menu de Cores/Marcador
+                // 2. Menu de Cores/Marcador
+                // Use showMarkerMenu (que é o que você já tinha no código)
                 AnimatedVisibility(visible = showMarkerMenu) {
                     FloatingColorMenu(
+                        selectedTextColor = state.richTextState.currentSpanStyle.color,
+                        selectedMarkerColor = state.richTextState.currentSpanStyle.background
+                            ?: Color.Transparent,
                         onTextColorSelected = { color -> viewModel.updateTextColor(color) },
                         onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
+                        onDismiss = { showMarkerMenu = false }, // Fechando com a variável correta
                         neonGreen = neonGreen
                     )
                 }
@@ -382,7 +391,11 @@ fun NoteBottomToolbar(
                         tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f)
                     )
                 }
-                ToolbarButton(Icons.Default.Brush, "Marcador", onClick = onMarkerClick)
+                ToolbarButton(
+                    icon = Icons.Default.Brush,
+                    desc = "Marcador",
+                    onClick = onMarkerClick // ✅ Correto! Aciona o gatilho que você passou por parâmetro
+                )
             }
 
             FloatingActionButton(
@@ -406,120 +419,4 @@ fun ToolbarButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
     }
 }
 
-@Composable
-fun FloatingFormatMenu(
-    onBoldClick: () -> Unit,
-    onItalicClick: () -> Unit,
-    onUnderlineClick: () -> Unit,
-    onBulletClick: () -> Unit,
-    onQuoteClick: () -> Unit,
-    onSizeClick: (androidx.compose.ui.unit.TextUnit) -> Unit,
-    isBoldActive: Boolean,
-    neonGreen: Color,
-    isPlaying: Boolean
-) {
-    Surface(
-        color = Color(0xFF2A2A2A),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.padding(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = onBoldClick) {
-                    Icon(
-                        Icons.Default.FormatBold,
-                        null,
-                        tint = if (isBoldActive) neonGreen else Color.White
-                    )
-                }
-                IconButton(onClick = onItalicClick) {
-                    Icon(
-                        Icons.Default.FormatItalic,
-                        null,
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onUnderlineClick) {
-                    Icon(
-                        Icons.Default.FormatUnderlined,
-                        null,
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onBulletClick) {
-                    Icon(
-                        Icons.Default.FormatListBulleted,
-                        null,
-                        tint = neonGreen
-                    )
-                }
-                IconButton(onClick = onQuoteClick) {
-                    Icon(
-                        Icons.Default.FormatQuote,
-                        null,
-                        tint = neonGreen
-                    )
-                }
-            }
-            Divider(
-                color = Color.Gray.copy(alpha = 0.3f),
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    "Tam:",
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-                TextButton(onClick = { onSizeClick(14.sp) }) { Text("P", color = Color.White) }
-                TextButton(onClick = { onSizeClick(18.sp) }) { Text("M", color = Color.White) }
-                TextButton(onClick = { onSizeClick(24.sp) }) { Text("G", color = Color.White) }
-            }
-        }
-    }
-}
-
-@Composable
-fun FloatingColorMenu(
-    onTextColorSelected: (Color) -> Unit,
-    onMarkerColorSelected: (Color) -> Unit,
-    neonGreen: Color
-) {
-    val colors =
-        listOf(neonGreen, Color(0xFFFF00E5), Color(0xFF00B2FF), Color(0xFFE6FB04), Color.White)
-    Surface(
-        color = Color(0xFF2A2A2A),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.padding(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("Cor do Texto", color = Color.Gray, fontSize = 11.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                colors.forEach { color ->
-                    Box(
-                        modifier = Modifier
-                            .size(25.dp)
-                            .background(color, CircleShape)
-                            .clickable { onTextColorSelected(color) })
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("Marcador (Fundo)", color = Color.Gray, fontSize = 11.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                colors.forEach { color ->
-                    Box(
-                        modifier = Modifier
-                            .size(25.dp)
-                            .border(1.dp, color, CircleShape)
-                            .background(color.copy(alpha = 0.3f), CircleShape)
-                            .clickable { onMarkerColorSelected(color) })
-                }
-            }
-        }
-    }
-}
 
