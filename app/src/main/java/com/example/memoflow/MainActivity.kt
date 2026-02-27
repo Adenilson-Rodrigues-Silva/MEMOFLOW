@@ -3,16 +3,18 @@ package com.example.memoflow
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.memoflow.navigation.Screen
-import com.example.memoflow.ui.screens.HomeScreen
-import com.example.memoflow.ui.screens.ProfileScreen
-import com.example.memoflow.ui.screens.SecurityScreen
-import com.example.memoflow.ui.screens.SplashScreen
-import com.example.memoflow.ui.screens.UnderConstructionScreen
-import com.example.memoflow.ui.screens.WriteNoteScreen
+import com.example.memoflow.ui.screens.home.HomeScreen
+import com.example.memoflow.ui.screens.profile.ProfileScreen
+import com.example.memoflow.ui.screens.security.SecurityScreen
+import com.example.memoflow.ui.screens.splash.SplashScreen
+import com.example.memoflow.ui.screens.common.UnderConstructionScreen
+import com.example.memoflow.ui.screens.note.WriteNoteScreen
 import com.example.memoflow.ui.theme.MemoFlowTheme
 
 class MainActivity : ComponentActivity() {
@@ -46,9 +48,20 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // ROTA DA TELA DE NOTAS (A que acabamos de criar)
-                    composable("write_note") {
-                        WriteNoteScreen(onBack = { navController.popBackStack() })
+                    composable(
+                        route = "write_note?noteId={noteId}",
+                        arguments = listOf(
+                            navArgument("noteId") {
+                                type = NavType.LongType
+                                defaultValue = -1L
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val noteId = backStackEntry.arguments?.getLong("noteId") ?: -1L
+                        WriteNoteScreen(
+                            onBack = { navController.popBackStack() },
+                            noteId = if (noteId == -1L) null else noteId
+                        )
                     }
 
                     composable("security") {

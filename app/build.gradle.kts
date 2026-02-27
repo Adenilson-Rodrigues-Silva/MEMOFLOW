@@ -2,16 +2,18 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
     namespace = "com.example.memoflow"
-    compileSdk = 35 // SDK Estável para evitar erros de "Unresolved reference"
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.memoflow"
         minSdk = 26
-        targetSdk = 35 // Alinhado com o compileSdk
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -45,46 +47,43 @@ android {
     }
 }
 
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
 dependencies {
-    // 1. O BOM deve ser sempre o primeiro para gerenciar as versões da UI
     implementation(platform(libs.androidx.compose.bom))
 
-    // 2. UI e Material3 (Pegando versões do BOM automaticamente)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
 
-    // 3. Core e Ciclo de Vida
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
-    // 4. Navegação (Apenas uma linha, sem duplicatas!)
     implementation(libs.androidx.navigation.compose)
-
-    // 5. Imagem (Coil) e Animação (Lottie)
     implementation(libs.coil.compose)
     implementation(libs.lottie.compose)
 
-    // 6. Outros
-    // Se estas bibliotecas não estiverem no seu TOML, mantenha a string manual:
-    // implementation(libs.androidx.remote.creation.core)
-    // implementation(libs.places)
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
-    // 7. Testes e Debug
+    // JSON
+    implementation(libs.gson)
+
+    // Rich Editor
+    implementation(libs.richeditor.compose)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-
-    implementation("androidx.compose.material:material-icons-extended")
-
-    // A biblioteca de Rich Text que comentamos
-    implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-beta05")
-
-    implementation("io.coil-kt:coil-compose:2.5.0")
 }

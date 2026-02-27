@@ -3,5 +3,8 @@ package com.example.memoflow.navigation
 sealed class Screen(val route: String) {
     object Splash : Screen("splash_screen")
     object Home : Screen("home_screen")
-    object Profile : Screen("profile_screen") // Adicionamos a rota do perfil aqui
+    object Profile : Screen("profile_screen")
+    object WriteNote : Screen("write_note?noteId={noteId}") {
+        fun createRoute(noteId: Long? = null) = if (noteId != null) "write_note?noteId=$noteId" else "write_note"
+    }
 }

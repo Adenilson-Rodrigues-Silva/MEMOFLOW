@@ -1,6 +1,7 @@
-package com.example.memoflow.ui.screens
+package com.example.memoflow.ui.screens.note
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,11 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -43,6 +45,7 @@ import com.example.memoflow.ui.components.handleVoiceClick
 import com.example.memoflow.ui.components.writenote.AppearanceBottomSheet
 import com.example.memoflow.ui.components.writenote.NoteDetailsDialog
 import com.example.memoflow.ui.components.writenote.NoteOptionsOverflowMenu
+import com.example.memoflow.ui.screens.security.SecurityViewModel
 import com.example.memoflow.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
@@ -51,34 +54,34 @@ import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 @Composable
 fun WriteNoteScreen(
     onBack: () -> Unit,
-    viewModel: WriteNoteViewModel = viewModel()
+    noteId: Long? = null,
+    viewModel: WriteNoteViewModel = viewModel(factory = WriteNoteViewModel.Factory),
+    securityViewModel: SecurityViewModel = viewModel(factory = SecurityViewModel.Factory)
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val state = viewModel.uiState
+    val context = LocalContext.current
     val richTextState = viewModel.richTextState
     val uiState by viewModel.uiStateFlow.collectAsState()
+    val securitySettings by securityViewModel.userSettings.collectAsState()
 
     val neonGreen = Color(0xFF00FFC2)
     val surfaceDark = Color(0xFF1E1E1E)
 
-    // Estados de interface (Menus e Diálogos)
+    LaunchedEffect(noteId) {
+        if (noteId != null && noteId > 0) {
+            viewModel.loadNote(noteId)
+        }
+    }
+
     var showFormatMenu by remember { mutableStateOf(false) }
     var showEmojiMenu by remember { mutableStateOf(false) }
     var showMarkerMenu by remember { mutableStateOf(false) }
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
     var showAppearanceMenu by remember { mutableStateOf(false) }
+    var showLockConfirmDialog by remember { mutableStateOf(false) }
     
-    // Estado da Fonte Selecionada para o menu (não altera o UI global)
     var selectedFontFamily by remember { mutableStateOf<FontFamily>(FontFamily.Default) }
-
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
-
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.onImageSelected(it) }
-    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -88,20 +91,16 @@ fun WriteNoteScreen(
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: android.net.Uri? ->
+    ) { uri: Uri? ->
         viewModel.onImageSelected(uri)
     }
 
-    val canAddMoreImages = uiState.images.size < 3
-    val onEmojiClick = { showEmojiMenu = !showEmojiMenu }
-
-    // 1. Diálogo de Detalhes
     if (showDetailsDialog) {
         val noteText = richTextState.annotatedString.text
         NoteDetailsDialog(
             wordCount = if (noteText.isBlank()) 0 else noteText.trim().split("\\s+".toRegex()).size,
             charCount = noteText.length,
-            hasAudio = state.audioPath != null,
+            hasAudio = uiState.audioPath != null,
             imageCount = uiState.images.size,
             date = "11 DE FEVEREIRO DE 2026",
             onDismiss = { showDetailsDialog = false },
@@ -109,17 +108,46 @@ fun WriteNoteScreen(
         )
     }
 
-    // 2. Bottom Sheet de Estilo de Fonte (Aplica apenas ao texto novo)
     if (showAppearanceMenu) {
         AppearanceBottomSheet(
             selectedFontFamily = selectedFontFamily,
             onFontSelected = { 
                 selectedFontFamily = it
-                viewModel.updateFontFamily(it) // APLICA APENAS NA CAIXA DE TEXTO (DALI PRA FRENTE)
+                viewModel.updateFontFamily(it)
                 showAppearanceMenu = false 
             },
             onDismiss = { showAppearanceMenu = false },
             neonGreen = neonGreen
+        )
+    }
+
+    if (showLockConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showLockConfirmDialog = false },
+            containerColor = Color(0xFF1A1A1A),
+            title = { Text(if (uiState.isLocked) "Destrancar Memória?" else "Trancar Memória?", color = Color.White) },
+            text = { 
+                Text(
+                    if (uiState.isLocked) "Deseja remover o bloqueio desta nota?" else "Tem certeza que deseja trancar esta memória? Ela só poderá ser aberta com o seu PIN.",
+                    color = Color.Gray
+                ) 
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.toggleLock()
+                    viewModel.saveNote()
+                    showLockConfirmDialog = false
+                    Toast.makeText(context, if (!uiState.isLocked) "Memória Trancada!" else "Memória Destrancada!", Toast.LENGTH_SHORT).show()
+                    onBack() // Volta para a principal por segurança
+                }) {
+                    Text("CONFIRMAR", color = neonGreen)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLockConfirmDialog = false }) {
+                    Text("CANCELAR", color = Color.White)
+                }
+            }
         )
     }
 
@@ -132,9 +160,7 @@ fun WriteNoteScreen(
                 AsyncImage(
                     model = selectedImageFullScreen,
                     contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .fillMaxWidth()
+                    modifier = Modifier.align(Alignment.Center).fillMaxWidth()
                 )
             }
         }
@@ -145,10 +171,18 @@ fun WriteNoteScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Entrada", color = Color.White, fontSize = 18.sp) }, // Fonte padrão
+                title = { 
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Entrada", color = Color.White, fontSize = 18.sp)
+                        if (uiState.isLocked) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.Lock, null, tint = neonGreen, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }, 
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.KeyboardArrowLeft, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = Color.White, modifier = Modifier.size(32.dp))
                     }
                 },
                 actions = {
@@ -158,6 +192,7 @@ fun WriteNoteScreen(
                         }
                         NoteOptionsOverflowMenu(
                             expanded = showOverflowMenu,
+                            isLocked = uiState.isLocked,
                             onDismissRequest = { showOverflowMenu = false },
                             onShareClick = { /* PDF */ },
                             onFontStyleClick = { 
@@ -168,8 +203,15 @@ fun WriteNoteScreen(
                                 showDetailsDialog = true
                                 showOverflowMenu = false
                             },
-                            onDeleteClick = { /* Deletar */ },
-                            onLockClick = { /* PIN */ },
+                            onDeleteClick = { /* Deletar logic */ },
+                            onLockClick = { 
+                                if (securitySettings.pin.isNullOrEmpty()) {
+                                    Toast.makeText(context, "Defina um PIN nas configurações primeiro!", Toast.LENGTH_LONG).show()
+                                } else {
+                                    showLockConfirmDialog = true
+                                }
+                                showOverflowMenu = false
+                            },
                             onTimeCapsuleClick = { /* Capsula */ },
                             neonGreen = neonGreen
                         )
@@ -185,8 +227,8 @@ fun WriteNoteScreen(
                 }
                 AnimatedVisibility(visible = showMarkerMenu) {
                     FloatingColorMenu(
-                        selectedTextColor = state.richTextState.currentSpanStyle.color,
-                        selectedMarkerColor = state.richTextState.currentSpanStyle.background ?: Color.Transparent,
+                        selectedTextColor = richTextState.currentSpanStyle.color,
+                        selectedMarkerColor = (richTextState.currentSpanStyle.background as? Color) ?: Color.Transparent,
                         onTextColorSelected = { color -> viewModel.updateTextColor(color) },
                         onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
                         onDismiss = { showMarkerMenu = false },
@@ -216,14 +258,14 @@ fun WriteNoteScreen(
                     }
                 }
                 NoteBottomToolbar(
-                    imageCount = state.images.size,
+                    imageCount = uiState.images.size,
                     accentColor = neonGreen,
                     onFormatClick = {
                         showFormatMenu = !showFormatMenu
                         showEmojiMenu = false
                         showMarkerMenu = false
                     },
-                    onEmojiClick = onEmojiClick,
+                    onEmojiClick = { showEmojiMenu = !showEmojiMenu },
                     onMarkerClick = {
                         showMarkerMenu = !showMarkerMenu
                         showFormatMenu = false
@@ -231,10 +273,14 @@ fun WriteNoteScreen(
                     },
                     onAddImageClick = { launcher.launch("image/*") },
                     onVoiceClick = {
-                        handleVoiceClick(context, state.isRecording, state.audioPath, viewModel, permissionLauncher)
+                        handleVoiceClick(context, uiState.isRecording, uiState.audioPath, viewModel, permissionLauncher)
                     },
                     onSaveClick = {
-                        if (richTextState.annotatedString.text.isNotBlank()) {
+                        val hasText = richTextState.annotatedString.text.isNotBlank()
+                        val hasImages = uiState.images.isNotEmpty()
+                        val hasAudio = uiState.audioPath != null
+                        
+                        if (hasText || hasImages || hasAudio) {
                             viewModel.saveNote()
                             onBack()
                         } else {
@@ -273,19 +319,18 @@ fun WriteNoteScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             androidx.compose.foundation.text.BasicTextField(
-                                value = state.title,
+                                value = uiState.title,
                                 onValueChange = { viewModel.updateTitle(it) },
                                 textStyle = TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold),
                                 cursorBrush = SolidColor(neonGreen)
                             )
-                            Text("Humor: ${state.selectedHumor}", color = neonGreen, fontSize = 14.sp)
+                            Text("Humor: ${uiState.selectedHumor}", color = neonGreen, fontSize = 14.sp)
                         }
-                        Text(state.selectedEmoji, fontSize = 40.sp)
+                        Text(uiState.selectedEmoji, fontSize = 40.sp)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // O EDITOR DE TEXTO RICO (Sem fontFamily global para permitir estilos individuais)
                     RichTextEditor(
                         state = richTextState,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
@@ -315,9 +360,9 @@ fun WriteNoteScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     VoiceNoteSection(
-                        isRecording = state.isRecording,
-                        recordingTime = state.recordingTime,
-                        audioPath = state.audioPath,
+                        isRecording = uiState.isRecording,
+                        recordingTime = uiState.recordingTime,
+                        audioPath = uiState.audioPath,
                         viewModel = viewModel,
                         context = context,
                         permissionLauncher = permissionLauncher,
@@ -392,15 +437,5 @@ fun NoteBottomToolbar(
 fun ToolbarButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
     IconButton(onClick = onClick) {
         Icon(icon, desc, tint = Color.Gray)
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF000000)
-@Composable
-fun WriteNoteScreenPreview() {
-    MaterialTheme {
-        Surface(color = Color.Black) {
-            WriteNoteScreen(onBack = { })
-        }
     }
 }

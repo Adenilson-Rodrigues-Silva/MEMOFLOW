@@ -1,4 +1,4 @@
-package com.example.memoflow.ui.components
+package com.example.memoflow.ui.components.home
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -7,9 +7,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -39,7 +41,6 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
-//import com.google.android.libraries.places.api.model.LocalDate
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -75,7 +76,7 @@ fun HubButton(icon: ImageVector, label: String, color: Color, onClick: () -> Uni
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .size(56.dp)
-                .neonGlow(color) // O efeito de brilho que criamos
+                .neonGlow(color) 
                 .border(1.dp, color, RoundedCornerShape(16.dp)),
             elevation = FloatingActionButtonDefaults.elevation(8.dp)
         ) {
@@ -146,13 +147,13 @@ fun HomeHeader(
             )
         }
 
-        // A BOLA VERDE AGORA É UM BOTÃO DE PERFIL
         Surface(
             modifier = Modifier
                 .size(48.dp)
+                .clip(CircleShape)
                 .clickable { onProfileClick() },
             shape = CircleShape,
-            color = Color(0xFF00FFC2) // Cor padrão se não tiver foto
+            color = Color(0xFF00FFC2) 
         ) {
             if (userPhotoUrl != null) {
                 AsyncImage(
@@ -162,7 +163,6 @@ fun HomeHeader(
                     contentScale = ContentScale.Crop
                 )
             }
-            // Se userPhotoUrl for null, ele mostra apenas o fundo verde neon
         }
     }
 }
@@ -172,17 +172,16 @@ fun CalendarRow(
     days: List<LocalDate>,
     selectedDay: LocalDate,
     neonGreen: Color,
-    onDaySelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    // Formatter para o nome do dia (ex: QUI)
     val formatterDia = remember { DateTimeFormatter.ofPattern("EEE", java.util.Locale("pt", "BR")) }
 
     LazyRow(
         state = listState,
         contentPadding = PaddingValues(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), // Reduzi um pouco o espaço
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         itemsIndexed(days) { index, date ->
@@ -193,8 +192,8 @@ fun CalendarRow(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .width(55.dp) // DIMINUI de 65dp para 55dp para ficar menos largo
-                    .clip(RoundedCornerShape(16.dp)) // Cantos menos arredondados (mais moderno)
+                    .width(55.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .background(if (isSelected) neonGreen else Color(0xFF1A1A1A))
                     .border(
                         width = 1.dp,
@@ -202,26 +201,25 @@ fun CalendarRow(
                         shape = RoundedCornerShape(16.dp)
                     )
                     .clickable {
-                        onDaySelected(date)
+                        onDateSelected(date)
                         coroutineScope.launch {
-                            // Centraliza o item ao clicar
                             listState.animateScrollToItem(index)
                         }
                     }
-                    .padding(vertical = 12.dp) // DIMINUI de 16dp para 12dp para ficar mais baixo
+                    .padding(vertical = 12.dp)
             ) {
                 Text(
                     text = diaSemana,
                     color = if (isSelected) Color.Black else Color.Gray,
-                    fontSize = 10.sp, // Diminui levemente a fonte
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(2.dp)) // Espaço menor entre textos
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = numeroDia,
                     color = if (isSelected) Color.Black else Color.White,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 18.sp // Diminui de 20sp para 18sp
+                    fontSize = 18.sp
                 )
             }
         }
@@ -277,7 +275,6 @@ fun MoodChartCard(neonGreen: Color) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Área do Gráfico
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -285,10 +282,8 @@ fun MoodChartCard(neonGreen: Color) {
                     .background(Color(0xFF0F0F0F), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // Linhas de fundo do gráfico para dar o estilo "Grid"
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val gridAlpha = 0.05f
-                    // Linhas horizontais
                     drawLine(Color.White.copy(gridAlpha), Offset(0f, size.height * 0.33f), Offset(size.width, size.height * 0.33f))
                     drawLine(Color.White.copy(gridAlpha), Offset(0f, size.height * 0.66f), Offset(size.width, size.height * 0.66f))
                 }
@@ -299,12 +294,25 @@ fun MoodChartCard(neonGreen: Color) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DiaryNoteCard(emoji: String, time: String, content: String, neonGreen: Color) {
+fun DiaryNoteCard(
+    emoji: String, 
+    time: String, 
+    title: String, 
+    content: String, 
+    neonGreen: Color,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 24.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
@@ -313,7 +321,6 @@ fun DiaryNoteCard(emoji: String, time: String, content: String, neonGreen: Color
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Círculo do Emoji
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -329,14 +336,21 @@ fun DiaryNoteCard(emoji: String, time: String, content: String, neonGreen: Color
                 Text(
                     text = time,
                     color = Color.Gray,
-                    fontSize = 12.sp
+                    fontSize = 11.sp
+                )
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
                 )
                 Text(
                     text = content,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1 // Corta o texto se for muito longo
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1
                 )
             }
         }
@@ -368,4 +382,3 @@ fun EmptyStateLottie() {
         )
     }
 }
-

@@ -8,13 +8,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.lifecycle.ViewModel
 import com.mohamedrejeb.richeditor.model.RichTextState
-
-
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
-
 import android.media.MediaRecorder
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -23,11 +20,15 @@ import kotlinx.coroutines.launch
 import java.io.File
 import android.media.MediaPlayer
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-
+import com.example.memoflow.data.repository.MemoRepository
+import com.example.memoflow.data.local.entity.NoteEntity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.CreationExtras
 
 data class WriteNoteUiState(
-
+    val id: Long = 0,
     val diaryEmojis: List<Pair<String, String>> = listOf(
         "😭" to "Muito Triste",
         "😢" to "Triste",
@@ -37,8 +38,6 @@ data class WriteNoteUiState(
         "😫" to "Estressado",
         "😡" to "Bravo"
     ),
-
-    val richTextState: RichTextState = RichTextState(),
     val title: String = "Hoje",
     val selectedEmoji: String = "😊",
     val selectedHumor: String = "Feliz",
@@ -46,107 +45,91 @@ data class WriteNoteUiState(
     val audioUri: Uri? = null,
     val isRecording: Boolean = false,
     val recordingTime: Int = 0,
-    val audioPath: String? = null
+    val audioPath: String? = null,
+    val isLocked: Boolean = false
 )
 
-class WriteNoteViewModel : ViewModel() {
+class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(WriteNoteUiState())
-    val uiStateFlow = _uiState
+    private val _uiStateFlow = MutableStateFlow(WriteNoteUiState())
+    val uiStateFlow = _uiStateFlow.asStateFlow()
 
-    private var state: WriteNoteUiState
-        get() = _uiState.value
-        set(value) { _uiState.value = value }
+    val richTextState = RichTextState()
 
     private var progressJob: Job? = null
-
     var isPlaying by mutableStateOf(false)
         private set
 
-    private var mediaPlayer: android.media.MediaPlayer? = null
+    private var mediaPlayer: MediaPlayer? = null
     private var mediaRecorder: MediaRecorder? = null
     private var timerJob: Job? = null
     private var tempPath: String? = null
 
-    var uiState by mutableStateOf(WriteNoteUiState())
-        private set
-
-    val richTextState = RichTextState()
+    fun loadNote(noteId: Long) {
+        if (noteId <= 0) return
+        viewModelScope.launch {
+            val note = repository.getNoteById(noteId)
+            note?.let {
+                _uiStateFlow.update { currentState ->
+                    currentState.copy(
+                        id = it.id,
+                        title = it.title,
+                        selectedEmoji = it.emoji,
+                        selectedHumor = it.humor,
+                        images = it.images.map { uriString -> Uri.parse(uriString) },
+                        audioPath = it.audioPath,
+                        isLocked = it.isLocked
+                    )
+                }
+                richTextState.setHtml(it.contentHtml)
+            }
+        }
+    }
 
     fun updateTitle(newTitle: String) {
-        uiState = uiState.copy(title = newTitle)
+        _uiStateFlow.update { it.copy(title = newTitle) }
     }
 
     fun updateEmoji(emoji: String, humor: String) {
-        uiState = uiState.copy(
-            selectedEmoji = emoji,
-            selectedHumor = humor
-        )
+        _uiStateFlow.update { it.copy(selectedEmoji = emoji, selectedHumor = humor) }
     }
 
-    fun addImage(uri: Uri) {
-        if (uiState.images.size < 3) {
-            uiState = uiState.copy(images = uiState.images + uri)
-        }
-    }
-
-    fun removeImageAtIndex(index: Int) {
-        val newList = uiState.images.toMutableList()
-        if (index in newList.indices) {
-            newList.removeAt(index)
-            uiState = uiState.copy(images = newList)
-        }
-    }
-
-    fun toggleBold() {
-        richTextState.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold))
-    }
-
-    fun toggleItalic() {
-        richTextState.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic))
-    }
-
-    fun toggleUnderline() {
-        richTextState.toggleSpanStyle(SpanStyle(textDecoration = TextDecoration.Underline))
+    fun toggleLock() {
+        _uiStateFlow.update { it.copy(isLocked = !it.isLocked) }
     }
 
     fun applyMarker(color: Color) {
         richTextState.toggleSpanStyle(SpanStyle(background = color.copy(alpha = 0.3f)))
     }
 
-    fun toggleBulletList() = richTextState.toggleUnorderedList()
-    fun toggleOrderedList() = richTextState.toggleOrderedList()
-
-    fun updateFontSize(size: androidx.compose.ui.unit.TextUnit) {
-        richTextState.toggleSpanStyle(SpanStyle(fontSize = size))
-    }
-
     fun updateTextColor(color: Color) {
         richTextState.toggleSpanStyle(SpanStyle(color = color.copy(alpha = 1f)))
     }
 
-    // AQUI ESTÁ A FUNÇÃO PARA ALTERAR A FONTE DALI PARA FRENTE
     fun updateFontFamily(fontFamily: FontFamily) {
         richTextState.toggleSpanStyle(SpanStyle(fontFamily = fontFamily))
     }
 
-    fun toggleQuote() {
-        richTextState.toggleSpanStyle(
-            SpanStyle(
-                fontStyle = FontStyle.Italic,
-                background = Color.White.copy(alpha = 0.1f)
-            )
-        )
-    }
-
     fun saveNote() {
-        val textoDaNota = richTextState.annotatedString.text
-        println("--- SALVANDO NO CHRONOS DIARY ---")
-        println("Texto: $textoDaNota")
+        viewModelScope.launch {
+            val state = _uiStateFlow.value
+            val note = NoteEntity(
+                id = state.id,
+                title = state.title,
+                contentHtml = richTextState.toHtml(),
+                emoji = state.selectedEmoji,
+                humor = state.selectedHumor,
+                date = if (state.id == 0L) System.currentTimeMillis() else repository.getNoteById(state.id)?.date ?: System.currentTimeMillis(),
+                images = state.images.map { it.toString() },
+                audioPath = state.audioPath,
+                isLocked = state.isLocked
+            )
+            repository.insertNote(note)
+        }
     }
 
     fun onVoiceClick(cacheDir: File) {
-        if (uiState.isRecording) {
+        if (_uiStateFlow.value.isRecording) {
             stopRecording()
         } else {
             startRecording(cacheDir)
@@ -154,7 +137,7 @@ class WriteNoteViewModel : ViewModel() {
     }
 
     private fun startRecording(cacheDir: File) {
-        val audioFile = File(cacheDir, "temp_note_audio.mp3")
+        val audioFile = File(cacheDir, "audio_${System.currentTimeMillis()}.mp3")
         tempPath = audioFile.absolutePath
 
         mediaRecorder = MediaRecorder().apply {
@@ -166,7 +149,7 @@ class WriteNoteViewModel : ViewModel() {
             try {
                 prepare()
                 start()
-                uiState = uiState.copy(isRecording = true, recordingTime = 0)
+                _uiStateFlow.update { it.copy(isRecording = true, recordingTime = 0) }
                 startTimer()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -178,10 +161,10 @@ class WriteNoteViewModel : ViewModel() {
         try {
             mediaRecorder?.stop()
             mediaRecorder?.release()
-            uiState = uiState.copy(isRecording = false, audioPath = tempPath)
+            _uiStateFlow.update { it.copy(isRecording = false, audioPath = tempPath) }
         } catch (e: Exception) {
             e.printStackTrace()
-            uiState = uiState.copy(isRecording = false)
+            _uiStateFlow.update { it.copy(isRecording = false) }
         } finally {
             mediaRecorder = null
             timerJob?.cancel()
@@ -189,8 +172,8 @@ class WriteNoteViewModel : ViewModel() {
     }
 
     fun playAudio() {
-        val path = uiState.audioPath
-        if (path == null || uiState.isRecording) return
+        val path = _uiStateFlow.value.audioPath
+        if (path == null || _uiStateFlow.value.isRecording) return
 
         if (mediaPlayer?.isPlaying == true) {
             mediaPlayer?.pause()
@@ -208,7 +191,7 @@ class WriteNoteViewModel : ViewModel() {
 
         try {
             mediaPlayer?.release()
-            mediaPlayer = android.media.MediaPlayer().apply {
+            mediaPlayer = MediaPlayer().apply {
                 setDataSource(path)
                 setAudioAttributes(
                     android.media.AudioAttributes.Builder()
@@ -224,7 +207,7 @@ class WriteNoteViewModel : ViewModel() {
                 setOnCompletionListener {
                     this@WriteNoteViewModel.isPlaying = false
                     progressJob?.cancel()
-                    uiState = uiState.copy(recordingTime = 0)
+                    _uiStateFlow.update { it.copy(recordingTime = 0) }
                 }
                 prepareAsync()
             }
@@ -239,7 +222,7 @@ class WriteNoteViewModel : ViewModel() {
             while (this@WriteNoteViewModel.isPlaying) {
                 mediaPlayer?.let {
                     val currentSec = it.currentPosition / 1000
-                    uiState = uiState.copy(recordingTime = currentSec)
+                    _uiStateFlow.update { state -> state.copy(recordingTime = currentSec) }
                 }
                 delay(500)
             }
@@ -250,21 +233,21 @@ class WriteNoteViewModel : ViewModel() {
         mediaPlayer?.stop()
         mediaPlayer?.release()
         mediaPlayer = null
-        uiState.audioPath?.let { path ->
-            val file = java.io.File(path)
+        _uiStateFlow.value.audioPath?.let { path ->
+            val file = File(path)
             if (file.exists()) file.delete()
         }
-        uiState = uiState.copy(audioPath = null, recordingTime = 0)
+        _uiStateFlow.update { it.copy(audioPath = null, recordingTime = 0) }
     }
 
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            while (uiState.recordingTime < 30 && uiState.isRecording) {
+            while (_uiStateFlow.value.recordingTime < 30 && _uiStateFlow.value.isRecording) {
                 delay(1000)
-                uiState = uiState.copy(recordingTime = uiState.recordingTime + 1)
+                _uiStateFlow.update { it.copy(recordingTime = it.recordingTime + 1) }
             }
-            if (uiState.recordingTime >= 30) {
+            if (_uiStateFlow.value.recordingTime >= 30) {
                 stopRecording()
             }
         }
@@ -272,7 +255,7 @@ class WriteNoteViewModel : ViewModel() {
 
     fun onImageSelected(uri: Uri?) {
         uri?.let { selectedUri ->
-            _uiState.update { currentState ->
+            _uiStateFlow.update { currentState ->
                 if (currentState.images.size < 3) {
                     currentState.copy(images = currentState.images + selectedUri)
                 } else {
@@ -282,11 +265,21 @@ class WriteNoteViewModel : ViewModel() {
         }
     }
 
-    fun removeImage(uri: android.net.Uri) {
-        _uiState.update { currentState ->
+    fun removeImage(uri: Uri) {
+        _uiStateFlow.update { currentState ->
             val currentList = currentState.images.toMutableList()
             currentList.remove(uri)
             currentState.copy(images = currentList)
+        }
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as com.example.memoflow.MemoApplication
+                return WriteNoteViewModel(application.repository) as T
+            }
         }
     }
 }

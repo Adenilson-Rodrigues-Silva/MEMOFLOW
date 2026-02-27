@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun NoteOptionsOverflowMenu(
     expanded: Boolean,
+    isLocked: Boolean,
     onDismissRequest: () -> Unit,
     onShareClick: () -> Unit,
     onFontStyleClick: () -> Unit,
@@ -77,9 +78,9 @@ fun NoteOptionsOverflowMenu(
                 }
             )
             MenuOption(
-                icon = Icons.Default.Lock,
-                label = "Trancar Memórias",
-                color = neonGreen,
+                icon = if (isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                label = if (isLocked) "Destrancar Memória" else "Trancar Memória",
+                color = if (isLocked) Color.Yellow else neonGreen,
                 onClick = {
                     onLockClick()
                     onDismissRequest()

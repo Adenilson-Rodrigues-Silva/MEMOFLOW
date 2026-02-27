@@ -1,4 +1,4 @@
-package com.example.memoflow.ui.screens
+package com.example.memoflow.ui.screens.splash
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween

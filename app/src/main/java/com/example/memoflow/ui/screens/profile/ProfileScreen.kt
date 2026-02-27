@@ -1,5 +1,8 @@
-package com.example.memoflow.ui.screens
+package com.example.memoflow.ui.screens.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,52 +20,53 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.net.Uri
-import androidx.compose.ui.layout.ContentScale
+import com.example.memoflow.ui.screens.common.ThemeColorSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
     onSecurityClick: () -> Unit,
-    onBackupClick: () -> Unit
+    onBackupClick: () -> Unit,
+    viewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
 ) {
-    // --- ESTADOS ---
+    val context = LocalContext.current
+    val userSettings by viewModel.userSettings.collectAsState()
+
     var showTimePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAppearanceSheet by remember { mutableStateOf(false) }
+    var showEditNameDialog by remember { mutableStateOf(false) }
+    var showEditBioDialog by remember { mutableStateOf(false) }
 
     val timePickerState = rememberTimePickerState(initialHour = 20, initialMinute = 0, is24Hour = true)
     var reminderDisplayText by remember { mutableStateOf("Desativado") }
     var isReminderActive by remember { mutableStateOf(false) }
-    var selectedColor by remember { mutableStateOf(Color(0xFF00FFC2)) }
     val neonGreen = Color(0xFF00FFC2)
-    var userBio by remember { mutableStateOf("Escrevendo para não esquecer quem eu era.") }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> selectedImageUri = uri }
+    ) { uri: Uri? -> 
+        uri?.let { viewModel.updateUserPhoto(context, it) }
+    }
 
-    // --- LAYOUT PRINCIPAL ---
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Toolbar
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White)
                 }
                 Text("Configurações", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
             }
@@ -71,26 +77,48 @@ fun ProfileScreen(
             ) {
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
-                    // Foto de Perfil
                     Box(contentAlignment = Alignment.BottomEnd) {
                         Surface(
-                            modifier = Modifier.size(120.dp).clickable { galleryLauncher.launch("image/*") },
+                            modifier = Modifier.size(120.dp).clip(CircleShape).clickable { galleryLauncher.launch("image/*") },
                             shape = CircleShape,
                             color = neonGreen
                         ) {
-                            if (selectedImageUri == null) {
+                            if (userSettings.profilePhotoUri == null) {
                                 Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(25.dp), tint = Color.Black)
                             } else {
-                                AsyncImage(model = selectedImageUri, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                                AsyncImage(
+                                    model = userSettings.profilePhotoUri, 
+                                    contentDescription = null, 
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape), 
+                                    contentScale = ContentScale.Crop
+                                )
                             }
                         }
-                        SmallFloatingActionButton(onClick = { galleryLauncher.launch("image/*") }, containerColor = Color.White, shape = CircleShape, modifier = Modifier.size(36.dp)) {
+                        SmallFloatingActionButton(
+                            onClick = { galleryLauncher.launch("image/*") }, 
+                            containerColor = Color.White, 
+                            shape = CircleShape, 
+                            modifier = Modifier.size(36.dp)
+                        ) {
                             Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Dono do Chronos", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text(text = userBio, color = Color.Gray, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+                    
+                    Text(
+                        text = if (userSettings.userName.isEmpty()) "Dono do Chronos" else userSettings.userName, 
+                        color = Color.White, 
+                        fontSize = 22.sp, 
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { showEditNameDialog = true }
+                    )
+                    Text(
+                        text = if (userSettings.bio.isEmpty()) "Toque para adicionar uma bio" else userSettings.bio, 
+                        color = Color.Gray, 
+                        fontSize = 14.sp, 
+                        textAlign = TextAlign.Center, 
+                        modifier = Modifier.padding(vertical = 8.dp).clickable { showEditBioDialog = true }
+                    )
                     Text("membro desde fev 2026", color = neonGreen.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(40.dp))
                 }
@@ -104,7 +132,6 @@ fun ProfileScreen(
                     SectionTitle("Personalização")
                     ProfileOptionItem(title = "Aparência", subtitle = "Tema e Cores", icon = Icons.Default.Palette, onClick = { showAppearanceSheet = true })
 
-                    // AQUI O SUBTITLE ATUALIZA
                     ProfileOptionItem(
                         title = "Lembrete Diário",
                         subtitle = if (isReminderActive) "Definido para $reminderDisplayText" else "Toque para ativar",
@@ -122,10 +149,70 @@ fun ProfileScreen(
             }
         }
 
-        // --- COMPONENTES OVERLAY (Dialogs e Sheets) ---
+        if (showEditNameDialog) {
+            var nameText by remember { mutableStateOf(userSettings.userName) }
+            AlertDialog(
+                onDismissRequest = { showEditNameDialog = false },
+                containerColor = Color(0xFF1A1A1A),
+                title = { Text("Editar Nome", color = Color.White) },
+                text = {
+                    TextField(
+                        value = nameText,
+                        onValueChange = { nameText = it },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent, 
+                            unfocusedContainerColor = Color.Transparent, 
+                            focusedTextColor = Color.White, 
+                            unfocusedTextColor = Color.White,
+                            cursorColor = neonGreen,
+                            focusedIndicatorColor = neonGreen
+                        )
+                    )
+                },
+                confirmButton = { 
+                    TextButton(onClick = { viewModel.updateUserName(nameText); showEditNameDialog = false }) { 
+                        Text("SALVAR", color = neonGreen) 
+                    } 
+                },
+                dismissButton = { 
+                    TextButton(onClick = { showEditNameDialog = false }) { 
+                        Text("CANCELAR", color = Color.White) 
+                    } 
+                }
+            )
+        }
 
-        if (showAppearanceSheet) {
-            AppearanceBottomSheet(onDismiss = { showAppearanceSheet = false }, onColorSelected = { selectedColor = it; showAppearanceSheet = false })
+        if (showEditBioDialog) {
+            var bioText by remember { mutableStateOf(userSettings.bio) }
+            AlertDialog(
+                onDismissRequest = { showEditBioDialog = false },
+                containerColor = Color(0xFF1A1A1A),
+                title = { Text("Editar Bio", color = Color.White) },
+                text = {
+                    TextField(
+                        value = bioText,
+                        onValueChange = { bioText = it },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent, 
+                            unfocusedContainerColor = Color.Transparent, 
+                            focusedTextColor = Color.White, 
+                            unfocusedTextColor = Color.White,
+                            cursorColor = neonGreen,
+                            focusedIndicatorColor = neonGreen
+                        )
+                    )
+                },
+                confirmButton = { 
+                    TextButton(onClick = { viewModel.updateUserBio(bioText); showEditBioDialog = false }) { 
+                        Text("SALVAR", color = neonGreen) 
+                    } 
+                },
+                dismissButton = { 
+                    TextButton(onClick = { showEditBioDialog = false }) { 
+                        Text("CANCELAR", color = Color.White) 
+                    } 
+                }
+            )
         }
 
         if (showDeleteDialog) {
@@ -145,7 +232,6 @@ fun ProfileScreen(
                 containerColor = Color(0xFF1A1A1A),
                 confirmButton = {
                     TextButton(onClick = {
-                        // LÓGICA CORRETA NO LUGAR CERTO
                         val h = timePickerState.hour.toString().padStart(2, '0')
                         val m = timePickerState.minute.toString().padStart(2, '0')
                         reminderDisplayText = "$h:$m"
@@ -164,10 +250,17 @@ fun ProfileScreen(
                 }
             )
         }
+        
+        if (showAppearanceSheet) {
+            ThemeColorSheet(
+                onDismiss = { showAppearanceSheet = false },
+                onColorSelected = { 
+                    showAppearanceSheet = false 
+                }
+            )
+        }
     }
 }
-
-// COMPONENTES AUXILIARES (Sem alteração)
 
 @Composable
 fun SectionTitle(title: String) {
@@ -176,12 +269,9 @@ fun SectionTitle(title: String) {
         color = Color.Gray,
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp, top = 16.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp, top = 16.dp)
     )
 }
-
 
 @Composable
 fun ProfileOptionItem(
@@ -192,52 +282,21 @@ fun ProfileOptionItem(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-            .padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Ícone com fundo sutil
         Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color.White.copy(alpha = 0.05f), CircleShape),
+            modifier = Modifier.size(40.dp).background(Color.White.copy(alpha = 0.05f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
         }
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 16.dp)
-        ) {
+        Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
             Text(title, color = color, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(subtitle, color = Color.Gray, fontSize = 12.sp)
         }
 
-        Icon(
-            imageVector = Icons.Default.KeyboardArrowRight, // Use o nome oficial direto aqui
-            contentDescription = null,
-            tint = Color.Gray,
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(20.dp))
     }
 }
-
-
-@Preview(showBackground = true, device = "id:pixel_8")
-@Composable
-fun ProfileScreenPreview() {
-    // Usamos o tema do seu projeto para as cores ficarem certas
-    com.example.memoflow.ui.theme.MemoFlowTheme(darkTheme = true) {
-        ProfileScreen(
-            onBack = { },
-            onSecurityClick = { },
-            onBackupClick = { })// <-- ADICIONE ISSO)
-
-    }
-}
-
