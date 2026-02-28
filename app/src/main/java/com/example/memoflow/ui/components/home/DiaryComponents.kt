@@ -1,10 +1,6 @@
 package com.example.memoflow.ui.components.home
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -19,34 +15,31 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.intl.Locale
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import coil.compose.AsyncImage
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
-import com.airbnb.lottie.compose.rememberLottieComposition
+import com.airbnb.lottie.compose.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.example.memoflow.R
-
-
+import java.util.Date
 
 @Composable
 fun HubButton(icon: ImageVector, label: String, color: Color, onClick: () -> Unit) {
@@ -85,37 +78,6 @@ fun HubButton(icon: ImageVector, label: String, color: Color, onClick: () -> Uni
     }
 }
 
-@Composable
-fun PixelExplosion(atX: Float, atY: Float, onFinished: () -> Unit) {
-    val particleCount = 30
-    val animatables = remember { List(particleCount) { Animatable(0f) } }
-
-    LaunchedEffect(Unit) {
-        animatables.forEachIndexed { index, anim ->
-            anim.animateTo(1f, animationSpec = tween(600, delayMillis = index * 2))
-        }
-        onFinished()
-    }
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        animatables.forEachIndexed { i, anim ->
-            val progress = anim.value
-            if (progress < 1f) {
-                val angle = (i.toFloat() / particleCount) * 2f * Math.PI
-                val velocity = 400f * (0.5f + (i % 5) / 5f)
-                val offsetX = (Math.cos(angle) * velocity * progress).toFloat()
-                val offsetY = (Math.sin(angle) * velocity * progress).toFloat() - (progress * 200f)
-
-                drawRect(
-                    color = Color(0xFF00FFC2).copy(alpha = 1f - progress),
-                    topLeft = Offset(atX + offsetX, atY + offsetY),
-                    size = androidx.compose.ui.geometry.Size(12f, 12f)
-                )
-            }
-        }
-    }
-}
-
 fun Modifier.neonGlow(color: Color) = this.drawBehind {
     drawCircle(color = color.copy(alpha = 0.25f), radius = size.maxDimension * 0.85f, center = center)
 }
@@ -134,17 +96,8 @@ fun HomeHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(
-                "Meu Diário",
-                color = Color.White,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Text(
-                date,
-                color = Color(0xFFAAAAAA),
-                fontSize = 14.sp
-            )
+            Text("Meu Diário", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
+            Text(date, color = Color(0xFFAAAAAA), fontSize = 14.sp)
         }
 
         Surface(
@@ -226,74 +179,6 @@ fun CalendarRow(
     }
 }
 
-
-@Composable
-fun EmptyState() {
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 60.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-
-        Text(
-            "🚀",
-            fontSize = 64.sp
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            "Nenhuma memória no vácuo deste dia...",
-            color = Color(0xFF666666),
-            fontSize = 14.sp
-        )
-    }
-}
-
-
-@Composable
-fun MoodChartCard(neonGreen: Color) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            Text(
-                text = "Humor da Semana",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .background(Color(0xFF0F0F0F), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val gridAlpha = 0.05f
-                    drawLine(Color.White.copy(gridAlpha), Offset(0f, size.height * 0.33f), Offset(size.width, size.height * 0.33f))
-                    drawLine(Color.White.copy(gridAlpha), Offset(0f, size.height * 0.66f), Offset(size.width, size.height * 0.66f))
-                }
-
-                Text("Gráfico em progresso...", color = Color.DarkGray, fontSize = 12.sp)
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DiaryNoteCard(
@@ -302,51 +187,142 @@ fun DiaryNoteCard(
     title: String, 
     content: String, 
     neonGreen: Color,
+    isLocked: Boolean = false,
+    isTimeCapsule: Boolean = false,
+    unlockDate: Long? = null,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
-    Card(
+    val iceBlue = Color(0xFFB3E5FC)
+    val silverWhite = Color(0xFFE0E0E0)
+    val infiniteTransition = rememberInfiniteTransition(label = "global_effects")
+    
+    val animationValue by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "border_pulse"
+    )
+
+    val particleMove by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(30000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "particles_move"
+    )
+
+    val borderBrush = when {
+        isTimeCapsule -> Brush.linearGradient(
+            listOf(iceBlue.copy(alpha = animationValue), Color.White.copy(alpha = 0.4f), iceBlue.copy(alpha = animationValue))
+        )
+        isLocked -> Brush.linearGradient(
+            listOf(neonGreen.copy(alpha = animationValue), Color.Transparent, neonGreen.copy(alpha = animationValue))
+        )
+        else -> Brush.linearGradient(
+            listOf(silverWhite.copy(alpha = animationValue * 0.5f), Color.White.copy(alpha = 0.1f), silverWhite.copy(alpha = animationValue * 0.5f))
+        )
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+            .height(95.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .border(
+                width = 1.5.dp, 
+                brush = borderBrush,
+                shape = RoundedCornerShape(24.dp)
+            )
+            .background(
+                when {
+                    isTimeCapsule -> iceBlue.copy(alpha = 0.1f)
+                    isLocked -> Color.Black.copy(alpha = 0.95f)
+                    else -> Color(0xFF161616).copy(alpha = 0.85f)
+                }
+            )
     ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val color = when {
+                isTimeCapsule -> Color.White
+                isLocked -> neonGreen
+                else -> silverWhite
+            }
+            val count = 15
+            for (i in 0 until count) {
+                val x = ( (i * 123f + particleMove) % size.width )
+                val y = ( (i * 87f + (particleMove * 0.3f)) % size.height )
+                drawCircle(
+                    color = color.copy(alpha = 0.2f),
+                    radius = 1.2f,
+                    center = Offset(x, y)
+                )
+            }
+        }
+
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(50.dp)
-                    .background(Color(0xFF222222), CircleShape),
+                    .size(52.dp)
+                    .background(
+                        when {
+                            isTimeCapsule -> iceBlue.copy(alpha = 0.2f)
+                            isLocked -> neonGreen.copy(alpha = 0.15f)
+                            else -> Color.White.copy(alpha = 0.05f)
+                        }, 
+                        CircleShape
+                    )
+                    .border(
+                        1.5.dp, 
+                        when {
+                            isTimeCapsule -> iceBlue.copy(alpha = 0.6f)
+                            isLocked -> neonGreen.copy(alpha = 0.6f)
+                            else -> silverWhite.copy(alpha = 0.3f)
+                        }, 
+                        CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = emoji, fontSize = 24.sp)
+                when {
+                    isTimeCapsule -> Icon(Icons.Default.AcUnit, null, tint = iceBlue, modifier = Modifier.size(26.dp))
+                    isLocked -> Icon(Icons.Default.Lock, null, tint = neonGreen, modifier = Modifier.size(26.dp))
+                    else -> Text(text = emoji, fontSize = 26.sp)
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column {
+                Text(text = time, color = Color.Gray, fontSize = 11.sp)
                 Text(
-                    text = time,
-                    color = Color.Gray,
-                    fontSize = 11.sp
-                )
-                Text(
-                    text = title,
-                    color = Color.White,
+                    text = when {
+                        isTimeCapsule -> "Cápsula do Tempo"
+                        isLocked -> "Memória Trancada"
+                        else -> title
+                    },
+                    color = when {
+                        isTimeCapsule -> iceBlue
+                        isLocked -> neonGreen
+                        else -> Color.White
+                    },
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
                 Text(
-                    text = content,
+                    text = when {
+                        isTimeCapsule -> "Disponível em ${unlockDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy").format(Date(it)) }}"
+                        isLocked -> "Segredo protegido por PIN"
+                        else -> content
+                    },
                     color = Color.White.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Normal,
@@ -358,22 +334,72 @@ fun DiaryNoteCard(
 }
 
 @Composable
+fun MoodChartCard(
+    neonGreen: Color,
+    points: List<Float>,
+    onHeaderClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .clickable { onHeaderClick() },
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Humor da Semana", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.KeyboardArrowRight, null, tint = Color.Gray)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .background(Color(0xFF0F0F0F), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (points.isEmpty()) {
+                    Text("Sem dados para esta semana", color = Color.DarkGray, fontSize = 12.sp)
+                } else {
+                    Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp)) {
+                        val width = size.width
+                        val height = size.height
+                        
+                        if (points.size > 1) {
+                            val spaceX = width / (points.size - 1)
+                            val path = Path()
+                            points.forEachIndexed { i, point ->
+                                val x = i * spaceX
+                                val y = height - (point * height / 5f)
+                                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                                drawCircle(neonGreen, radius = 3.dp.toPx(), center = Offset(x, y))
+                            }
+                            drawPath(path, neonGreen, style = Stroke(width = 2.dp.toPx()))
+                        } else if (points.size == 1) {
+                            val y = height - (points[0] * height / 5f)
+                            drawCircle(neonGreen, radius = 4.dp.toPx(), center = Offset(width / 2, y))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun EmptyStateLottie() {
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.layout_vazio))
-    val progress by animateLottieCompositionAsState(
-        composition,
-        iterations = LottieConstants.IterateForever
-    )
+    val progress by animateLottieCompositionAsState(composition, iterations = LottieConstants.IterateForever)
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        LottieAnimation(
-            composition = composition,
-            progress = { progress },
-            modifier = Modifier.size(280.dp)
-        )
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        LottieAnimation(composition, { progress }, modifier = Modifier.size(280.dp))
         Text(
             text = "Nenhuma memória no vácuo deste dia...",
             color = Color.Gray.copy(alpha = 0.6f),

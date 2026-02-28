@@ -39,13 +39,15 @@ import java.time.Instant
 import java.time.ZoneId
 import com.example.memoflow.ui.screens.profile.ProfileViewModel
 import com.example.memoflow.ui.screens.security.SecurityViewModel
+import com.example.memoflow.ui.screens.stats.StatisticsViewModel
 
 @Composable
 fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
     profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory),
-    securityViewModel: SecurityViewModel = viewModel(factory = SecurityViewModel.Factory)
+    securityViewModel: SecurityViewModel = viewModel(factory = SecurityViewModel.Factory),
+    statsViewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory)
 ) {
     val context = LocalContext.current
     val neonGreen = Color(0xFF00FFC2)
@@ -55,6 +57,7 @@ fun HomeScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val userSettings by profileViewModel.userSettings.collectAsState()
     val securitySettings by securityViewModel.userSettings.collectAsState()
+    val statsData by statsViewModel.statsData.collectAsState()
 
     var noteToUnlock by remember { mutableStateOf<com.example.memoflow.data.local.entity.NoteEntity?>(null) }
     var pinInput by remember { mutableStateOf("") }
@@ -94,8 +97,10 @@ fun HomeScreen(
                 onDateSelected = { viewModel.onDateSelected(it) },
                 onDeleteNote = { viewModel.deleteNote(it) },
                 userPhotoUrl = userSettings.profilePhotoUri,
+                moodPoints = statsData.moodPoints,
                 onNoteClick = { note ->
-                    if (note.isLocked) {
+                    val isFuture = note.unlockDate?.let { it > System.currentTimeMillis() } ?: false
+                    if (note.isLocked || (note.isTimeCapsule && isFuture)) {
                         noteToUnlock = note
                     } else {
                         navController.navigate(Screen.WriteNote.createRoute(note.id))
@@ -105,13 +110,18 @@ fun HomeScreen(
         }
 
         if (noteToUnlock != null) {
+            val isCapsule = noteToUnlock?.isTimeCapsule == true
             AlertDialog(
                 onDismissRequest = { noteToUnlock = null; pinInput = "" },
                 containerColor = Color(0xFF1A1A1A),
-                title = { Text("Memória Trancada", color = Color.White) },
+                title = { Text(if (isCapsule) "Derreter Cápsula?" else "Memória Trancada", color = Color.White) },
                 text = {
                     Column {
-                        Text("Digite seu PIN de 4 dígitos para acessar.", color = Color.Gray, fontSize = 14.sp)
+                        Text(
+                            if (isCapsule) "Esta memória ainda está congelada. Digite seu PIN para derretê-la agora." 
+                            else "Digite seu PIN de 4 dígitos para acessar.", 
+                            color = Color.Gray, fontSize = 14.sp
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
                         TextField(
                             value = pinInput,
@@ -142,7 +152,7 @@ fun HomeScreen(
                             pinInput = ""
                         }
                     }) {
-                        Text("DESBLOQUEAR", color = neonGreen)
+                        Text(if (isCapsule) "DERRETER" else "DESBLOQUEAR", color = if (isCapsule) Color(0xFF80DEEA) else neonGreen)
                     }
                 },
                 dismissButton = {
@@ -165,6 +175,7 @@ fun HomeContent(
     onDateSelected: (LocalDate) -> Unit,
     onDeleteNote: (com.example.memoflow.data.local.entity.NoteEntity) -> Unit,
     userPhotoUrl: String?,
+    moodPoints: List<Float>,
     onNoteClick: (com.example.memoflow.data.local.entity.NoteEntity) -> Unit
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM", Locale("pt", "BR")) }
@@ -246,19 +257,27 @@ fun HomeContent(
                     .toLocalTime()
                     .format(timeFormatter)
 
-                val snippet = if (note.isLocked) "Memória protegida por PIN" else {
-                    note.contentHtml
-                        .replace(Regex("<[^>]*>"), "")
-                        .replace("&nbsp;", " ")
-                        .take(50)
-                }
+                val isFuture = note.unlockDate?.let { it > System.currentTimeMillis() } ?: false
+                val isActuallyTimeCapsule = note.isTimeCapsule && isFuture
+
+                val snippet = if (isActuallyTimeCapsule) "Memória congelada no tempo" 
+                              else if (note.isLocked) "Memória protegida por PIN" 
+                              else {
+                                note.contentHtml
+                                    .replace(Regex("<[^>]*>"), "")
+                                    .replace("&nbsp;", " ")
+                                    .take(50)
+                              }
 
                 DiaryNoteCard(
-                    emoji = if (note.isLocked) "🔒" else note.emoji,
+                    emoji = note.emoji,
                     time = noteTime,
-                    title = if (note.isLocked) "Trancada" else note.title,
-                    content = if (!note.isLocked && snippet.length >= 50) "$snippet..." else snippet,
+                    title = note.title,
+                    content = snippet,
                     neonGreen = neonGreen,
+                    isLocked = note.isLocked,
+                    isTimeCapsule = isActuallyTimeCapsule,
+                    unlockDate = note.unlockDate,
                     onClick = { onNoteClick(note) },
                     onLongClick = { noteToDelete = note }
                 )
@@ -267,7 +286,11 @@ fun HomeContent(
         }
 
         item {
-            MoodChartCard(neonGreen = neonGreen)
+            MoodChartCard(
+                neonGreen = neonGreen, 
+                points = moodPoints,
+                onHeaderClick = { navController.navigate(Screen.Statistics.route) }
+            )
             Spacer(modifier = Modifier.height(120.dp))
         }
     }
@@ -299,7 +322,7 @@ fun FabMenu(
             ) {
                 HubButton(Icons.Default.BarChart, "Status", neonGreen) {
                     onToggle()
-                    navController.navigate("construction")
+                    navController.navigate(Screen.Statistics.route)
                 }
 
                 HubButton(Icons.Default.Flag, "Metas", neonGreen) {
@@ -353,6 +376,7 @@ fun HomeScreenPreview() {
                 onDateSelected = {},
                 onDeleteNote = {},
                 userPhotoUrl = null,
+                moodPoints = emptyList(),
                 onNoteClick = {}
             )
         }

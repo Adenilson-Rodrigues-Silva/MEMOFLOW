@@ -46,7 +46,9 @@ data class WriteNoteUiState(
     val isRecording: Boolean = false,
     val recordingTime: Int = 0,
     val audioPath: String? = null,
-    val isLocked: Boolean = false
+    val isLocked: Boolean = false,
+    val isTimeCapsule: Boolean = false,
+    val unlockDate: Long? = null
 )
 
 class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
@@ -78,7 +80,9 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                         selectedHumor = it.humor,
                         images = it.images.map { uriString -> Uri.parse(uriString) },
                         audioPath = it.audioPath,
-                        isLocked = it.isLocked
+                        isLocked = it.isLocked,
+                        isTimeCapsule = it.isTimeCapsule,
+                        unlockDate = it.unlockDate
                     )
                 }
                 richTextState.setHtml(it.contentHtml)
@@ -96,6 +100,10 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
 
     fun toggleLock() {
         _uiStateFlow.update { it.copy(isLocked = !it.isLocked) }
+    }
+
+    fun setTimeCapsule(unlockDate: Long) {
+        _uiStateFlow.update { it.copy(isTimeCapsule = true, unlockDate = unlockDate) }
     }
 
     fun applyMarker(color: Color) {
@@ -122,7 +130,9 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                 date = if (state.id == 0L) System.currentTimeMillis() else repository.getNoteById(state.id)?.date ?: System.currentTimeMillis(),
                 images = state.images.map { it.toString() },
                 audioPath = state.audioPath,
-                isLocked = state.isLocked
+                isLocked = state.isLocked,
+                isTimeCapsule = state.isTimeCapsule,
+                unlockDate = state.unlockDate
             )
             repository.insertNote(note)
         }

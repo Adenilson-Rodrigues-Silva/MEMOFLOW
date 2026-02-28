@@ -23,6 +23,10 @@ class MemoRepository(
 
     suspend fun unlockAllNotes() = noteDao.unlockAllNotes()
 
+    fun getNotesInDateRange(startDate: Long, endDate: Long): Flow<List<NoteEntity>> {
+        return noteDao.getNotesInDateRange(startDate, endDate)
+    }
+
     // User Settings
     val userSettings: Flow<UserEntity?> = userDao.getUserSettings()
     

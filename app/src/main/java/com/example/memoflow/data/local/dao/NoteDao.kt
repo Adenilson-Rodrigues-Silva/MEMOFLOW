@@ -21,6 +21,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun getNoteById(id: Long): NoteEntity?
 
+    @Query("SELECT * FROM notes WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC")
+    fun getNotesInDateRange(startDate: Long, endDate: Long): Flow<List<NoteEntity>>
+
     @Query("UPDATE notes SET isLocked = 0")
     suspend fun unlockAllNotes()
 

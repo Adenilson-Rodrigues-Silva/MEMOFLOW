@@ -15,6 +15,7 @@ import com.example.memoflow.ui.screens.security.SecurityScreen
 import com.example.memoflow.ui.screens.splash.SplashScreen
 import com.example.memoflow.ui.screens.common.UnderConstructionScreen
 import com.example.memoflow.ui.screens.note.WriteNoteScreen
+import com.example.memoflow.ui.screens.stats.StatisticsScreen
 import com.example.memoflow.ui.theme.MemoFlowTheme
 
 class MainActivity : ComponentActivity() {
@@ -46,6 +47,10 @@ class MainActivity : ComponentActivity() {
                             onSecurityClick = { navController.navigate("security") },
                             onBackupClick = { navController.navigate("construction") }
                         )
+                    }
+
+                    composable(Screen.Statistics.route) {
+                        StatisticsScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(

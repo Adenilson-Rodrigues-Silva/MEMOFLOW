@@ -49,6 +49,7 @@ import com.example.memoflow.ui.screens.security.SecurityViewModel
 import com.example.memoflow.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
+import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +65,7 @@ fun WriteNoteScreen(
     val securitySettings by securityViewModel.userSettings.collectAsState()
 
     val neonGreen = Color(0xFF00FFC2)
+    val iceBlue = Color(0xFF80DEEA)
     val surfaceDark = Color(0xFF1E1E1E)
 
     LaunchedEffect(noteId) {
@@ -79,9 +81,14 @@ fun WriteNoteScreen(
     var showDetailsDialog by remember { mutableStateOf(false) }
     var showAppearanceMenu by remember { mutableStateOf(false) }
     var showLockConfirmDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     
     var selectedFontFamily by remember { mutableStateOf<FontFamily>(FontFamily.Default) }
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000) // Amanhã por padrão
+    )
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -93,6 +100,60 @@ fun WriteNoteScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         viewModel.onImageSelected(uri)
+    }
+
+    // --- DIÁLOGOS ---
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val selectedDate = datePickerState.selectedDateMillis
+                    if (selectedDate != null && selectedDate > System.currentTimeMillis()) {
+                        viewModel.setTimeCapsule(selectedDate)
+                        viewModel.saveNote()
+                        Toast.makeText(context, "Nota enviada para o futuro! ❄️", Toast.LENGTH_LONG).show()
+                        onBack()
+                    } else {
+                        Toast.makeText(context, "Escolha uma data no futuro!", Toast.LENGTH_SHORT).show()
+                    }
+                    showDatePicker = false
+                }) { Text("CONGELAR", color = iceBlue) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("CANCELAR", color = Color.White) }
+            },
+            colors = DatePickerDefaults.colors(containerColor = Color(0xFF1A1A1A))
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showLockConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showLockConfirmDialog = false },
+            containerColor = Color(0xFF1A1A1A),
+            title = { Text(if (uiState.isLocked) "Destrancar Memória?" else "Trancar Memória?", color = Color.White) },
+            text = { 
+                Text(
+                    if (uiState.isLocked) "Deseja remover o bloqueio desta nota?" else "Tem certeza que deseja trancar esta memória? Ela só poderá ser aberta com o seu PIN.",
+                    color = Color.Gray
+                ) 
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.toggleLock()
+                    viewModel.saveNote()
+                    showLockConfirmDialog = false
+                    Toast.makeText(context, if (!uiState.isLocked) "Memória Trancada!" else "Memória Destrancada!", Toast.LENGTH_SHORT).show()
+                    onBack()
+                }) { Text("CONFIRMAR", color = neonGreen) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLockConfirmDialog = false }) { Text("CANCELAR", color = Color.White) }
+            }
+        )
     }
 
     if (showDetailsDialog) {
@@ -121,51 +182,6 @@ fun WriteNoteScreen(
         )
     }
 
-    if (showLockConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showLockConfirmDialog = false },
-            containerColor = Color(0xFF1A1A1A),
-            title = { Text(if (uiState.isLocked) "Destrancar Memória?" else "Trancar Memória?", color = Color.White) },
-            text = { 
-                Text(
-                    if (uiState.isLocked) "Deseja remover o bloqueio desta nota?" else "Tem certeza que deseja trancar esta memória? Ela só poderá ser aberta com o seu PIN.",
-                    color = Color.Gray
-                ) 
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.toggleLock()
-                    viewModel.saveNote()
-                    showLockConfirmDialog = false
-                    Toast.makeText(context, if (!uiState.isLocked) "Memória Trancada!" else "Memória Destrancada!", Toast.LENGTH_SHORT).show()
-                    onBack() // Volta para a principal por segurança
-                }) {
-                    Text("CONFIRMAR", color = neonGreen)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLockConfirmDialog = false }) {
-                    Text("CANCELAR", color = Color.White)
-                }
-            }
-        )
-    }
-
-    if (selectedImageFullScreen != null) {
-        Dialog(onDismissRequest = { selectedImageFullScreen = null }) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { selectedImageFullScreen = null }) {
-                AsyncImage(
-                    model = selectedImageFullScreen,
-                    contentDescription = null,
-                    modifier = Modifier.align(Alignment.Center).fillMaxWidth()
-                )
-            }
-        }
-    }
-
     Scaffold(
         containerColor = Color.Black,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -177,6 +193,10 @@ fun WriteNoteScreen(
                         if (uiState.isLocked) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(Icons.Default.Lock, null, tint = neonGreen, modifier = Modifier.size(16.dp))
+                        }
+                        if (uiState.isTimeCapsule) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.AcUnit, null, tint = iceBlue, modifier = Modifier.size(16.dp))
                         }
                     }
                 }, 
@@ -203,7 +223,7 @@ fun WriteNoteScreen(
                                 showDetailsDialog = true
                                 showOverflowMenu = false
                             },
-                            onDeleteClick = { /* Deletar logic */ },
+                            onDeleteClick = { /* Deletar */ },
                             onLockClick = { 
                                 if (securitySettings.pin.isNullOrEmpty()) {
                                     Toast.makeText(context, "Defina um PIN nas configurações primeiro!", Toast.LENGTH_LONG).show()
@@ -212,7 +232,10 @@ fun WriteNoteScreen(
                                 }
                                 showOverflowMenu = false
                             },
-                            onTimeCapsuleClick = { /* Capsula */ },
+                            onTimeCapsuleClick = { 
+                                showDatePicker = true
+                                showOverflowMenu = false
+                            },
                             neonGreen = neonGreen
                         )
                     }
@@ -259,7 +282,7 @@ fun WriteNoteScreen(
                 }
                 NoteBottomToolbar(
                     imageCount = uiState.images.size,
-                    accentColor = neonGreen,
+                    accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
                     onFormatClick = {
                         showFormatMenu = !showFormatMenu
                         showEmojiMenu = false
@@ -298,13 +321,17 @@ fun WriteNoteScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            Text(
-                text = "11 DE FEVEREIRO DE 2026",
-                color = Color.Gray,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            if (uiState.isTimeCapsule) {
+                Text(
+                    text = "MEMÓRIA CONGELADA ATÉ ${uiState.unlockDate?.let { 
+                        java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) 
+                    }}",
+                    color = iceBlue,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -322,9 +349,9 @@ fun WriteNoteScreen(
                                 value = uiState.title,
                                 onValueChange = { viewModel.updateTitle(it) },
                                 textStyle = TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold),
-                                cursorBrush = SolidColor(neonGreen)
+                                cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
                             )
-                            Text("Humor: ${uiState.selectedHumor}", color = neonGreen, fontSize = 14.sp)
+                            Text("Humor: ${uiState.selectedHumor}", color = if (uiState.isTimeCapsule) iceBlue else neonGreen, fontSize = 14.sp)
                         }
                         Text(uiState.selectedEmoji, fontSize = 40.sp)
                     }
@@ -336,7 +363,7 @@ fun WriteNoteScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
                         colors = RichTextEditorDefaults.richTextEditorColors(
                             containerColor = Color.Transparent,
-                            cursorColor = neonGreen,
+                            cursorColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
                             textColor = Color.White.copy(alpha = 0.8f)
@@ -366,7 +393,7 @@ fun WriteNoteScreen(
                         viewModel = viewModel,
                         context = context,
                         permissionLauncher = permissionLauncher,
-                        accentColor = neonGreen
+                        accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
