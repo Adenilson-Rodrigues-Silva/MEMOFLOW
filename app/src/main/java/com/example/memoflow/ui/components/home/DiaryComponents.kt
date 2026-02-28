@@ -86,7 +86,8 @@ fun Modifier.neonGlow(color: Color) = this.drawBehind {
 fun HomeHeader(
     date: String,
     userPhotoUrl: String?,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    onCalendarClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -95,26 +96,40 @@ fun HomeHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text("Meu Diário", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
             Text(date, color = Color(0xFFAAAAAA), fontSize = 14.sp)
         }
 
-        Surface(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .clickable { onProfileClick() },
-            shape = CircleShape,
-            color = Color(0xFF00FFC2) 
-        ) {
-            if (userPhotoUrl != null) {
-                AsyncImage(
-                    model = userPhotoUrl,
-                    contentDescription = "Foto de Perfil",
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Botão do Calendário Chronos
+            IconButton(
+                onClick = onCalendarClick,
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
+            ) {
+                Icon(Icons.Default.DateRange, null, tint = Color(0xFF00FFC2), modifier = Modifier.size(22.dp))
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Surface(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable { onProfileClick() },
+                shape = CircleShape,
+                color = Color(0xFF00FFC2) 
+            ) {
+                if (userPhotoUrl != null) {
+                    AsyncImage(
+                        model = userPhotoUrl,
+                        contentDescription = "Foto de Perfil",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         }
     }
@@ -210,7 +225,7 @@ fun DiaryNoteCard(
         initialValue = 0f,
         targetValue = 1000f,
         animationSpec = infiniteRepeatable(
-            animation = tween(30000, easing = LinearEasing),
+            animation = tween(35000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ), label = "particles_move"
     )

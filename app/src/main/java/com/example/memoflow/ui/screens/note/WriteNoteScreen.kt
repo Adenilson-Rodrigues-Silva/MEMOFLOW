@@ -5,8 +5,11 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,9 +26,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -56,6 +62,7 @@ import java.util.*
 fun WriteNoteScreen(
     onBack: () -> Unit,
     noteId: Long? = null,
+    readOnly: Boolean = false,
     viewModel: WriteNoteViewModel = viewModel(factory = WriteNoteViewModel.Factory),
     securityViewModel: SecurityViewModel = viewModel(factory = SecurityViewModel.Factory)
 ) {
@@ -67,6 +74,14 @@ fun WriteNoteScreen(
     val neonGreen = Color(0xFF00FFC2)
     val iceBlue = Color(0xFF80DEEA)
     val surfaceDark = Color(0xFF1E1E1E)
+
+    val infiniteTransition = rememberInfiniteTransition(label = "snow_effects")
+    val snowMove by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(tween(15000, easing = LinearEasing), RepeatMode.Restart),
+        label = "snow"
+    )
 
     LaunchedEffect(noteId) {
         if (noteId != null && noteId > 0) {
@@ -87,7 +102,7 @@ fun WriteNoteScreen(
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
 
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000) // Amanhã por padrão
+        initialSelectedDateMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000)
     )
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -99,10 +114,8 @@ fun WriteNoteScreen(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        viewModel.onImageSelected(uri)
+        viewModel.onImageSelected(context, uri)
     }
-
-    // --- DIÁLOGOS ---
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -115,16 +128,13 @@ fun WriteNoteScreen(
                         viewModel.saveNote()
                         Toast.makeText(context, "Nota enviada para o futuro! ❄️", Toast.LENGTH_LONG).show()
                         onBack()
-                    } else {
-                        Toast.makeText(context, "Escolha uma data no futuro!", Toast.LENGTH_SHORT).show()
                     }
                     showDatePicker = false
                 }) { Text("CONGELAR", color = iceBlue) }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text("CANCELAR", color = Color.White) }
-            },
-            colors = DatePickerDefaults.colors(containerColor = Color(0xFF1A1A1A))
+            }
         ) {
             DatePicker(state = datePickerState)
         }
@@ -157,48 +167,50 @@ fun WriteNoteScreen(
     }
 
     if (showDetailsDialog) {
-        val noteText = richTextState.annotatedString.text
         NoteDetailsDialog(
-            wordCount = if (noteText.isBlank()) 0 else noteText.trim().split("\\s+".toRegex()).size,
-            charCount = noteText.length,
+            wordCount = richTextState.annotatedString.text.trim().split("\\s+".toRegex()).size,
+            charCount = richTextState.annotatedString.text.length,
             hasAudio = uiState.audioPath != null,
             imageCount = uiState.images.size,
-            date = "11 DE FEVEREIRO DE 2026",
+            date = "HOJE",
             onDismiss = { showDetailsDialog = false },
             neonGreen = neonGreen
         )
     }
 
-    if (showAppearanceMenu) {
-        AppearanceBottomSheet(
-            selectedFontFamily = selectedFontFamily,
-            onFontSelected = { 
-                selectedFontFamily = it
-                viewModel.updateFontFamily(it)
-                showAppearanceMenu = false 
-            },
-            onDismiss = { showAppearanceMenu = false },
-            neonGreen = neonGreen
-        )
+    if (selectedImageFullScreen != null) {
+        Dialog(onDismissRequest = { selectedImageFullScreen = null }) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { selectedImageFullScreen = null },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = selectedImageFullScreen,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.FillWidth
+                )
+                IconButton(
+                    onClick = { selectedImageFullScreen = null },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, null, tint = Color.White)
+                }
+            }
+        }
     }
 
     Scaffold(
         containerColor = Color.Black,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CenterAlignedTopAppBar(
                 title = { 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Entrada", color = Color.White, fontSize = 18.sp)
-                        if (uiState.isLocked) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.Lock, null, tint = neonGreen, modifier = Modifier.size(16.dp))
-                        }
-                        if (uiState.isTimeCapsule) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.AcUnit, null, tint = iceBlue, modifier = Modifier.size(16.dp))
-                        }
-                    }
+                    Text(if (readOnly) "Visualizando ❄️" else "Entrada", color = Color.White, fontSize = 18.sp)
                 }, 
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -206,7 +218,11 @@ fun WriteNoteScreen(
                     }
                 },
                 actions = {
-                    Box {
+                    if (readOnly) {
+                        TextButton(onClick = onBack) {
+                            Text("SAIR", color = iceBlue, fontWeight = FontWeight.ExtraBold)
+                        }
+                    } else {
                         IconButton(onClick = { showOverflowMenu = true }) {
                             Icon(Icons.Default.MoreVert, null, tint = Color.White)
                         }
@@ -223,7 +239,7 @@ fun WriteNoteScreen(
                                 showDetailsDialog = true
                                 showOverflowMenu = false
                             },
-                            onDeleteClick = { /* Deletar */ },
+                            onDeleteClick = { /* Deletar logic */ },
                             onLockClick = { 
                                 if (securitySettings.pin.isNullOrEmpty()) {
                                     Toast.makeText(context, "Defina um PIN nas configurações primeiro!", Toast.LENGTH_LONG).show()
@@ -244,171 +260,169 @@ fun WriteNoteScreen(
             )
         },
         bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth().imePadding()) {
-                AnimatedVisibility(visible = showFormatMenu) {
-                    TextFormattingPanel(state = richTextState, isVisible = showFormatMenu)
-                }
-                AnimatedVisibility(visible = showMarkerMenu) {
-                    FloatingColorMenu(
-                        selectedTextColor = richTextState.currentSpanStyle.color,
-                        selectedMarkerColor = (richTextState.currentSpanStyle.background as? Color) ?: Color.Transparent,
-                        onTextColorSelected = { color -> viewModel.updateTextColor(color) },
-                        onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
-                        onDismiss = { showMarkerMenu = false },
-                        neonGreen = neonGreen
-                    )
-                }
-                AnimatedVisibility(
-                    visible = showEmojiMenu,
-                    enter = slideInVertically(initialOffsetY = { it }),
-                    exit = slideOutVertically(targetOffsetY = { it }),
-                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 15.dp)
-                ) {
-                    Surface(
-                        color = Color(0xFF1E1E1E),
-                        shape = RoundedCornerShape(24.dp),
-                        shadowElevation = 8.dp,
-                        modifier = Modifier.padding(16.dp).border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
-                    ) {
-                        EmojiSelector(
-                            emojis = uiState.diaryEmojis,
-                            selectedEmoji = uiState.selectedEmoji,
-                            onEmojiSelected = { emoji, humor ->
-                                viewModel.updateEmoji(emoji, humor)
-                                showEmojiMenu = false
-                            }
+            if (!readOnly) {
+                Column(modifier = Modifier.fillMaxWidth().imePadding()) {
+                    AnimatedVisibility(visible = showFormatMenu) {
+                        TextFormattingPanel(state = richTextState, isVisible = showFormatMenu)
+                    }
+                    AnimatedVisibility(visible = showMarkerMenu) {
+                        FloatingColorMenu(
+                            selectedTextColor = richTextState.currentSpanStyle.color,
+                            selectedMarkerColor = (richTextState.currentSpanStyle.background as? Color) ?: Color.Transparent,
+                            onTextColorSelected = { color -> viewModel.updateTextColor(color) },
+                            onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
+                            onDismiss = { showMarkerMenu = false },
+                            neonGreen = neonGreen
                         )
                     }
-                }
-                NoteBottomToolbar(
-                    imageCount = uiState.images.size,
-                    accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
-                    onFormatClick = {
-                        showFormatMenu = !showFormatMenu
-                        showEmojiMenu = false
-                        showMarkerMenu = false
-                    },
-                    onEmojiClick = { showEmojiMenu = !showEmojiMenu },
-                    onMarkerClick = {
-                        showMarkerMenu = !showMarkerMenu
-                        showFormatMenu = false
-                        showEmojiMenu = false
-                    },
-                    onAddImageClick = { launcher.launch("image/*") },
-                    onVoiceClick = {
-                        handleVoiceClick(context, uiState.isRecording, uiState.audioPath, viewModel, permissionLauncher)
-                    },
-                    onSaveClick = {
-                        val hasText = richTextState.annotatedString.text.isNotBlank()
-                        val hasImages = uiState.images.isNotEmpty()
-                        val hasAudio = uiState.audioPath != null
-                        
-                        if (hasText || hasImages || hasAudio) {
-                            viewModel.saveNote()
-                            onBack()
-                        } else {
-                            onBack()
+                    AnimatedVisibility(
+                        visible = showEmojiMenu,
+                        enter = slideInVertically(initialOffsetY = { it }),
+                        exit = slideOutVertically(targetOffsetY = { it }),
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 15.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFF1E1E1E),
+                            shape = RoundedCornerShape(24.dp),
+                            shadowElevation = 8.dp,
+                            modifier = Modifier.padding(16.dp).border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                        ) {
+                            EmojiSelector(
+                                emojis = uiState.diaryEmojis,
+                                selectedEmoji = uiState.selectedEmoji,
+                                onEmojiSelected = { emoji, humor ->
+                                    viewModel.updateEmoji(emoji, humor)
+                                    showEmojiMenu = false
+                                }
+                            )
                         }
                     }
-                )
+                    NoteBottomToolbar(
+                        imageCount = uiState.images.size,
+                        accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
+                        onFormatClick = { 
+                            showFormatMenu = !showFormatMenu
+                            showEmojiMenu = false
+                            showMarkerMenu = false
+                        },
+                        onEmojiClick = { 
+                            showEmojiMenu = !showEmojiMenu
+                            showFormatMenu = false
+                            showMarkerMenu = false
+                        },
+                        onMarkerClick = { 
+                            showMarkerMenu = !showMarkerMenu
+                            showFormatMenu = false
+                            showEmojiMenu = false
+                        },
+                        onAddImageClick = { launcher.launch("image/*") },
+                        onVoiceClick = { handleVoiceClick(context, uiState.isRecording, uiState.audioPath, viewModel, permissionLauncher) },
+                        onSaveClick = {
+                            viewModel.saveNote()
+                            onBack()
+                        }
+                    )
+                }
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            if (uiState.isTimeCapsule) {
-                Text(
-                    text = "MEMÓRIA CONGELADA ATÉ ${uiState.unlockDate?.let { 
-                        java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) 
-                    }}",
-                    color = iceBlue,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = surfaceDark.copy(alpha = 0.6f)),
-                shape = RoundedCornerShape(24.dp)
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            androidx.compose.foundation.text.BasicTextField(
-                                value = uiState.title,
-                                onValueChange = { viewModel.updateTitle(it) },
-                                textStyle = TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold),
-                                cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
-                            )
-                            Text("Humor: ${uiState.selectedHumor}", color = if (uiState.isTimeCapsule) iceBlue else neonGreen, fontSize = 14.sp)
-                        }
-                        Text(uiState.selectedEmoji, fontSize = 40.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    RichTextEditor(
-                        state = richTextState,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
-                        colors = RichTextEditorDefaults.richTextEditorColors(
-                            containerColor = Color.Transparent,
-                            cursorColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            textColor = Color.White.copy(alpha = 0.8f)
-                        ),
-                        textStyle = TextStyle(fontSize = 16.sp, lineHeight = 24.sp)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(120.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        PhotoGrid(
-                            images = uiState.images,
-                            onRemove = { uri -> viewModel.removeImage(uri) },
-                            onExpand = { uri -> selectedImageFullScreen = uri }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    VoiceNoteSection(
-                        isRecording = uiState.isRecording,
-                        recordingTime = uiState.recordingTime,
-                        audioPath = uiState.audioPath,
-                        viewModel = viewModel,
-                        context = context,
-                        permissionLauncher = permissionLauncher,
-                        accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
+                if (uiState.isTimeCapsule) {
                     Text(
-                        "Dono do Chronos",
-                        color = Color.White.copy(alpha = 0.3f),
-                        fontSize = 18.sp,
-                        fontFamily = FontFamily.Cursive,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
+                        text = "CONGELADA ATÉ ${uiState.unlockDate?.let { 
+                            java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) 
+                        }}",
+                        color = iceBlue,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
                 }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = surfaceDark.copy(alpha = if (readOnly) 0.4f else 0.6f)),
+                    shape = RoundedCornerShape(24.dp),
+                    border = if (readOnly) BorderStroke(1.dp, iceBlue.copy(alpha = 0.3f)) else null
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                androidx.compose.foundation.text.BasicTextField(
+                                    value = uiState.title,
+                                    onValueChange = { if(!readOnly) viewModel.updateTitle(it) },
+                                    readOnly = readOnly,
+                                    enabled = !readOnly,
+                                    textStyle = TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold),
+                                    cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
+                                )
+                                Text("Humor: ${uiState.selectedHumor}", color = if (uiState.isTimeCapsule) iceBlue else neonGreen, fontSize = 14.sp)
+                            }
+                            Text(uiState.selectedEmoji, fontSize = 40.sp)
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        RichTextEditor(
+                            state = richTextState,
+                            readOnly = readOnly,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
+                            colors = RichTextEditorDefaults.richTextEditorColors(
+                                containerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                textColor = Color.White.copy(alpha = 0.8f)
+                            ),
+                            textStyle = TextStyle(fontSize = 16.sp, lineHeight = 24.sp)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PhotoGrid(
+                                images = uiState.images,
+                                onRemove = { if(!readOnly) viewModel.removeImage(it) },
+                                onExpand = { selectedImageFullScreen = it }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        VoiceNoteSection(
+                            isRecording = uiState.isRecording,
+                            recordingTime = uiState.recordingTime,
+                            audioPath = uiState.audioPath,
+                            viewModel = viewModel,
+                            context = context,
+                            permissionLauncher = permissionLauncher,
+                            accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen
+                        )
+                    }
+                }
             }
-            Spacer(modifier = Modifier.height(100.dp))
+
+            if (readOnly) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val snowflakeCount = 45
+                    for (i in 0 until snowflakeCount) {
+                        val x = ( (i * 123f + (snowMove * 0.5f)) % size.width )
+                        val y = ( (i * 87f + snowMove) % size.height )
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.5f),
+                            radius = 3.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                    }
+                }
+            }
         }
     }
 }

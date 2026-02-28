@@ -15,6 +15,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.Instant
 
+sealed class DateMark {
+    object Normal : DateMark()
+    object Locked : DateMark()
+    object Capsule : DateMark()
+}
+
 class HomeViewModel(private val repository: MemoRepository) : ViewModel() {
 
     private val _notes = MutableStateFlow<List<NoteEntity>>(emptyList())
@@ -22,6 +28,9 @@ class HomeViewModel(private val repository: MemoRepository) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+
+    private val _markedDates = MutableStateFlow<Map<LocalDate, DateMark>>(emptyMap())
+    val markedDates: StateFlow<Map<LocalDate, DateMark>> = _markedDates.asStateFlow()
 
     private val _allNotesList = mutableListOf<NoteEntity>()
 
@@ -34,9 +43,27 @@ class HomeViewModel(private val repository: MemoRepository) : ViewModel() {
             repository.allNotes.collectLatest { allNotes ->
                 _allNotesList.clear()
                 _allNotesList.addAll(allNotes)
+                updateMarkedDates(allNotes)
                 filterNotesByDate(allNotes, _selectedDate.value)
             }
         }
+    }
+
+    private fun updateMarkedDates(allNotes: List<NoteEntity>) {
+        val marks = mutableMapOf<LocalDate, DateMark>()
+        allNotes.forEach { note ->
+            val date = Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()
+            // Prioridade: Cápsula > Trancada > Normal
+            val currentMark = marks[date]
+            if (note.isTimeCapsule) {
+                marks[date] = DateMark.Capsule
+            } else if (note.isLocked && currentMark != DateMark.Capsule) {
+                marks[date] = DateMark.Locked
+            } else if (currentMark == null) {
+                marks[date] = DateMark.Normal
+            }
+        }
+        _markedDates.value = marks
     }
 
     fun onDateSelected(date: LocalDate) {

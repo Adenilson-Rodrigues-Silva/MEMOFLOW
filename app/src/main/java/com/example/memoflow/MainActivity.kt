@@ -54,18 +54,24 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(
-                        route = "write_note?noteId={noteId}",
+                        route = "write_note?noteId={noteId}&readOnly={readOnly}",
                         arguments = listOf(
                             navArgument("noteId") {
                                 type = NavType.LongType
                                 defaultValue = -1L
+                            },
+                            navArgument("readOnly") {
+                                type = NavType.BoolType
+                                defaultValue = false
                             }
                         )
                     ) { backStackEntry ->
                         val noteId = backStackEntry.arguments?.getLong("noteId") ?: -1L
+                        val readOnly = backStackEntry.arguments?.getBoolean("readOnly") ?: false
                         WriteNoteScreen(
                             onBack = { navController.popBackStack() },
-                            noteId = if (noteId == -1L) null else noteId
+                            noteId = if (noteId == -1L) null else noteId,
+                            readOnly = readOnly
                         )
                     }
 

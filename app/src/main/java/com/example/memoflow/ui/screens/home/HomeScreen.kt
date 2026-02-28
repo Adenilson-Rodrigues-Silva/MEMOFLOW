@@ -3,6 +3,7 @@ package com.example.memoflow.ui.screens.home
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +41,8 @@ import java.time.ZoneId
 import com.example.memoflow.ui.screens.profile.ProfileViewModel
 import com.example.memoflow.ui.screens.security.SecurityViewModel
 import com.example.memoflow.ui.screens.stats.StatisticsViewModel
+import com.example.memoflow.ui.screens.common.ChronosCalendarSheet
+import com.example.memoflow.viewmodel.WriteNoteViewModel
 
 @Composable
 fun HomeScreen(
@@ -47,45 +50,55 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
     profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory),
     securityViewModel: SecurityViewModel = viewModel(factory = SecurityViewModel.Factory),
-    statsViewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory)
+    statsViewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory),
+    writeNoteViewModel: WriteNoteViewModel = viewModel(factory = WriteNoteViewModel.Factory)
 ) {
     val context = LocalContext.current
     val neonGreen = Color(0xFF00FFC2)
+    val iceBlue = Color(0xFF80DEEA)
     var isMenuExpanded by remember { mutableStateOf(false) }
+    var showChronosCalendar by remember { mutableStateOf(false) }
     
     val notes by viewModel.notes.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
+    val markedDates by viewModel.markedDates.collectAsState()
     val userSettings by profileViewModel.userSettings.collectAsState()
     val securitySettings by securityViewModel.userSettings.collectAsState()
     val statsData by statsViewModel.statsData.collectAsState()
 
     var noteToUnlock by remember { mutableStateOf<com.example.memoflow.data.local.entity.NoteEntity?>(null) }
+    var showMeltOptions by remember { mutableStateOf(false) }
     var pinInput by remember { mutableStateOf("") }
+    
+    val isToday = remember(selectedDate) { selectedDate == LocalDate.now() }
+
+    LaunchedEffect(selectedDate) {
+        statsViewModel.setReferenceDate(selectedDate)
+    }
 
     val rotation by animateFloatAsState(
         targetValue = if (isMenuExpanded) 45f else 0f,
         label = "fab_rotation"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         Scaffold(
             containerColor = Color.Transparent,
             floatingActionButton = {
-                FabMenu(
-                    navController = navController,
-                    isMenuExpanded = isMenuExpanded,
-                    rotation = rotation,
-                    neonGreen = neonGreen,
-                    onToggle = { isMenuExpanded = !isMenuExpanded },
-                    canAddNote = notes.size < 3,
-                    onLimitReached = {
-                        Toast.makeText(context, "Limite de 3 notas por dia atingido!", Toast.LENGTH_SHORT).show()
-                    }
-                )
+                if (isToday) {
+                    FabMenu(
+                        navController = navController,
+                        isMenuExpanded = isMenuExpanded,
+                        rotation = rotation,
+                        neonGreen = neonGreen,
+                        onToggle = { isMenuExpanded = !isMenuExpanded },
+                        canAddNote = notes.size < 3,
+                        onLimitReached = {
+                            Toast.makeText(context, "Limite de 3 notas por dia atingido!", Toast.LENGTH_SHORT).show()
+                        },
+                        isToday = isToday
+                    )
+                }
             }
         ) { padding ->
             HomeContent(
@@ -98,6 +111,7 @@ fun HomeScreen(
                 onDeleteNote = { viewModel.deleteNote(it) },
                 userPhotoUrl = userSettings.profilePhotoUri,
                 moodPoints = statsData.moodPoints,
+                onCalendarClick = { showChronosCalendar = true },
                 onNoteClick = { note ->
                     val isFuture = note.unlockDate?.let { it > System.currentTimeMillis() } ?: false
                     if (note.isLocked || (note.isTimeCapsule && isFuture)) {
@@ -109,19 +123,25 @@ fun HomeScreen(
             )
         }
 
-        if (noteToUnlock != null) {
+        if (showChronosCalendar) {
+            ChronosCalendarSheet(
+                onDismiss = { showChronosCalendar = false },
+                selectedDate = selectedDate,
+                markedDates = markedDates,
+                onDateSelected = { viewModel.onDateSelected(it) },
+                neonGreen = neonGreen
+            )
+        }
+
+        if (noteToUnlock != null && !showMeltOptions) {
             val isCapsule = noteToUnlock?.isTimeCapsule == true
             AlertDialog(
                 onDismissRequest = { noteToUnlock = null; pinInput = "" },
                 containerColor = Color(0xFF1A1A1A),
-                title = { Text(if (isCapsule) "Derreter Cápsula?" else "Memória Trancada", color = Color.White) },
+                title = { Text(if (isCapsule) "Acessar Cápsula" else "Memória Trancada", color = Color.White) },
                 text = {
                     Column {
-                        Text(
-                            if (isCapsule) "Esta memória ainda está congelada. Digite seu PIN para derretê-la agora." 
-                            else "Digite seu PIN de 4 dígitos para acessar.", 
-                            color = Color.Gray, fontSize = 14.sp
-                        )
+                        Text("Digite seu PIN de 4 dígitos para acessar.", color = Color.Gray, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(16.dp))
                         TextField(
                             value = pinInput,
@@ -143,21 +163,73 @@ fun HomeScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         if (pinInput == securitySettings.pin) {
-                            val id = noteToUnlock?.id
-                            noteToUnlock = null
-                            pinInput = ""
-                            navController.navigate(Screen.WriteNote.createRoute(id))
+                            if (isCapsule) {
+                                showMeltOptions = true 
+                            } else {
+                                val id = noteToUnlock?.id
+                                noteToUnlock = null
+                                pinInput = ""
+                                navController.navigate(Screen.WriteNote.createRoute(id))
+                            }
                         } else {
                             Toast.makeText(context, "PIN Incorreto!", Toast.LENGTH_SHORT).show()
                             pinInput = ""
                         }
                     }) {
-                        Text(if (isCapsule) "DERRETER" else "DESBLOQUEAR", color = if (isCapsule) Color(0xFF80DEEA) else neonGreen)
+                        Text("VERIFICAR", color = neonGreen)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { noteToUnlock = null; pinInput = "" }) {
                         Text("CANCELAR", color = Color.White)
+                    }
+                }
+            )
+        }
+
+        if (showMeltOptions) {
+            AlertDialog(
+                onDismissRequest = { showMeltOptions = false; noteToUnlock = null; pinInput = "" },
+                containerColor = Color(0xFF1A1A1A),
+                title = { Text("Como deseja acessar?", color = Color.White) },
+                text = { Text("Escolha se deseja descongelar a memória para sempre ou apenas dar uma espiadinha.", color = Color.Gray) },
+                confirmButton = {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = {
+                                noteToUnlock?.let { writeNoteViewModel.meltPermanently(it.id) }
+                                val id = noteToUnlock?.id
+                                showMeltOptions = false
+                                noteToUnlock = null
+                                pinInput = ""
+                                navController.navigate(Screen.WriteNote.createRoute(id))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = neonGreen)
+                        ) {
+                            Text("DERRETER PARA SEMPRE", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                val id = noteToUnlock?.id
+                                showMeltOptions = false
+                                noteToUnlock = null
+                                pinInput = ""
+                                navController.navigate(Screen.WriteNote.createRoute(id) + "&readOnly=true")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            border = BorderStroke(1.dp, iceBlue)
+                        ) {
+                            Text("SÓ ESPIAR (CONGELADA)", color = iceBlue)
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(
+                            onClick = { showMeltOptions = false; noteToUnlock = null; pinInput = "" },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("CANCELAR", color = Color.White)
+                        }
                     }
                 }
             )
@@ -176,6 +248,7 @@ fun HomeContent(
     onDeleteNote: (com.example.memoflow.data.local.entity.NoteEntity) -> Unit,
     userPhotoUrl: String?,
     moodPoints: List<Float>,
+    onCalendarClick: () -> Unit,
     onNoteClick: (com.example.memoflow.data.local.entity.NoteEntity) -> Unit
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM", Locale("pt", "BR")) }
@@ -230,7 +303,8 @@ fun HomeContent(
                 userPhotoUrl = userPhotoUrl,
                 onProfileClick = {
                     navController.navigate(Screen.Profile.route)
-                }
+                },
+                onCalendarClick = onCalendarClick
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -304,7 +378,8 @@ fun FabMenu(
     neonGreen: Color,
     onToggle: () -> Unit,
     canAddNote: Boolean,
-    onLimitReached: () -> Unit
+    onLimitReached: () -> Unit,
+    isToday: Boolean
 ) {
     Column(
         horizontalAlignment = Alignment.End,
@@ -330,12 +405,18 @@ fun FabMenu(
                     navController.navigate("construction")
                 }
 
-                HubButton(Icons.Default.Edit, "Nota", neonGreen) {
+                HubButton(
+                    icon = Icons.Default.Edit, 
+                    label = "Nota", 
+                    color = if (isToday) neonGreen else Color.Gray 
+                ) {
                     onToggle()
-                    if (canAddNote) {
-                        navController.navigate(Screen.WriteNote.createRoute())
-                    } else {
-                        onLimitReached()
+                    if (isToday) {
+                        if (canAddNote) {
+                            navController.navigate(Screen.WriteNote.createRoute())
+                        } else {
+                            onLimitReached()
+                        }
                     }
                 }
             }
@@ -377,6 +458,7 @@ fun HomeScreenPreview() {
                 onDeleteNote = {},
                 userPhotoUrl = null,
                 moodPoints = emptyList(),
+                onCalendarClick = {},
                 onNoteClick = {}
             )
         }

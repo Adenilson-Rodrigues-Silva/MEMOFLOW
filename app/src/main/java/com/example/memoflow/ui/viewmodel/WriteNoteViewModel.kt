@@ -1,31 +1,30 @@
 package com.example.memoflow.viewmodel
 
+import android.content.Context
+import android.media.MediaPlayer
+import android.media.MediaRecorder
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
-import androidx.lifecycle.ViewModel
-import com.mohamedrejeb.richeditor.model.RichTextState
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextDecoration
-import android.media.MediaRecorder
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
+import com.example.memoflow.data.local.entity.NoteEntity
+import com.example.memoflow.data.repository.MemoRepository
+import com.mohamedrejeb.richeditor.model.RichTextState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.io.File
-import android.media.MediaPlayer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import com.example.memoflow.data.repository.MemoRepository
-import com.example.memoflow.data.local.entity.NoteEntity
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.CreationExtras
+import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 
 data class WriteNoteUiState(
     val id: Long = 0,
@@ -42,7 +41,6 @@ data class WriteNoteUiState(
     val selectedEmoji: String = "😊",
     val selectedHumor: String = "Feliz",
     val images: List<Uri> = emptyList(),
-    val audioUri: Uri? = null,
     val isRecording: Boolean = false,
     val recordingTime: Int = 0,
     val audioPath: String? = null,
@@ -90,6 +88,38 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
         }
     }
 
+    fun meltPermanently(noteId: Long) {
+        viewModelScope.launch {
+            val note = repository.getNoteById(noteId)
+            note?.let {
+                val updatedNote = it.copy(isTimeCapsule = false, unlockDate = null)
+                repository.insertNote(updatedNote)
+                // Atualiza o estado local para refletir na UI
+                _uiStateFlow.update { state -> state.copy(isTimeCapsule = false, unlockDate = null) }
+            }
+        }
+    }
+
+    fun onImageSelected(context: Context, uri: Uri?) {
+        uri?.let { selectedUri ->
+            viewModelScope.launch {
+                try {
+                    val fileName = "note_img_${System.currentTimeMillis()}_${_uiStateFlow.value.images.size}.jpg"
+                    val file = File(context.filesDir, fileName)
+                    context.contentResolver.openInputStream(selectedUri)?.use { input ->
+                        FileOutputStream(file).use { output -> input.copyTo(output) }
+                    }
+                    val internalUri = Uri.fromFile(file)
+                    _uiStateFlow.update { currentState ->
+                        if (currentState.images.size < 3) {
+                            currentState.copy(images = currentState.images + internalUri)
+                        } else currentState
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+        }
+    }
+
     fun updateTitle(newTitle: String) {
         _uiStateFlow.update { it.copy(title = newTitle) }
     }
@@ -106,12 +136,12 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
         _uiStateFlow.update { it.copy(isTimeCapsule = true, unlockDate = unlockDate) }
     }
 
-    fun applyMarker(color: Color) {
-        richTextState.toggleSpanStyle(SpanStyle(background = color.copy(alpha = 0.3f)))
+    fun updateTextColor(color: Color) {
+        richTextState.toggleSpanStyle(SpanStyle(color = color))
     }
 
-    fun updateTextColor(color: Color) {
-        richTextState.toggleSpanStyle(SpanStyle(color = color.copy(alpha = 1f)))
+    fun applyMarker(color: Color) {
+        richTextState.toggleSpanStyle(SpanStyle(background = color.copy(alpha = 0.3f)))
     }
 
     fun updateFontFamily(fontFamily: FontFamily) {
@@ -192,23 +222,10 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
             return
         }
 
-        if (mediaPlayer != null && !this@WriteNoteViewModel.isPlaying) {
-            mediaPlayer?.start()
-            this@WriteNoteViewModel.isPlaying = true
-            startProgressUpdate()
-            return
-        }
-
         try {
             mediaPlayer?.release()
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(path)
-                setAudioAttributes(
-                    android.media.AudioAttributes.Builder()
-                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                        .build()
-                )
                 setOnPreparedListener {
                     this@WriteNoteViewModel.isPlaying = true
                     start()
@@ -259,18 +276,6 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
             }
             if (_uiStateFlow.value.recordingTime >= 30) {
                 stopRecording()
-            }
-        }
-    }
-
-    fun onImageSelected(uri: Uri?) {
-        uri?.let { selectedUri ->
-            _uiStateFlow.update { currentState ->
-                if (currentState.images.size < 3) {
-                    currentState.copy(images = currentState.images + selectedUri)
-                } else {
-                    currentState
-                }
             }
         }
     }
