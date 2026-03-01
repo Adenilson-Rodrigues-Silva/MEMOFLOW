@@ -7,10 +7,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +29,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,19 +41,23 @@ fun StatisticsScreen(
 ) {
     val statsData by viewModel.statsData.collectAsState()
     val neonGreen = Color(0xFF00FFC2)
-    var selectedTab by remember { mutableIntStateOf(0) } 
+    val iceBlue = Color(0xFF80DEEA)
+    var selectedTab by remember { mutableIntStateOf(0) }
+    
+    var showSpecialDaysDialog by remember { mutableStateOf(false) }
+    var filterType by remember { mutableStateOf("") } // "Lock" ou "Capsule"
 
     Scaffold(
         containerColor = Color.Black,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Estatísticas", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Black)
             )
         }
     ) { padding ->
@@ -56,7 +66,6 @@ fun StatisticsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
-                // SELETOR PROFISSIONAL (ABAS)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -78,21 +87,66 @@ fun StatisticsScreen(
                 }
             }
 
+            // --- BLOCO DE HUMOR (AGRUPADO) ---
             item {
-                SectionHeader("Evolução do Humor")
-                MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen)
+                Column {
+                    SectionHeader("Análise de Humor")
+                    MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HumorDistributionPremium(statsData.topMoods)
+                }
             }
 
             item {
-                SectionHeader("Resumo de Humores")
-                HumorDistributionPremium(statsData.topMoods)
-            }
-
-            item {
-                SectionHeader("Insights Rápidos")
+                SectionHeader("Evolução Pessoal")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    InsightCardSmall(Modifier.weight(1f), "Sequência", statsData.streak.toString(), "dias", Icons.Default.Whatshot, Color(0xFFFF9800))
-                    InsightCardSmall(Modifier.weight(1f), "Escrita", statsData.peakPeriod, "pico", Icons.Default.AccessTime, Color(0xFF03A9F4))
+                    InsightCard(
+                        Modifier.weight(1f),
+                        "Concluídas",
+                        statsData.goalsCompleted.toString(),
+                        "metas",
+                        Icons.Default.EmojiEvents,
+                        Color(0xFFFFD700)
+                    )
+                    InsightCard(
+                        Modifier.weight(1f),
+                        "Ativas",
+                        statsData.goalsActive.toString(),
+                        "foco",
+                        Icons.AutoMirrored.Filled.TrendingUp,
+                        neonGreen
+                    )
+                }
+            }
+
+            if (statsData.categoryDistribution.isNotEmpty()) {
+                item {
+                    SectionHeader("Áreas de Foco")
+                    GoalCategoryDistribution(statsData.categoryDistribution)
+                }
+            }
+
+            item {
+                SectionHeader("Segredos e Futuro")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    InsightCardClickable(
+                        Modifier.weight(1f), 
+                        "Trancadas", 
+                        statsData.lockedCount.toString(), 
+                        "notas", 
+                        Icons.Default.Lock, 
+                        neonGreen,
+                        onClick = { filterType = "Lock"; showSpecialDaysDialog = true }
+                    )
+                    InsightCardClickable(
+                        Modifier.weight(1f), 
+                        "Congeladas", 
+                        statsData.capsuleCount.toString(), 
+                        "notas", 
+                        Icons.Default.AcUnit, 
+                        iceBlue,
+                        onClick = { filterType = "Capsule"; showSpecialDaysDialog = true }
+                    )
                 }
             }
 
@@ -104,6 +158,111 @@ fun StatisticsScreen(
             item {
                 MediaSummaryCard(statsData.audioCount, statsData.imageCount, neonGreen)
                 Spacer(modifier = Modifier.height(40.dp))
+            }
+        }
+
+        if (showSpecialDaysDialog) {
+            val days = if (filterType == "Lock") statsData.lockedDays else statsData.capsuleDays
+            AlertDialog(
+                onDismissRequest = { showSpecialDaysDialog = false },
+                containerColor = Color(0xFF1A1A1A),
+                title = { 
+                    Text(
+                        if (filterType == "Lock") "Dias com Cadeado 🔒" else "Dias com Cápsula ❄️", 
+                        color = Color.White 
+                    ) 
+                },
+                text = {
+                    Column {
+                        if (days.isEmpty()) {
+                            Text("Nenhum registro encontrado neste período.", color = Color.Gray)
+                        } else {
+                            days.forEach { date ->
+                                Text(
+                                    text = "• ${date.dayOfMonth}/${date.monthValue}/${date.year}",
+                                    color = Color.White,
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showSpecialDaysDialog = false }) {
+                        Text("FECHAR", color = neonGreen)
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun InsightCard(modifier: Modifier, title: String, value: String, unit: String, icon: ImageVector, color: Color) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
+        border = BorderStroke(0.5.dp, color.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(title, color = Color.Gray, fontSize = 11.sp)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(unit, color = Color.Gray, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun GoalCategoryDistribution(categories: List<GoalStat>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
+        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            categories.forEach { stat ->
+                Column {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(stat.category, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("${stat.count} metas", color = Color.Gray, fontSize = 11.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(4.dp).background(Color.Gray.copy(alpha = 0.1f), CircleShape)) {
+                        Box(modifier = Modifier
+                            .fillMaxWidth(if (categories.maxOf { it.count } > 0) stat.count.toFloat() / categories.maxOf { it.count } else 0f)
+                            .fillMaxHeight()
+                            .background(stat.color, CircleShape))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InsightCardClickable(modifier: Modifier, title: String, value: String, unit: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
+        border = BorderStroke(0.5.dp, color.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(title, color = Color.Gray, fontSize = 11.sp)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(unit, color = Color.Gray, fontSize = 11.sp)
             }
         }
     }
@@ -160,7 +319,6 @@ fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Colo
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                // Mostrar apenas alguns dias se for mensal para não poluir
                 val step = if (labels.size > 7) 5 else 1
                 labels.forEachIndexed { index, label ->
                     if (index % step == 0 || index == labels.lastIndex) {
@@ -193,27 +351,6 @@ fun HumorDistributionPremium(moods: List<MoodStat>) {
 }
 
 @Composable
-fun InsightCardSmall(modifier: Modifier, title: String, value: String, unit: String, icon: ImageVector, color: Color) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(title, color = Color.Gray, fontSize = 11.sp)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(unit, color = Color.Gray, fontSize = 11.sp)
-            }
-        }
-    }
-}
-
-@Composable
 fun EntriesBarChart(entries: List<Int>, labels: List<String>, color: Color) {
     Card(
         modifier = Modifier.fillMaxWidth().height(180.dp),
@@ -227,7 +364,7 @@ fun EntriesBarChart(entries: List<Int>, labels: List<String>, color: Color) {
                     val barHeight = (count * 25).coerceAtLeast(6).coerceAtMost(100).dp
                     Box(
                         modifier = Modifier
-                            .weight(1f) // GARANTE ALINHAMENTO
+                            .weight(1f)
                             .padding(horizontal = 4.dp)
                             .height(barHeight)
                             .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))

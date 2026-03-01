@@ -402,7 +402,7 @@ fun FabMenu(
 
                 HubButton(Icons.Default.Flag, "Metas", neonGreen) {
                     onToggle()
-                    navController.navigate("construction")
+                    navController.navigate(Screen.Goals.route)
                 }
 
                 HubButton(

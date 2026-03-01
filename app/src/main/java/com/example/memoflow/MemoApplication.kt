@@ -19,6 +19,6 @@ class MemoApplication : Application() {
     }
 
     val repository by lazy { 
-        MemoRepository(database.noteDao(), database.userDao()) 
+        MemoRepository(database.noteDao(), database.userDao(), database.goalDao())
     }
 }

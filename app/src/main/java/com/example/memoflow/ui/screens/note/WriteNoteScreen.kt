@@ -210,7 +210,7 @@ fun WriteNoteScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { 
-                    Text(if (readOnly) "Visualizando ❄️" else "Entrada", color = Color.White, fontSize = 18.sp)
+                    Text(if (readOnly) "Modo Espiadinha ❄️" else "Entrada", color = Color.White, fontSize = 18.sp)
                 }, 
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -239,7 +239,7 @@ fun WriteNoteScreen(
                                 showDetailsDialog = true
                                 showOverflowMenu = false
                             },
-                            onDeleteClick = { /* Deletar logic */ },
+                            onDeleteClick = { /* Deletar */ },
                             onLockClick = { 
                                 if (securitySettings.pin.isNullOrEmpty()) {
                                     Toast.makeText(context, "Defina um PIN nas configurações primeiro!", Toast.LENGTH_LONG).show()
