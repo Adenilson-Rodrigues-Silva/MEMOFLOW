@@ -16,7 +16,7 @@ import com.example.memoflow.ui.screens.splash.SplashScreen
 import com.example.memoflow.ui.screens.common.UnderConstructionScreen
 import com.example.memoflow.ui.screens.note.WriteNoteScreen
 import com.example.memoflow.ui.screens.stats.StatisticsScreen
-import com.example.memoflow.ui.screens.goals.GoalsScreen
+import com.example.memoflow.ui.screens.gratitude.GratitudeScreen
 import com.example.memoflow.ui.theme.MemoFlowTheme
 
 class MainActivity : ComponentActivity() {
@@ -54,11 +54,12 @@ class MainActivity : ComponentActivity() {
                         StatisticsScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composable(Screen.Goals.route) {
-                        GoalsScreen(
-                            onBack = { navController.popBackStack() },
-                            navController = navController
-                        )
+                    composable(Screen.Gratitude.route) {
+                        GratitudeScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable(Screen.Recall.route) {
+                        UnderConstructionScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(

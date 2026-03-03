@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
-import com.example.memoflow.data.local.entity.GoalEntity
 import com.example.memoflow.data.local.entity.NoteEntity
+import com.example.memoflow.data.local.entity.GratitudeEntity
 import com.example.memoflow.data.repository.MemoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,8 +21,6 @@ import java.util.*
 
 data class MoodStat(val emoji: String, val label: String, val percentage: Int, val color: androidx.compose.ui.graphics.Color)
 
-data class GoalStat(val category: String, val count: Int, val color: androidx.compose.ui.graphics.Color)
-
 data class StatsData(
     val moodPoints: List<Float> = emptyList(),
     val topMoods: List<MoodStat> = emptyList(),
@@ -35,13 +33,8 @@ data class StatsData(
     val capsuleCount: Int = 0,
     val lockedDays: List<LocalDate> = emptyList(),
     val capsuleDays: List<LocalDate> = emptyList(),
-    
-    // Novos campos de Metas
-    val goalsCompleted: Int = 0,
-    val goalsActive: Int = 0,
-    val topGoalCategory: String = "-",
-    val goalCompletionRate: Float = 0f,
-    val categoryDistribution: List<GoalStat> = emptyList()
+    val gratitudeCount: Int = 0,
+    val totalGratitudesInPote: Int = 0
 )
 
 class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() {
@@ -84,16 +77,23 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
             
             combine(
                 repository.getNotesInDateRange(startTimestamp, endTimestamp),
-                repository.allGoals
-            ) { notes, goals ->
-                processAllStats(notes, goals, startDate, endDate)
+                repository.allGratitudes
+            ) { notes, gratitudes ->
+                val filteredGratitudes = gratitudes.filter { it.date in startTimestamp..endTimestamp }
+                processAllStats(notes, filteredGratitudes, gratitudes.size, startDate, endDate)
             }.collectLatest { 
                 _statsData.value = it
             }
         }
     }
 
-    private fun processAllStats(notes: List<NoteEntity>, goals: List<GoalEntity>, startDate: LocalDate, endDate: LocalDate): StatsData {
+    private fun processAllStats(
+        notes: List<NoteEntity>, 
+        gratitudesInRange: List<GratitudeEntity>,
+        totalGratitudes: Int,
+        startDate: LocalDate, 
+        endDate: LocalDate
+    ): StatsData {
         val zoneId = ZoneId.systemDefault()
         val notesByDay = notes.groupBy { 
             Instant.ofEpochMilli(it.date).atZone(zoneId).toLocalDate()
@@ -131,17 +131,6 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
                 MoodStat(emoji, mapEmojiToLabel(emoji), (count * 100) / totalNotes, mapEmojiToColor(emoji))
             }
 
-        // Processamento de Metas
-        val completedGoals = goals.count { it.isCompleted }
-        val activeGoals = goals.count { !it.isCompleted }
-        val totalGoals = goals.size.coerceAtLeast(1)
-        val categoryCounts = goals.groupingBy { it.category }.eachCount()
-        val topCategory = categoryCounts.maxByOrNull { it.value }?.key ?: "-"
-        
-        val categoryStats = categoryCounts.map { (cat, count) ->
-            GoalStat(cat, count, mapCategoryToColor(cat))
-        }.sortedByDescending { it.count }
-
         return StatsData(
             moodPoints = moodPoints,
             topMoods = topMoods,
@@ -153,13 +142,8 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
             capsuleCount = notes.count { it.isTimeCapsule },
             lockedDays = lockedDays.toList().sorted(),
             capsuleDays = capsuleDays.toList().sorted(),
-            
-            // Metas
-            goalsCompleted = completedGoals,
-            goalsActive = activeGoals,
-            topGoalCategory = topCategory,
-            goalCompletionRate = (completedGoals.toFloat() / totalGoals) * 100,
-            categoryDistribution = categoryStats
+            gratitudeCount = gratitudesInRange.size,
+            totalGratitudesInPote = totalGratitudes
         )
     }
 
@@ -173,14 +157,6 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
         "🤩", "😊" -> androidx.compose.ui.graphics.Color(0xFF00FFC2)
         "😐" -> androidx.compose.ui.graphics.Color(0xFFBB86FC)
         else -> androidx.compose.ui.graphics.Color(0xFFCF6679)
-    }
-
-    private fun mapCategoryToColor(cat: String) = when(cat) {
-        "Saúde" -> androidx.compose.ui.graphics.Color(0xFF81C784)
-        "Estudo" -> androidx.compose.ui.graphics.Color(0xFF64B5F6)
-        "Financeiro" -> androidx.compose.ui.graphics.Color(0xFFFFF176)
-        "Relacionamento" -> androidx.compose.ui.graphics.Color(0xFFF06292)
-        else -> androidx.compose.ui.graphics.Color(0xFF80DEEA)
     }
 
     companion object {

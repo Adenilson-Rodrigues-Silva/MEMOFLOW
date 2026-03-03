@@ -400,9 +400,14 @@ fun FabMenu(
                     navController.navigate(Screen.Statistics.route)
                 }
 
-                HubButton(Icons.Default.Flag, "Metas", neonGreen) {
+                HubButton(Icons.Default.AutoAwesome, "Gratidão", neonGreen) {
                     onToggle()
-                    navController.navigate(Screen.Goals.route)
+                    navController.navigate(Screen.Gratitude.route)
+                }
+
+                HubButton(Icons.Default.History, "Relembrar", neonGreen) {
+                    onToggle()
+                    navController.navigate(Screen.Recall.route)
                 }
 
                 HubButton(

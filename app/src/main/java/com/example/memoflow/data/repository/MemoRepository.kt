@@ -1,17 +1,19 @@
 package com.example.memoflow.data.repository
 
-import com.example.memoflow.data.local.dao.GoalDao
+import com.example.memoflow.data.local.dao.GratitudeDao
 import com.example.memoflow.data.local.dao.NoteDao
 import com.example.memoflow.data.local.dao.UserDao
-import com.example.memoflow.data.local.entity.GoalEntity
+import com.example.memoflow.data.local.entity.GratitudeEntity
 import com.example.memoflow.data.local.entity.NoteEntity
 import com.example.memoflow.data.local.entity.UserEntity
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
+import java.time.ZoneId
 
 class MemoRepository(
     private val noteDao: NoteDao,
     private val userDao: UserDao,
-    private val goalDao: GoalDao
+    private val gratitudeDao: GratitudeDao
 ) {
     // Notes
     val allNotes: Flow<List<NoteEntity>> = noteDao.getAllNotes()
@@ -31,13 +33,19 @@ class MemoRepository(
     suspend fun saveUserSettings(user: UserEntity) = userDao.insertUser(user)
     suspend fun getUserPin() = userDao.getUserPin()
 
-    // Goals
-    val allGoals: Flow<List<GoalEntity>> = goalDao.getAllGoals()
-    val activeGoals: Flow<List<GoalEntity>> = goalDao.getActiveGoals()
-    val completedGoals: Flow<List<GoalEntity>> = goalDao.getCompletedGoals()
+    // Gratitude
+    val allGratitudes: Flow<List<GratitudeEntity>> = gratitudeDao.getAllGratitudes()
+    
+    fun getGratitudesByYear(year: Int) = gratitudeDao.getGratitudesByYear(year)
 
-    suspend fun insertGoal(goal: GoalEntity) = goalDao.insertGoal(goal)
-    suspend fun updateGoal(goal: GoalEntity) = goalDao.updateGoal(goal)
-    suspend fun deleteGoal(goal: GoalEntity) = goalDao.deleteGoal(goal)
-    suspend fun getGoalById(id: Long) = goalDao.getGoalById(id)
+    suspend fun insertGratitude(gratitude: GratitudeEntity) = gratitudeDao.insertGratitude(gratitude)
+    
+    suspend fun deleteGratitude(gratitude: GratitudeEntity) = gratitudeDao.deleteGratitude(gratitude)
+
+    suspend fun getGratitudeCountForToday(): Int {
+        val today = LocalDate.now()
+        val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val endOfDay = today.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return gratitudeDao.getCountForDay(startOfDay, endOfDay)
+    }
 }

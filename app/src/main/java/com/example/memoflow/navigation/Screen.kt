@@ -5,7 +5,8 @@ sealed class Screen(val route: String) {
     object Home : Screen("home_screen")
     object Profile : Screen("profile_screen")
     object Statistics : Screen("statistics_screen")
-    object Goals : Screen("goals_screen")
+    object Gratitude : Screen("gratitude_screen")
+    object Recall : Screen("recall_screen")
     object WriteNote : Screen("write_note?noteId={noteId}") {
         fun createRoute(noteId: Long? = null) = if (noteId != null) "write_note?noteId=$noteId" else "write_note"
     }

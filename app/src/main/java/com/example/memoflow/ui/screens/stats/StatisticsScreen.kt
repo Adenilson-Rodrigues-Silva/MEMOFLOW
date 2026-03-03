@@ -3,17 +3,13 @@ package com.example.memoflow.ui.screens.stats
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,6 +38,7 @@ fun StatisticsScreen(
     val statsData by viewModel.statsData.collectAsState()
     val neonGreen = Color(0xFF00FFC2)
     val iceBlue = Color(0xFF80DEEA)
+    val neonYellow = Color(0xFFFFFF00)
     var selectedTab by remember { mutableIntStateOf(0) }
     
     var showSpecialDaysDialog by remember { mutableStateOf(false) }
@@ -87,6 +84,46 @@ fun StatisticsScreen(
                 }
             }
 
+            // --- BLOCO DE GRATIDÃO (NOVO) ---
+            item {
+                SectionHeader("Luz no Pote")
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
+                    border = BorderStroke(1.dp, neonYellow.copy(alpha = 0.2f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(CircleShape)
+                                .background(neonYellow.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, null, tint = neonYellow)
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                "${statsData.gratitudeCount} novas gratidões",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                            Text(
+                                "Total no pote: ${statsData.totalGratitudesInPote}",
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+
             // --- BLOCO DE HUMOR (AGRUPADO) ---
             item {
                 Column {
@@ -94,35 +131,6 @@ fun StatisticsScreen(
                     MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen)
                     Spacer(modifier = Modifier.height(12.dp))
                     HumorDistributionPremium(statsData.topMoods)
-                }
-            }
-
-            item {
-                SectionHeader("Evolução Pessoal")
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    InsightCard(
-                        Modifier.weight(1f),
-                        "Concluídas",
-                        statsData.goalsCompleted.toString(),
-                        "metas",
-                        Icons.Default.EmojiEvents,
-                        Color(0xFFFFD700)
-                    )
-                    InsightCard(
-                        Modifier.weight(1f),
-                        "Ativas",
-                        statsData.goalsActive.toString(),
-                        "foco",
-                        Icons.AutoMirrored.Filled.TrendingUp,
-                        neonGreen
-                    )
-                }
-            }
-
-            if (statsData.categoryDistribution.isNotEmpty()) {
-                item {
-                    SectionHeader("Áreas de Foco")
-                    GoalCategoryDistribution(statsData.categoryDistribution)
                 }
             }
 
@@ -194,55 +202,6 @@ fun StatisticsScreen(
                     }
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun InsightCard(modifier: Modifier, title: String, value: String, unit: String, icon: ImageVector, color: Color) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(0.5.dp, color.copy(alpha = 0.3f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(title, color = Color.Gray, fontSize = 11.sp)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(unit, color = Color.Gray, fontSize = 11.sp)
-            }
-        }
-    }
-}
-
-@Composable
-fun GoalCategoryDistribution(categories: List<GoalStat>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            categories.forEach { stat ->
-                Column {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(stat.category, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Text("${stat.count} metas", color = Color.Gray, fontSize = 11.sp)
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(4.dp).background(Color.Gray.copy(alpha = 0.1f), CircleShape)) {
-                        Box(modifier = Modifier
-                            .fillMaxWidth(if (categories.maxOf { it.count } > 0) stat.count.toFloat() / categories.maxOf { it.count } else 0f)
-                            .fillMaxHeight()
-                            .background(stat.color, CircleShape))
-                    }
-                }
-            }
         }
     }
 }
