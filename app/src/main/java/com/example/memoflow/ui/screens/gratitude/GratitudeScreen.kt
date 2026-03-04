@@ -1,5 +1,6 @@
 package com.example.memoflow.ui.screens.gratitude
 
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -33,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -76,8 +78,12 @@ fun GratitudeScreen(
     onBack: () -> Unit,
     viewModel: GratitudeViewModel = viewModel(factory = GratitudeViewModel.Factory)
 ) {
-    val gratitudes by viewModel.gratitudes.collectAsState()
+    val context = LocalContext.current
+    val todaysGratitudes by viewModel.todaysGratitudes.collectAsState()
+    val allGratitudes by viewModel.allGratitudes.collectAsState()
     val dailyCount by viewModel.dailyCount.collectAsState()
+    val flashbackCount by viewModel.flashbackCount.collectAsState()
+    
     var gratitudeText by remember { mutableStateOf("") }
     var gratitudeToEdit by remember { mutableStateOf<GratitudeEntity?>(null) }
     var showFlashback by remember { mutableStateOf<GratitudeEntity?>(null) }
@@ -111,12 +117,12 @@ fun GratitudeScreen(
                     )
                 )
         ) {
-            // Mural 2D Cartoon
+            // Mural 2D Cartoon - Showing only TODAY'S gratitudes
             Box(modifier = Modifier.weight(1f).padding(16.dp)) {
-                if (gratitudes.isEmpty()) {
+                if (todaysGratitudes.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            "O mural está vazio.\nEspalhe brilho hoje! ✨",
+                            "O mural está limpo.\nEspalhe brilho hoje! ✨",
                             color = Color.Gray,
                             textAlign = TextAlign.Center,
                             fontSize = 18.sp,
@@ -130,7 +136,7 @@ fun GratitudeScreen(
                         horizontalArrangement = Arrangement.spacedBy(24.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(gratitudes, key = { it.id }) { gratitude ->
+                        items(todaysGratitudes, key = { it.id }) { gratitude ->
                             PostItNote(
                                 gratitude = gratitude,
                                 onLongClick = { gratitudeToEdit = gratitude }
@@ -160,7 +166,7 @@ fun GratitudeScreen(
                             shape = RoundedCornerShape(20.dp),
                             keyboardOptions = KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Sentences,
-                                autoCorrectEnabled = true, // Fix for accent issues in newer Compose
+                                autoCorrectEnabled = true,
                                 imeAction = ImeAction.Done
                             ),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -214,21 +220,26 @@ fun GratitudeScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Pote da Gratidão com Imagem e Animações
+                    // Pote da Gratidão - Click logic with limit
                     Box(modifier = Modifier.clickable {
-                        if (gratitudes.isNotEmpty()) {
-                            val now = System.currentTimeMillis()
-                            val oneMonthMillis = 30L * 24 * 60 * 60 * 1000
-                            val oldGratitudes = gratitudes.filter { (now - it.date) > oneMonthMillis }
-                            
-                            showFlashback = if (oldGratitudes.isNotEmpty()) {
-                                oldGratitudes.random()
+                        if (allGratitudes.isNotEmpty()) {
+                            if (flashbackCount < 3) {
+                                val now = System.currentTimeMillis()
+                                val oneMonthMillis = 30L * 24 * 60 * 60 * 1000
+                                val oldGratitudes = allGratitudes.filter { (now - it.date) > oneMonthMillis }
+                                
+                                showFlashback = if (oldGratitudes.isNotEmpty()) {
+                                    oldGratitudes.random()
+                                } else {
+                                    allGratitudes.random()
+                                }
+                                viewModel.incrementFlashbackCount()
                             } else {
-                                gratitudes.random()
+                                Toast.makeText(context, "Limite de reflexão diária atingido! O pote precisa descansar ✨", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }) {
-                        GratitudeJar(hasGratitude = gratitudes.isNotEmpty())
+                        GratitudeJar(hasGratitude = allGratitudes.isNotEmpty())
                     }
                 }
             }
@@ -412,7 +423,7 @@ fun PostItNote(gratitude: GratitudeEntity, onLongClick: () -> Unit) {
 fun GratitudeJar(hasGratitude: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "jar_effects")
     
-    // Levitação
+    // Levitação suave
     val floatAnim by infiniteTransition.animateFloat(
         initialValue = -8f,
         targetValue = 8f,
@@ -423,21 +434,32 @@ fun GratitudeJar(hasGratitude: Boolean) {
         label = "float"
     )
 
-    // Brilho da Aura
+    // Brilho da Aura - reduced complexity for performance
     val pulse by infiniteTransition.animateFloat(
         initialValue = 0.3f,
-        targetValue = 0.9f,
+        targetValue = 0.7f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
+            animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse"
     )
 
+    // Firefly blink animation
+    val fireflyBlink by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "firefly"
+    )
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
-                .size(200.dp) // Aumentado para valorizar a imagem
+                .size(200.dp)
                 .graphicsLayer {
                     translationY = floatAnim
                 },
@@ -449,7 +471,7 @@ fun GratitudeJar(hasGratitude: Boolean) {
                     .size(140.dp)
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(NeonYellow.copy(alpha = 0.3f * pulse), Color.Transparent)
+                            colors = listOf(NeonYellow.copy(alpha = 0.2f * pulse), Color.Transparent)
                         )
                     )
             )
@@ -461,61 +483,38 @@ fun GratitudeJar(hasGratitude: Boolean) {
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Canvas sobreposto para luzes animadas e faíscas
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
+            // Optimized Sparkles
+            if (hasGratitude) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+                    
+                    // Fixed positions for fireflies to avoid Random calls in draw phase
+                    val fireflyPositions = listOf(
+                        Offset(w * 0.45f, h * 0.55f),
+                        Offset(w * 0.55f, h * 0.65f),
+                        Offset(w * 0.35f, h * 0.70f),
+                        Offset(w * 0.65f, h * 0.50f),
+                        Offset(w * 0.50f, h * 0.45f),
+                        Offset(w * 0.40f, h * 0.60f),
+                        Offset(w * 0.60f, h * 0.75f),
+                        Offset(w * 0.30f, h * 0.50f)
+                    )
 
-                if (hasGratitude) {
-                    // Vagalumes dinâmicos (dentro e saindo do pote)
-                    val random = Random(42)
-                    repeat(20) { i ->
-                        val time = System.currentTimeMillis()
-                        val offset = i * 200
-                        val blink = (kotlin.math.sin((time + offset) / 400.0).toFloat() + 1f) / 2f
+                    fireflyPositions.forEachIndexed { i, pos ->
+                        // Alternate blink per index
+                        val individualBlink = if (i % 2 == 0) fireflyBlink else (1.2f - fireflyBlink)
                         
-                        // Movimento circular aleatório
-                        val radiusX = w * 0.25f
-                        val radiusY = h * 0.25f
-                        val centerX = w * 0.5f
-                        val centerY = h * 0.6f
-                        
-                        val angle = (time + offset) / 1000.0
-                        val x = centerX + kotlin.math.cos(angle + i).toFloat() * (random.nextFloat() * radiusX)
-                        val y = centerY + kotlin.math.sin(angle * 0.8 + i).toFloat() * (random.nextFloat() * radiusY)
-                        
-                        val color = listOf(NeonYellow, Color.Cyan, Color.White).random(random)
-                        
-                        // Glow difuso
                         drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(color.copy(alpha = 0.6f * blink), Color.Transparent),
-                                center = Offset(x, y),
-                                radius = 12.dp.toPx()
-                            ),
-                            radius = 12.dp.toPx(),
-                            center = Offset(x, y)
+                            color = NeonYellow.copy(alpha = 0.6f * individualBlink),
+                            radius = 4.dp.toPx(),
+                            center = pos
                         )
-                        
-                        // Núcleo de luz
                         drawCircle(
-                            color = Color.White.copy(alpha = blink),
+                            color = Color.White.copy(alpha = individualBlink),
                             radius = 1.5.dp.toPx(),
-                            center = Offset(x, y)
+                            center = pos
                         )
-
-                        // Faíscas que saem pela boca do pote (ocasionalmente)
-                        if (i % 4 == 0) {
-                            val sparkY = centerY - (h * 0.2f) - ((time + offset) % 2000 / 2000f) * (h * 0.4f)
-                            val sparkX = centerX + kotlin.math.sin((time + offset) / 300.0).toFloat() * (w * 0.1f)
-                            val sparkAlpha = (1f - (centerY - (h * 0.2f) - sparkY) / (h * 0.4f)).coerceIn(0f, 1f)
-                            
-                            drawCircle(
-                                color = NeonYellow.copy(alpha = 0.8f * sparkAlpha),
-                                radius = 1.dp.toPx(),
-                                center = Offset(sparkX, sparkY)
-                            )
-                        }
                     }
                 }
             }

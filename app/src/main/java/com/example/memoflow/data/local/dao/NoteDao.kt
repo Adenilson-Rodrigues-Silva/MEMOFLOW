@@ -29,4 +29,7 @@ interface NoteDao {
 
     @Query("SELECT COUNT(*) FROM notes WHERE isLocked = 1")
     suspend fun getLockedNotesCount(): Int
+
+    @Query("SELECT * FROM notes WHERE isLocked = 0 AND isTimeCapsule = 0 ORDER BY date ASC")
+    fun getRecallableNotes(): Flow<List<NoteEntity>>
 }

@@ -28,6 +28,8 @@ class MemoRepository(
         return noteDao.getNotesInDateRange(startDate, endDate)
     }
 
+    fun getRecallableNotes(): Flow<List<NoteEntity>> = noteDao.getRecallableNotes()
+
     // User Settings
     val userSettings: Flow<UserEntity?> = userDao.getUserSettings()
     suspend fun saveUserSettings(user: UserEntity) = userDao.insertUser(user)

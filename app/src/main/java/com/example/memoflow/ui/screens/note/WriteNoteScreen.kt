@@ -75,6 +75,8 @@ fun WriteNoteScreen(
     val iceBlue = Color(0xFF80DEEA)
     val surfaceDark = Color(0xFF1E1E1E)
 
+    val scrollState = rememberScrollState()
+
     val infiniteTransition = rememberInfiniteTransition(label = "snow_effects")
     val snowMove by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -326,11 +328,16 @@ fun WriteNoteScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .imePadding() // Garante que a área de conteúdo se ajuste ao teclado
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(16.dp)
             ) {
                 if (uiState.isTimeCapsule) {
@@ -407,6 +414,9 @@ fun WriteNoteScreen(
                         )
                     }
                 }
+                
+                // Espaçamento extra no final para que o conteúdo possa rolar além do teclado
+                Spacer(modifier = Modifier.height(100.dp))
             }
 
             if (readOnly) {

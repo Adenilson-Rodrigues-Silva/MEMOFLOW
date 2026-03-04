@@ -11,5 +11,7 @@ data class UserEntity(
     val profilePhotoUri: String? = null,
     val bio: String = "",
     val pin: String? = null, // PIN de 4 números
-    val isBiometricEnabled: Boolean = false
+    val isBiometricEnabled: Boolean = false,
+    val lastRecallDate: Long = 0, // Timestamp do último acesso ao Recall
+    val recallCount: Int = 0 // Contador de refreshes no dia
 )

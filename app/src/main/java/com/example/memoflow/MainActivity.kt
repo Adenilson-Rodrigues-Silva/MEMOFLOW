@@ -17,6 +17,7 @@ import com.example.memoflow.ui.screens.common.UnderConstructionScreen
 import com.example.memoflow.ui.screens.note.WriteNoteScreen
 import com.example.memoflow.ui.screens.stats.StatisticsScreen
 import com.example.memoflow.ui.screens.gratitude.GratitudeScreen
+import com.example.memoflow.ui.screens.recall.RecallScreen
 import com.example.memoflow.ui.theme.MemoFlowTheme
 
 class MainActivity : ComponentActivity() {
@@ -59,7 +60,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Screen.Recall.route) {
-                        UnderConstructionScreen(onBack = { navController.popBackStack() })
+                        RecallScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(

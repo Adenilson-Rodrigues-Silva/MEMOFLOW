@@ -6,20 +6,30 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.memoflow.data.local.entity.GratitudeEntity
 import com.example.memoflow.data.repository.MemoRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.ZoneId
 
 class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
 
-    private val _gratitudes = MutableStateFlow<List<GratitudeEntity>>(emptyList())
-    val gratitudes: StateFlow<List<GratitudeEntity>> = _gratitudes.asStateFlow()
+    private val _allGratitudes = MutableStateFlow<List<GratitudeEntity>>(emptyList())
+    val allGratitudes: StateFlow<List<GratitudeEntity>> = _allGratitudes.asStateFlow()
+
+    val todaysGratitudes: StateFlow<List<GratitudeEntity>> = _allGratitudes.map { list ->
+        val today = LocalDate.now()
+        list.filter {
+            val date = java.time.Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate()
+            date == today
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _dailyCount = MutableStateFlow(0)
     val dailyCount: StateFlow<Int> = _dailyCount.asStateFlow()
+
+    // Control logic for jar clicks (limit 3 per day)
+    private val _flashbackCount = MutableStateFlow(0)
+    val flashbackCount: StateFlow<Int> = _flashbackCount.asStateFlow()
 
     init {
         observeGratitudes()
@@ -29,7 +39,7 @@ class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
     private fun observeGratitudes() {
         viewModelScope.launch {
             repository.allGratitudes.collectLatest { 
-                _gratitudes.value = it
+                _allGratitudes.value = it
             }
         }
     }
@@ -64,6 +74,10 @@ class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
             repository.deleteGratitude(gratitude)
             updateDailyCount()
         }
+    }
+
+    fun incrementFlashbackCount() {
+        _flashbackCount.value += 1
     }
 
     companion object {
