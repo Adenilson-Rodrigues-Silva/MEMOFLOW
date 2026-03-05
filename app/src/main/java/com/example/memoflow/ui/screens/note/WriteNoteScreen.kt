@@ -1,7 +1,10 @@
 package com.example.memoflow.ui.screens.note
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.net.Uri
+import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,6 +37,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -41,8 +45,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.memoflow.ui.components.EmojiSelector
 import com.example.memoflow.ui.components.FloatingColorMenu
 import com.example.memoflow.ui.components.PhotoGrid
@@ -50,14 +56,18 @@ import com.example.memoflow.ui.components.TextFormattingPanel
 import com.example.memoflow.ui.components.VoiceNoteSection
 import com.example.memoflow.ui.components.handleVoiceClick
 import com.example.memoflow.ui.components.writenote.AppearanceBottomSheet
+import com.example.memoflow.ui.components.writenote.MemoCard
 import com.example.memoflow.ui.components.writenote.NoteDetailsDialog
 import com.example.memoflow.ui.components.writenote.NoteOptionsOverflowMenu
 import com.example.memoflow.ui.components.writenote.ShareOptionDialog
 import com.example.memoflow.ui.screens.security.SecurityViewModel
+import com.example.memoflow.utils.ShareUtils
 import com.example.memoflow.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
+import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -110,6 +120,7 @@ fun WriteNoteScreen(
     var showLockConfirmDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
+    var isGeneratingCard by remember { mutableStateOf(false) }
     
     var selectedFontFamily by remember { mutableStateOf<FontFamily>(FontFamily.Default) }
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
@@ -130,11 +141,55 @@ fun WriteNoteScreen(
         viewModel.onImageSelected(context, uri)
     }
 
+    if (isGeneratingCard) {
+        Dialog(
+            onDismissRequest = { isGeneratingCard = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            val dialogView = LocalView.current
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(modifier = Modifier.width(360.dp).wrapContentHeight()) {
+                    MemoCard(
+                        title = uiState.title,
+                        content = richTextState.annotatedString.text,
+                        emoji = uiState.selectedEmoji,
+                        humor = uiState.selectedHumor,
+                        date = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(uiState.date)),
+                        images = uiState.images.map { it.toString() },
+                        fontFamily = selectedFontFamily,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                
+                LaunchedEffect(Unit) {
+                    delay(1500) // Aguarda renderização e carregamento de imagens (sem hardware bitmap)
+                    try {
+                        // Captura apenas o conteúdo visível da janela do Dialog
+                        val bitmap = Bitmap.createBitmap(dialogView.width, dialogView.height, Bitmap.Config.ARGB_8888)
+                        val canvas = Canvas(bitmap)
+                        dialogView.draw(canvas)
+                        ShareUtils.shareBitmap(context, bitmap, "Minha Memória")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Erro ao gerar card: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                    isGeneratingCard = false
+                }
+            }
+        }
+    }
+
     if (showShareDialog) {
         ShareOptionDialog(
             onDismiss = { showShareDialog = false },
             onShareAsImage = {
-                Toast.makeText(context, "Gerando Card... (Em breve)", Toast.LENGTH_SHORT).show()
+                showShareDialog = false
+                isGeneratingCard = true
             },
             onShareAsText = {
                 val sendIntent: Intent = Intent().apply {
@@ -378,7 +433,7 @@ fun WriteNoteScreen(
                 if (uiState.isTimeCapsule) {
                     Text(
                         text = "CONGELADA ATÉ ${uiState.unlockDate?.let { 
-                            java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) 
+                            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) 
                         }}",
                         color = iceBlue,
                         fontSize = 12.sp,

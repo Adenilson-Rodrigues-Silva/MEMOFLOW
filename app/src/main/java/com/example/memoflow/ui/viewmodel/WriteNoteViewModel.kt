@@ -38,6 +38,7 @@ data class WriteNoteUiState(
         "😡" to "Bravo"
     ),
     val title: String = "Hoje",
+    val contentHtml: String = "",
     val selectedEmoji: String = "😊",
     val selectedHumor: String = "Feliz",
     val images: List<Uri> = emptyList(),
@@ -46,7 +47,8 @@ data class WriteNoteUiState(
     val audioPath: String? = null,
     val isLocked: Boolean = false,
     val isTimeCapsule: Boolean = false,
-    val unlockDate: Long? = null
+    val unlockDate: Long? = null,
+    val date: Long = System.currentTimeMillis()
 )
 
 class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
@@ -80,7 +82,8 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                         audioPath = it.audioPath,
                         isLocked = it.isLocked,
                         isTimeCapsule = it.isTimeCapsule,
-                        unlockDate = it.unlockDate
+                        unlockDate = it.unlockDate,
+                        date = it.date
                     )
                 }
                 richTextState.setHtml(it.contentHtml)
@@ -94,7 +97,6 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
             note?.let {
                 val updatedNote = it.copy(isTimeCapsule = false, unlockDate = null)
                 repository.insertNote(updatedNote)
-                // Atualiza o estado local para refletir na UI
                 _uiStateFlow.update { state -> state.copy(isTimeCapsule = false, unlockDate = null) }
             }
         }
@@ -157,7 +159,7 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                 contentHtml = richTextState.toHtml(),
                 emoji = state.selectedEmoji,
                 humor = state.selectedHumor,
-                date = if (state.id == 0L) System.currentTimeMillis() else repository.getNoteById(state.id)?.date ?: System.currentTimeMillis(),
+                date = state.date,
                 images = state.images.map { it.toString() },
                 audioPath = state.audioPath,
                 isLocked = state.isLocked,
