@@ -21,7 +21,6 @@ fun NoteOptionsOverflowMenu(
     onShareClick: () -> Unit,
     onFontStyleClick: () -> Unit,
     onDetailsClick: () -> Unit,
-    onDeleteClick: () -> Unit,
     onLockClick: () -> Unit,
     onTimeCapsuleClick: () -> Unit,
     neonGreen: Color = Color(0xFF00FFC2)
@@ -68,15 +67,6 @@ fun NoteOptionsOverflowMenu(
             
             HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = Color.Gray.copy(alpha = 0.2f))
 
-            MenuOption(
-                icon = Icons.Default.DeleteForever,
-                label = "Apagar para Sempre",
-                color = Color.Red.copy(alpha = 0.8f),
-                onClick = {
-                    onDeleteClick()
-                    onDismissRequest()
-                }
-            )
             MenuOption(
                 icon = if (isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
                 label = if (isLocked) "Destrancar Memória" else "Trancar Memória",

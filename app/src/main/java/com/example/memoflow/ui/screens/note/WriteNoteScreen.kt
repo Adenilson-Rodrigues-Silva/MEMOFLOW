@@ -1,5 +1,6 @@
 package com.example.memoflow.ui.screens.note
 
+import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,6 +52,7 @@ import com.example.memoflow.ui.components.handleVoiceClick
 import com.example.memoflow.ui.components.writenote.AppearanceBottomSheet
 import com.example.memoflow.ui.components.writenote.NoteDetailsDialog
 import com.example.memoflow.ui.components.writenote.NoteOptionsOverflowMenu
+import com.example.memoflow.ui.components.writenote.ShareOptionDialog
 import com.example.memoflow.ui.screens.security.SecurityViewModel
 import com.example.memoflow.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
@@ -79,11 +81,8 @@ fun WriteNoteScreen(
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    // Monitora a mudança de posição do cursor para rolar automaticamente
     LaunchedEffect(richTextState.selection) {
-        // Pequeno delay para garantir que o layout atualizou
         coroutineScope.launch {
-            // Rola para o final se estiver editando (comportamento simples mas eficaz)
             scrollState.animateScrollTo(scrollState.maxValue)
         }
     }
@@ -110,6 +109,7 @@ fun WriteNoteScreen(
     var showAppearanceMenu by remember { mutableStateOf(false) }
     var showLockConfirmDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
     
     var selectedFontFamily by remember { mutableStateOf<FontFamily>(FontFamily.Default) }
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
@@ -128,6 +128,28 @@ fun WriteNoteScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         viewModel.onImageSelected(context, uri)
+    }
+
+    if (showShareDialog) {
+        ShareOptionDialog(
+            onDismiss = { showShareDialog = false },
+            onShareAsImage = {
+                Toast.makeText(context, "Gerando Card... (Em breve)", Toast.LENGTH_SHORT).show()
+            },
+            onShareAsText = {
+                val sendIntent: Intent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_TEXT, "${uiState.title}\n\n${richTextState.annotatedString.text}")
+                    type = "text/plain"
+                }
+                val shareIntent = Intent.createChooser(sendIntent, null)
+                context.startActivity(shareIntent)
+            },
+            onShareAsPdf = {
+                Toast.makeText(context, "Gerando PDF... (Em breve)", Toast.LENGTH_SHORT).show()
+            },
+            neonGreen = neonGreen
+        )
     }
 
     if (showDatePicker) {
@@ -243,7 +265,10 @@ fun WriteNoteScreen(
                             expanded = showOverflowMenu,
                             isLocked = uiState.isLocked,
                             onDismissRequest = { showOverflowMenu = false },
-                            onShareClick = { /* PDF */ },
+                            onShareClick = { 
+                                showShareDialog = true
+                                showOverflowMenu = false
+                            },
                             onFontStyleClick = { 
                                 showAppearanceMenu = true
                                 showOverflowMenu = false
@@ -252,7 +277,6 @@ fun WriteNoteScreen(
                                 showDetailsDialog = true
                                 showOverflowMenu = false
                             },
-                            onDeleteClick = { /* Deletar */ },
                             onLockClick = { 
                                 if (securitySettings.pin.isNullOrEmpty()) {
                                     Toast.makeText(context, "Defina um PIN nas configurações primeiro!", Toast.LENGTH_LONG).show()
@@ -426,7 +450,6 @@ fun WriteNoteScreen(
                     }
                 }
                 
-                // Espaço extra generoso para o teclado não cobrir nada
                 Spacer(modifier = Modifier.height(300.dp))
             }
 
@@ -445,6 +468,18 @@ fun WriteNoteScreen(
                 }
             }
         }
+    }
+    
+    if (showAppearanceMenu) {
+        AppearanceBottomSheet(
+            selectedFontFamily = selectedFontFamily,
+            onDismiss = { showAppearanceMenu = false },
+            onFontSelected = { 
+                selectedFontFamily = it
+                viewModel.updateFontFamily(it)
+            },
+            neonGreen = neonGreen
+        )
     }
 }
 

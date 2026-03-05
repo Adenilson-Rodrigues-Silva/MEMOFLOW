@@ -9,10 +9,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.memoflow.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,9 +26,11 @@ fun AppearanceBottomSheet(
 ) {
     val fonts = listOf(
         FontOption("Padrão", FontFamily.Default),
-        FontOption("Máquina de Escrever", FontFamily.Monospace),
-        FontOption("Manuscrita (Elegante)", FontFamily.Serif),
-        FontOption("Estilo Cômico (Divertida)", FontFamily.Cursive) // Lembra a Comic Sans no Android
+        FontOption("Máquina de Escrever", FontFamily(Font(R.font.special_elite_regular))),
+        FontOption("Escrita à Mão", FontFamily(Font(R.font.homemade_apple_regular))),
+        FontOption("Patrick Hand", FontFamily(Font(R.font.patrick_hand_regular))),
+        FontOption("Digital (VT323)", FontFamily(Font(R.font.vt323_regular))),
+        FontOption("Moderna (Exo 2)", FontFamily(Font(R.font.exo2_regular)))
     )
 
     ModalBottomSheet(
@@ -53,7 +57,10 @@ fun AppearanceBottomSheet(
                 val isSelected = option.fontFamily == selectedFontFamily
                 
                 Surface(
-                    onClick = { onFontSelected(option.fontFamily) },
+                    onClick = { 
+                        onFontSelected(option.fontFamily)
+                        onDismiss() // Fecha o menu automaticamente após selecionar
+                    },
                     color = if (isSelected) neonGreen.copy(alpha = 0.1f) else Color.Transparent,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
