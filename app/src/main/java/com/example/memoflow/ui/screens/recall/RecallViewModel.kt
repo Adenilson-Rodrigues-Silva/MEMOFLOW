@@ -38,11 +38,11 @@ class RecallViewModel(private val repository: MemoRepository) : ViewModel() {
                 // Reinicia contador para o novo dia
                 repository.saveUserSettings(user.copy(lastRecallDate = System.currentTimeMillis(), recallCount = 0))
                 _remainingRefreshes.value = 2
-                loadRandomOldNote()
+                loadRandomOldNote(isInitial = true)
             } else if (user.recallCount <= 2) {
                 // Ainda tem refreshes (1 inicial + 2 extras)
                 _remainingRefreshes.value = 2 - user.recallCount
-                loadRandomOldNote()
+                loadRandomOldNote(isInitial = true)
             } else {
                 // Limite atingido
                 _remainingRefreshes.value = 0
@@ -51,12 +51,12 @@ class RecallViewModel(private val repository: MemoRepository) : ViewModel() {
         }
     }
 
-    fun loadRandomOldNote() {
+    fun loadRandomOldNote(isInitial: Boolean = false) {
         viewModelScope.launch {
             val user = repository.userSettings.first() ?: UserEntity()
             
-            // Se não for a primeira carga do dia, incrementa o contador
-            if (_uiState.value is RecallUiState.Success) {
+            // Se não for a primeira carga inicial, incrementa o contador no DB
+            if (!isInitial) {
                 if (user.recallCount >= 2) {
                     _uiState.value = RecallUiState.LimitReached
                     return@launch
@@ -64,14 +64,17 @@ class RecallViewModel(private val repository: MemoRepository) : ViewModel() {
                 val newUser = user.copy(recallCount = user.recallCount + 1)
                 repository.saveUserSettings(newUser)
                 _remainingRefreshes.value = 2 - newUser.recallCount
+            } else {
+                // Se for inicial, garante que o DB tenha a data de hoje salva
+                if (user.lastRecallDate == 0L) {
+                    repository.saveUserSettings(user.copy(lastRecallDate = System.currentTimeMillis()))
+                }
             }
 
             val notes = repository.getRecallableNotes().first()
             if (notes.isEmpty()) {
                 _uiState.value = RecallUiState.Empty
             } else {
-                // Pega as 20 mais antigas (para dar mais variedade que 10)
-                // e escolhe uma aleatória entre elas
                 val oldestPool = notes.take(20)
                 val randomNote = oldestPool.random()
                 _uiState.value = RecallUiState.Success(randomNote)

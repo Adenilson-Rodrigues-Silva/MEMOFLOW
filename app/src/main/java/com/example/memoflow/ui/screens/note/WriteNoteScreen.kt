@@ -56,6 +56,7 @@ import com.example.memoflow.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 import java.util.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +77,16 @@ fun WriteNoteScreen(
     val surfaceDark = Color(0xFF1E1E1E)
 
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Monitora a mudança de posição do cursor para rolar automaticamente
+    LaunchedEffect(richTextState.selection) {
+        // Pequeno delay para garantir que o layout atualizou
+        coroutineScope.launch {
+            // Rola para o final se estiver editando (comportamento simples mas eficaz)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "snow_effects")
     val snowMove by infiniteTransition.animateFloat(
@@ -332,7 +343,7 @@ fun WriteNoteScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .imePadding() // Garante que a área de conteúdo se ajuste ao teclado
+                .imePadding()
         ) {
             Column(
                 modifier = Modifier
@@ -415,8 +426,8 @@ fun WriteNoteScreen(
                     }
                 }
                 
-                // Espaçamento extra no final para que o conteúdo possa rolar além do teclado
-                Spacer(modifier = Modifier.height(100.dp))
+                // Espaço extra generoso para o teclado não cobrir nada
+                Spacer(modifier = Modifier.height(300.dp))
             }
 
             if (readOnly) {

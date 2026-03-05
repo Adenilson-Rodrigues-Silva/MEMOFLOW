@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.memoflow.data.local.entity.GratitudeEntity
+import com.example.memoflow.data.local.entity.UserEntity
 import com.example.memoflow.data.repository.MemoRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -27,13 +28,14 @@ class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
     private val _dailyCount = MutableStateFlow(0)
     val dailyCount: StateFlow<Int> = _dailyCount.asStateFlow()
 
-    // Control logic for jar clicks (limit 3 per day)
+    // Control logic for jar clicks (limit 3 per day) persisted in UserEntity
     private val _flashbackCount = MutableStateFlow(0)
     val flashbackCount: StateFlow<Int> = _flashbackCount.asStateFlow()
 
     init {
         observeGratitudes()
         updateDailyCount()
+        checkFlashbackLimit()
     }
 
     private fun observeGratitudes() {
@@ -47,6 +49,24 @@ class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
     fun updateDailyCount() {
         viewModelScope.launch {
             _dailyCount.value = repository.getGratitudeCountForToday()
+        }
+    }
+
+    private fun checkFlashbackLimit() {
+        viewModelScope.launch {
+            val user = repository.userSettings.first() ?: UserEntity()
+            val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            
+            if (user.lastGratitudeRecallDate < today) {
+                // Novo dia, reseta contador no DB
+                repository.saveUserSettings(user.copy(
+                    lastGratitudeRecallDate = System.currentTimeMillis(),
+                    gratitudeRecallCount = 0
+                ))
+                _flashbackCount.value = 0
+            } else {
+                _flashbackCount.value = user.gratitudeRecallCount
+            }
         }
     }
 
@@ -77,7 +97,14 @@ class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
     }
 
     fun incrementFlashbackCount() {
-        _flashbackCount.value += 1
+        viewModelScope.launch {
+            val user = repository.userSettings.first() ?: UserEntity()
+            if (user.gratitudeRecallCount < 3) {
+                val newCount = user.gratitudeRecallCount + 1
+                repository.saveUserSettings(user.copy(gratitudeRecallCount = newCount))
+                _flashbackCount.value = newCount
+            }
+        }
     }
 
     companion object {

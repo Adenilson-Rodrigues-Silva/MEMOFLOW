@@ -113,11 +113,16 @@ fun HomeScreen(
                 moodPoints = statsData.moodPoints,
                 onCalendarClick = { showChronosCalendar = true },
                 onNoteClick = { note ->
+                    val noteDate = Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()
+                    val isNoteFromToday = noteDate == LocalDate.now()
+                    
                     val isFuture = note.unlockDate?.let { it > System.currentTimeMillis() } ?: false
                     if (note.isLocked || (note.isTimeCapsule && isFuture)) {
                         noteToUnlock = note
                     } else {
-                        navController.navigate(Screen.WriteNote.createRoute(note.id))
+                        // Passa o parâmetro readOnly baseado na data da nota
+                        val route = Screen.WriteNote.createRoute(note.id) + if (!isNoteFromToday) "&readOnly=true" else ""
+                        navController.navigate(route)
                     }
                 }
             )
@@ -167,9 +172,13 @@ fun HomeScreen(
                                 showMeltOptions = true 
                             } else {
                                 val id = noteToUnlock?.id
+                                val noteDate = noteToUnlock?.date?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() }
+                                val isNoteFromToday = noteDate == LocalDate.now()
+                                
                                 noteToUnlock = null
                                 pinInput = ""
-                                navController.navigate(Screen.WriteNote.createRoute(id))
+                                val route = Screen.WriteNote.createRoute(id) + if (!isNoteFromToday) "&readOnly=true" else ""
+                                navController.navigate(route)
                             }
                         } else {
                             Toast.makeText(context, "PIN Incorreto!", Toast.LENGTH_SHORT).show()
@@ -199,10 +208,14 @@ fun HomeScreen(
                             onClick = {
                                 noteToUnlock?.let { writeNoteViewModel.meltPermanently(it.id) }
                                 val id = noteToUnlock?.id
+                                val noteDate = noteToUnlock?.date?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() }
+                                val isNoteFromToday = noteDate == LocalDate.now()
+                                
                                 showMeltOptions = false
                                 noteToUnlock = null
                                 pinInput = ""
-                                navController.navigate(Screen.WriteNote.createRoute(id))
+                                val route = Screen.WriteNote.createRoute(id) + if (!isNoteFromToday) "&readOnly=true" else ""
+                                navController.navigate(route)
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = neonGreen)

@@ -236,21 +236,26 @@ fun RecallNoteContent(note: NoteEntity, textColor: Color) {
 
             if (note.images.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(20.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(4.dp)
-                        .background(Color.White)
-                        .padding(6.dp)
-                ) {
-                    AsyncImage(
-                        model = note.images.first(),
-                        contentDescription = null,
+                
+                // Agora percorremos todas as imagens da nota
+                note.images.forEach { imageUrl ->
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1f),
-                        contentScale = ContentScale.Crop
-                    )
+                            .padding(bottom = 12.dp)
+                            .shadow(4.dp)
+                            .background(Color.White)
+                            .padding(6.dp)
+                    ) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
             

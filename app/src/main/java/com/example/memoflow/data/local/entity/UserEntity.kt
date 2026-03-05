@@ -12,6 +12,12 @@ data class UserEntity(
     val bio: String = "",
     val pin: String? = null, // PIN de 4 números
     val isBiometricEnabled: Boolean = false,
-    val lastRecallDate: Long = 0, // Timestamp do último acesso ao Recall
-    val recallCount: Int = 0 // Contador de refreshes no dia
+    
+    // Controle de Relembrar (Recall)
+    val lastRecallDate: Long = 0, 
+    val recallCount: Int = 0,
+    
+    // Controle de Gratidão (Pote)
+    val lastGratitudeRecallDate: Long = 0,
+    val gratitudeRecallCount: Int = 0
 )
