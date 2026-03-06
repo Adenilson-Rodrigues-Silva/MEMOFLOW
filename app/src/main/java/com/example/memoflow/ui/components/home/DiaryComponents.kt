@@ -102,7 +102,6 @@ fun HomeHeader(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Botão do Calendário Chronos
             IconButton(
                 onClick = onCalendarClick,
                 modifier = Modifier
@@ -208,37 +207,39 @@ fun DiaryNoteCard(
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
+    val cyan = Color(0xFF00E5FF)
     val iceBlue = Color(0xFFB3E5FC)
+    val deepBlue = Color(0xFF01579B)
+    val forestGreen = Color(0xFF1B5E20)
     val silverWhite = Color(0xFFE0E0E0)
+    val darkSilver = Color(0xFF424242)
+    
     val infiniteTransition = rememberInfiniteTransition(label = "global_effects")
     
     val animationValue by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
+        initialValue = 0.6f,
         targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = FastOutSlowInEasing),
+            animation = tween(3000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ), label = "border_pulse"
     )
 
-    val particleMove by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(35000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ), label = "particles_move"
-    )
-
     val borderBrush = when {
         isTimeCapsule -> Brush.linearGradient(
-            listOf(iceBlue.copy(alpha = animationValue), Color.White.copy(alpha = 0.4f), iceBlue.copy(alpha = animationValue))
+            listOf(cyan, iceBlue, deepBlue, cyan),
+            start = Offset.Zero,
+            end = Offset.Infinite
         )
         isLocked -> Brush.linearGradient(
-            listOf(neonGreen.copy(alpha = animationValue), Color.Transparent, neonGreen.copy(alpha = animationValue))
+            listOf(neonGreen, forestGreen, neonGreen),
+            start = Offset.Zero,
+            end = Offset.Infinite
         )
         else -> Brush.linearGradient(
-            listOf(silverWhite.copy(alpha = animationValue * 0.5f), Color.White.copy(alpha = 0.1f), silverWhite.copy(alpha = animationValue * 0.5f))
+            listOf(darkSilver, silverWhite.copy(alpha = animationValue), darkSilver),
+            start = Offset.Zero,
+            end = Offset.Infinite
         )
     }
 
@@ -256,30 +257,12 @@ fun DiaryNoteCard(
             )
             .background(
                 when {
-                    isTimeCapsule -> iceBlue.copy(alpha = 0.1f)
+                    isTimeCapsule -> Color.Black.copy(alpha = 0.9f)
                     isLocked -> Color.Black.copy(alpha = 0.95f)
                     else -> Color(0xFF161616).copy(alpha = 0.85f)
                 }
             )
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val color = when {
-                isTimeCapsule -> Color.White
-                isLocked -> neonGreen
-                else -> silverWhite
-            }
-            val count = 15
-            for (i in 0 until count) {
-                val x = ( (i * 123f + particleMove) % size.width )
-                val y = ( (i * 87f + (particleMove * 0.3f)) % size.height )
-                drawCircle(
-                    color = color.copy(alpha = 0.2f),
-                    radius = 1.2f,
-                    center = Offset(x, y)
-                )
-            }
-        }
-
         Row(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -289,7 +272,7 @@ fun DiaryNoteCard(
                     .size(52.dp)
                     .background(
                         when {
-                            isTimeCapsule -> iceBlue.copy(alpha = 0.2f)
+                            isTimeCapsule -> cyan.copy(alpha = 0.15f)
                             isLocked -> neonGreen.copy(alpha = 0.15f)
                             else -> Color.White.copy(alpha = 0.05f)
                         }, 
@@ -298,7 +281,7 @@ fun DiaryNoteCard(
                     .border(
                         1.5.dp, 
                         when {
-                            isTimeCapsule -> iceBlue.copy(alpha = 0.6f)
+                            isTimeCapsule -> cyan.copy(alpha = 0.6f)
                             isLocked -> neonGreen.copy(alpha = 0.6f)
                             else -> silverWhite.copy(alpha = 0.3f)
                         }, 
@@ -307,7 +290,7 @@ fun DiaryNoteCard(
                 contentAlignment = Alignment.Center
             ) {
                 when {
-                    isTimeCapsule -> Icon(Icons.Default.AcUnit, null, tint = iceBlue, modifier = Modifier.size(26.dp))
+                    isTimeCapsule -> Icon(Icons.Default.AcUnit, null, tint = cyan, modifier = Modifier.size(26.dp))
                     isLocked -> Icon(Icons.Default.Lock, null, tint = neonGreen, modifier = Modifier.size(26.dp))
                     else -> Text(text = emoji, fontSize = 26.sp)
                 }
@@ -324,7 +307,7 @@ fun DiaryNoteCard(
                         else -> title
                     },
                     color = when {
-                        isTimeCapsule -> iceBlue
+                        isTimeCapsule -> cyan
                         isLocked -> neonGreen
                         else -> Color.White
                     },

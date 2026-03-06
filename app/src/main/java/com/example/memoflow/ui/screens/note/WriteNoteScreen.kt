@@ -80,6 +80,7 @@ fun WriteNoteScreen(
     securityViewModel: SecurityViewModel = viewModel(factory = SecurityViewModel.Factory)
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val richTextState = viewModel.richTextState
     val uiState by viewModel.uiStateFlow.collectAsState()
     val securitySettings by securityViewModel.userSettings.collectAsState()
@@ -90,12 +91,6 @@ fun WriteNoteScreen(
 
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(richTextState.selection) {
-        coroutineScope.launch {
-            scrollState.animateScrollTo(scrollState.maxValue)
-        }
-    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "snow_effects")
     val snowMove by infiniteTransition.animateFloat(
@@ -167,9 +162,8 @@ fun WriteNoteScreen(
                 }
                 
                 LaunchedEffect(Unit) {
-                    delay(1500) // Aguarda renderização e carregamento de imagens (sem hardware bitmap)
+                    delay(1500)
                     try {
-                        // Captura apenas o conteúdo visível da janela do Dialog
                         val bitmap = Bitmap.createBitmap(dialogView.width, dialogView.height, Bitmap.Config.ARGB_8888)
                         val canvas = Canvas(bitmap)
                         dialogView.draw(canvas)
@@ -422,7 +416,6 @@ fun WriteNoteScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .imePadding()
         ) {
             Column(
                 modifier = Modifier
@@ -505,7 +498,7 @@ fun WriteNoteScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(300.dp))
+                Spacer(modifier = Modifier.height(80.dp))
             }
 
             if (readOnly) {

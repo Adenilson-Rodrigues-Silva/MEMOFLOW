@@ -32,49 +32,43 @@ class RecallViewModel(private val repository: MemoRepository) : ViewModel() {
             val user = repository.userSettings.first() ?: UserEntity()
             val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             
-            val isNewDay = user.lastRecallDate < today
-            
-            if (isNewDay) {
-                // Reinicia contador para o novo dia
+            if (user.lastRecallDate < today) {
+                // Novo dia: reseta tudo no banco
                 repository.saveUserSettings(user.copy(lastRecallDate = System.currentTimeMillis(), recallCount = 0))
-                _remainingRefreshes.value = 2
-                loadRandomOldNote(isInitial = true)
-            } else if (user.recallCount <= 2) {
-                // Ainda tem refreshes (1 inicial + 2 extras)
-                _remainingRefreshes.value = 2 - user.recallCount
-                loadRandomOldNote(isInitial = true)
+                loadRandomOldNote()
+            } else if (user.recallCount < 3) {
+                // Ainda tem créditos (total 3 por dia)
+                loadRandomOldNote()
             } else {
-                // Limite atingido
+                // Limite diário atingido
                 _remainingRefreshes.value = 0
                 _uiState.value = RecallUiState.LimitReached
             }
         }
     }
 
-    fun loadRandomOldNote(isInitial: Boolean = false) {
+    fun loadRandomOldNote() {
         viewModelScope.launch {
             val user = repository.userSettings.first() ?: UserEntity()
             
-            // Se não for a primeira carga inicial, incrementa o contador no DB
-            if (!isInitial) {
-                if (user.recallCount >= 2) {
-                    _uiState.value = RecallUiState.LimitReached
-                    return@launch
-                }
-                val newUser = user.copy(recallCount = user.recallCount + 1)
-                repository.saveUserSettings(newUser)
-                _remainingRefreshes.value = 2 - newUser.recallCount
-            } else {
-                // Se for inicial, garante que o DB tenha a data de hoje salva
-                if (user.lastRecallDate == 0L) {
-                    repository.saveUserSettings(user.copy(lastRecallDate = System.currentTimeMillis()))
-                }
+            if (user.recallCount >= 3) {
+                _uiState.value = RecallUiState.LimitReached
+                _remainingRefreshes.value = 0
+                return@launch
             }
 
             val notes = repository.getRecallableNotes().first()
             if (notes.isEmpty()) {
                 _uiState.value = RecallUiState.Empty
             } else {
+                // Incrementa o contador no banco DEPOIS de verificar se existem notas
+                val newCount = user.recallCount + 1
+                repository.saveUserSettings(user.copy(recallCount = newCount, lastRecallDate = System.currentTimeMillis()))
+                
+                // UI: Refreshes restantes = Total(3) - Já usados(newCount)
+                // Se newCount for 1 (primeira nota), restam 2 refreshes.
+                _remainingRefreshes.value = 3 - newCount
+
                 val oldestPool = notes.take(20)
                 val randomNote = oldestPool.random()
                 _uiState.value = RecallUiState.Success(randomNote)
