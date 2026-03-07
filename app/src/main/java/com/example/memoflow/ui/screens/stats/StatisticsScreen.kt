@@ -3,6 +3,7 @@ package com.example.memoflow.ui.screens.stats
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -44,6 +45,17 @@ fun StatisticsScreen(
     
     var showSpecialDaysDialog by remember { mutableStateOf(false) }
     var filterType by remember { mutableStateOf("") } // "Lock" ou "Capsule"
+
+    // Gradiente Prateado/Brilhante para as bordas
+    val silverGradient = Brush.linearGradient(
+        colors = listOf(
+            Color.White,
+            Color(0xFFC0C0C0), // Silver
+            Color(0xFFE0E0E0), // Platinum
+            Color(0xFF8E8E8E), // Gray
+            Color.White
+        )
+    )
 
     Scaffold(
         containerColor = Color.Black,
@@ -89,10 +101,9 @@ fun StatisticsScreen(
             item {
                 SectionHeader("Luz no Pote")
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().border(1.dp, silverGradient, RoundedCornerShape(24.dp)),
                     shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-                    border = BorderStroke(1.dp, neonYellow.copy(alpha = 0.2f))
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
                 ) {
                     Row(
                         modifier = Modifier.padding(20.dp),
@@ -128,13 +139,11 @@ fun StatisticsScreen(
             // --- CONTEÚDO DINÂMICO BASEADO NA TAB ---
             item {
                 if (selectedTab == 1) {
-                    // MENSAL: Termômetro Completo
                     SectionHeader("Termômetro de Humores")
-                    MonthlyMoodThermometer(statsData.topMoods, statsData.monthName)
+                    MonthlyMoodThermometer(statsData.topMoods, statsData.monthName, silverGradient)
                 } else {
-                    // SEMANAL: Insight Rápido da Semana
                     SectionHeader("Resumo da Semana")
-                    WeeklyMoodInsight(statsData.topMoods, neonGreen)
+                    WeeklyMoodInsight(statsData.topMoods, silverGradient)
                 }
             }
 
@@ -142,7 +151,7 @@ fun StatisticsScreen(
             item {
                 Column {
                     SectionHeader(if (selectedTab == 0) "Tendência Semanal" else "Tendência Mensal")
-                    MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen)
+                    MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen, silverGradient)
                 }
             }
 
@@ -156,6 +165,7 @@ fun StatisticsScreen(
                         "notas", 
                         Icons.Default.Lock, 
                         neonGreen,
+                        silverGradient,
                         onClick = { filterType = "Lock"; showSpecialDaysDialog = true }
                     )
                     InsightCardClickable(
@@ -165,6 +175,7 @@ fun StatisticsScreen(
                         "notas", 
                         Icons.Default.AcUnit, 
                         iceBlue,
+                        silverGradient,
                         onClick = { filterType = "Capsule"; showSpecialDaysDialog = true }
                     )
                 }
@@ -172,11 +183,11 @@ fun StatisticsScreen(
 
             item {
                 SectionHeader("Volume de Memórias")
-                EntriesBarChart(statsData.entriesPerDay, statsData.dayLabels, neonGreen)
+                EntriesBarChart(statsData.entriesPerDay, statsData.dayLabels, neonGreen, silverGradient)
             }
 
             item {
-                MediaSummaryCard(statsData.audioCount, statsData.imageCount, neonGreen)
+                MediaSummaryCard(statsData.audioCount, statsData.imageCount, neonGreen, silverGradient)
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }
@@ -219,12 +230,11 @@ fun StatisticsScreen(
 }
 
 @Composable
-fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String) {
+fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
@@ -300,12 +310,11 @@ fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String) {
 }
 
 @Composable
-fun WeeklyMoodInsight(moods: List<MoodStat>, accentColor: Color) {
+fun WeeklyMoodInsight(moods: List<MoodStat>, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Row(
             modifier = Modifier.padding(20.dp),
@@ -346,12 +355,11 @@ fun WeeklyMoodInsight(moods: List<MoodStat>, accentColor: Color) {
 }
 
 @Composable
-fun InsightCardClickable(modifier: Modifier, title: String, value: String, unit: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
+fun InsightCardClickable(modifier: Modifier, title: String, value: String, unit: String, icon: ImageVector, color: Color, borderBrush: Brush, onClick: () -> Unit) {
     Card(
-        modifier = modifier.clickable { onClick() },
+        modifier = modifier.clickable { onClick() }.border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(0.5.dp, color.copy(alpha = 0.3f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
@@ -392,12 +400,11 @@ fun SectionHeader(title: String) {
 }
 
 @Composable
-fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Color) {
+fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Color, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth().height(200.dp),
+        modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Canvas(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -429,12 +436,11 @@ fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Colo
 }
 
 @Composable
-fun EntriesBarChart(entries: List<Int>, labels: List<String>, color: Color) {
+fun EntriesBarChart(entries: List<Int>, labels: List<String>, color: Color, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth().height(180.dp),
+        modifier = Modifier.fillMaxWidth().height(180.dp).border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Column(modifier = Modifier.padding(top = 20.dp, start = 12.dp, end = 12.dp, bottom = 12.dp)) {
             Row(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
@@ -473,12 +479,11 @@ fun EntriesBarChart(entries: List<Int>, labels: List<String>, color: Color) {
 }
 
 @Composable
-fun MediaSummaryCard(audios: Int, images: Int, color: Color) {
+fun MediaSummaryCard(audios: Int, images: Int, color: Color, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             MediaItemStats(audios, "Áudios", Icons.Default.Mic, color)

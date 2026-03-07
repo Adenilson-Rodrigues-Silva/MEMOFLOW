@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.SolidColor
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.*
 import kotlinx.coroutines.launch
@@ -40,6 +41,17 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.example.memoflow.R
 import java.util.Date
+
+// Gradiente Brilhante Global (Prateado/Cinza/Branco)
+val GlobalSilverGradient = Brush.linearGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.8f),
+        Color(0xFFC0C0C0), // Prateado
+        Color(0xFFE0E0E0), // Platina
+        Color(0xFF8E8E8E), // Cinza
+        Color.White.copy(alpha = 0.8f)
+    )
+)
 
 @Composable
 fun HubButton(icon: ImageVector, label: String, color: Color, onClick: () -> Unit) {
@@ -163,8 +175,8 @@ fun CalendarRow(
                     .clip(RoundedCornerShape(16.dp))
                     .background(if (isSelected) neonGreen else Color(0xFF1A1A1A))
                     .border(
-                        width = 1.dp,
-                        color = if (isSelected) Color.Transparent else Color.White.copy(alpha = 0.1f),
+                        width = 1.2.dp,
+                        brush = if (isSelected) GlobalSilverGradient else SolidColor(Color.White.copy(alpha = 0.1f)),
                         shape = RoundedCornerShape(16.dp)
                     )
                     .clickable {
@@ -341,10 +353,10 @@ fun MoodChartCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .clickable { onHeaderClick() },
+            .clickable { onHeaderClick() }
+            .border(1.2.dp, GlobalSilverGradient, RoundedCornerShape(28.dp)),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
