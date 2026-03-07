@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -84,7 +85,7 @@ fun StatisticsScreen(
                 }
             }
 
-            // --- BLOCO DE GRATIDÃO (NOVO) ---
+            // --- BLOCO DE GRATIDÃO ---
             item {
                 SectionHeader("Luz no Pote")
                 Card(
@@ -124,13 +125,24 @@ fun StatisticsScreen(
                 }
             }
 
-            // --- BLOCO DE HUMOR (AGRUPADO) ---
+            // --- CONTEÚDO DINÂMICO BASEADO NA TAB ---
+            item {
+                if (selectedTab == 1) {
+                    // MENSAL: Termômetro Completo
+                    SectionHeader("Termômetro de Humores")
+                    MonthlyMoodThermometer(statsData.topMoods, statsData.monthName)
+                } else {
+                    // SEMANAL: Insight Rápido da Semana
+                    SectionHeader("Resumo da Semana")
+                    WeeklyMoodInsight(statsData.topMoods, neonGreen)
+                }
+            }
+
+            // --- BLOCO DE ANÁLISE GRÁFICA ---
             item {
                 Column {
-                    SectionHeader("Análise de Humor")
+                    SectionHeader(if (selectedTab == 0) "Tendência Semanal" else "Tendência Mensal")
                     MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HumorDistributionPremium(statsData.topMoods)
                 }
             }
 
@@ -202,6 +214,133 @@ fun StatisticsScreen(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = "Resumo de $monthName",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            val dominantMood = moods.firstOrNull()
+            if (dominantMood != null) {
+                Text(
+                    text = "Este mês você esteve predominantemente ${dominantMood.label.lowercase()}.",
+                    color = Color.Gray,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(12.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1A1A1A))
+                ) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        moods.forEach { mood ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .weight(mood.percentage.toFloat().coerceAtLeast(0.1f))
+                                    .background(mood.color)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    text = "Sem registros suficientes.",
+                    color = Color.Gray,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            moods.forEach { mood ->
+                Row(
+                    modifier = Modifier.padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(mood.emoji, fontSize = 20.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(mood.label, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text(
+                        "${mood.count} ${if (mood.count == 1) "nota" else "notas"}",
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "${mood.percentage}%",
+                        color = mood.color,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WeeklyMoodInsight(moods: List<MoodStat>, accentColor: Color) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val dominantMood = moods.firstOrNull()
+            if (dominantMood != null) {
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(dominantMood.color.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(dominantMood.emoji, fontSize = 32.sp)
+                }
+                Spacer(Modifier.width(20.dp))
+                Column {
+                    Text("Humor Dominante", color = Color.Gray, fontSize = 12.sp)
+                    Text(
+                        dominantMood.label, 
+                        color = Color.White, 
+                        fontSize = 20.sp, 
+                        fontWeight = FontWeight.ExtraBold 
+                    )
+                    Text(
+                        "Presente em ${dominantMood.percentage}% da sua semana.",
+                        color = dominantMood.color,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            } else {
+                Text("Inicie seus registros para ver o resumo da semana!", color = Color.Gray, fontSize = 14.sp)
+            }
         }
     }
 }
@@ -283,26 +422,6 @@ fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Colo
                     if (index % step == 0 || index == labels.lastIndex) {
                         Text(label, color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun HumorDistributionPremium(moods: List<MoodStat>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
-    ) {
-        Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-            moods.forEach { mood ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(mood.emoji, fontSize = 24.sp)
-                    Text("${mood.percentage}%", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                    Text(mood.label, color = mood.color, fontSize = 11.sp)
                 }
             }
         }

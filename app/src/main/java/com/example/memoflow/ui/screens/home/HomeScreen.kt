@@ -92,7 +92,7 @@ fun HomeScreen(
                         rotation = rotation,
                         neonGreen = neonGreen,
                         onToggle = { isMenuExpanded = !isMenuExpanded },
-                        canAddNote = notes.size < 3,
+                        canAddNote = viewModel.canAddNote(),
                         onLimitReached = {
                             Toast.makeText(context, "Limite de 3 notas por dia atingido!", Toast.LENGTH_SHORT).show()
                         },
@@ -120,7 +120,6 @@ fun HomeScreen(
                     if (note.isLocked || (note.isTimeCapsule && isFuture)) {
                         noteToUnlock = note
                     } else {
-                        // Passa o parâmetro readOnly baseado na data da nota
                         val route = Screen.WriteNote.createRoute(note.id) + if (!isNoteFromToday) "&readOnly=true" else ""
                         navController.navigate(route)
                     }

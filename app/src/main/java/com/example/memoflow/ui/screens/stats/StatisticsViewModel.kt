@@ -16,10 +16,11 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.Instant
+import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.*
 
-data class MoodStat(val emoji: String, val label: String, val percentage: Int, val color: androidx.compose.ui.graphics.Color)
+data class MoodStat(val emoji: String, val label: String, val percentage: Int, val color: androidx.compose.ui.graphics.Color, val count: Int = 0)
 
 data class StatsData(
     val moodPoints: List<Float> = emptyList(),
@@ -34,7 +35,8 @@ data class StatsData(
     val lockedDays: List<LocalDate> = emptyList(),
     val capsuleDays: List<LocalDate> = emptyList(),
     val gratitudeCount: Int = 0,
-    val totalGratitudesInPote: Int = 0
+    val totalGratitudesInPote: Int = 0,
+    val monthName: String = ""
 )
 
 class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() {
@@ -75,12 +77,15 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
             val startTimestamp = startDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
             val endTimestamp = endDate.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli()
             
+            val monthLabel = currentReferenceDate.month.getDisplayName(TextStyle.FULL, Locale("pt", "BR"))
+                .replaceFirstChar { it.uppercase() }
+
             combine(
                 repository.getNotesInDateRange(startTimestamp, endTimestamp),
                 repository.allGratitudes
             ) { notes, gratitudes ->
                 val filteredGratitudes = gratitudes.filter { it.date in startTimestamp..endTimestamp }
-                processAllStats(notes, filteredGratitudes, gratitudes.size, startDate, endDate)
+                processAllStats(notes, filteredGratitudes, gratitudes.size, startDate, endDate, monthLabel)
             }.collectLatest { 
                 _statsData.value = it
             }
@@ -92,7 +97,8 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
         gratitudesInRange: List<GratitudeEntity>,
         totalGratitudes: Int,
         startDate: LocalDate, 
-        endDate: LocalDate
+        endDate: LocalDate,
+        monthLabel: String
     ): StatsData {
         val zoneId = ZoneId.systemDefault()
         val notesByDay = notes.groupBy { 
@@ -124,11 +130,16 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
         // Processamento de Humores
         val humorCounts = notes.groupingBy { it.emoji }.eachCount()
         val totalNotes = notes.size.coerceAtLeast(1)
-        val topMoods = if (notes.isEmpty()) emptyList() else humorCounts.toList()
+        val topMoods = humorCounts.toList()
             .sortedByDescending { it.second }
-            .take(3)
             .map { (emoji, count) ->
-                MoodStat(emoji, mapEmojiToLabel(emoji), (count * 100) / totalNotes, mapEmojiToColor(emoji))
+                MoodStat(
+                    emoji = emoji, 
+                    label = mapEmojiToLabel(emoji), 
+                    percentage = (count * 100) / totalNotes, 
+                    color = mapEmojiToColor(emoji),
+                    count = count
+                )
             }
 
         return StatsData(
@@ -143,7 +154,8 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
             lockedDays = lockedDays.toList().sorted(),
             capsuleDays = capsuleDays.toList().sorted(),
             gratitudeCount = gratitudesInRange.size,
-            totalGratitudesInPote = totalGratitudes
+            totalGratitudesInPote = totalGratitudes,
+            monthName = monthLabel
         )
     }
 
