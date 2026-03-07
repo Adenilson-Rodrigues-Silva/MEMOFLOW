@@ -48,7 +48,8 @@ data class WriteNoteUiState(
     val isLocked: Boolean = false,
     val isTimeCapsule: Boolean = false,
     val unlockDate: Long? = null,
-    val date: Long = System.currentTimeMillis()
+    val date: Long = System.currentTimeMillis(),
+    val fontFamilyName: String? = null
 )
 
 class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
@@ -83,7 +84,8 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                         isLocked = it.isLocked,
                         isTimeCapsule = it.isTimeCapsule,
                         unlockDate = it.unlockDate,
-                        date = it.date
+                        date = it.date,
+                        fontFamilyName = it.fontFamilyName
                     )
                 }
                 richTextState.setHtml(it.contentHtml)
@@ -146,7 +148,8 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
         richTextState.toggleSpanStyle(SpanStyle(background = color.copy(alpha = 0.3f)))
     }
 
-    fun updateFontFamily(fontFamily: FontFamily) {
+    fun updateFontFamily(fontFamily: FontFamily, name: String?) {
+        _uiStateFlow.update { it.copy(fontFamilyName = name) }
         richTextState.toggleSpanStyle(SpanStyle(fontFamily = fontFamily))
     }
 
@@ -164,7 +167,8 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                 audioPath = state.audioPath,
                 isLocked = state.isLocked,
                 isTimeCapsule = state.isTimeCapsule,
-                unlockDate = state.unlockDate
+                unlockDate = state.unlockDate,
+                fontFamilyName = state.fontFamilyName
             )
             repository.insertNote(note)
         }

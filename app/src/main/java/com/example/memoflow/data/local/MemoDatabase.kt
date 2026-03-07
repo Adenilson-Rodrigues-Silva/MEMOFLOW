@@ -12,7 +12,7 @@ import com.example.memoflow.data.local.entity.UserEntity
 
 @Database(
     entities = [NoteEntity::class, UserEntity::class, GratitudeEntity::class],
-    version = 6, // Incrementada para adicionar os campos de controle de limites (Gratidão e Recall)
+    version = 8, // Incrementada para fontFamilyName em NoteEntity
     exportSchema = true
 )
 @TypeConverters(Converters::class)

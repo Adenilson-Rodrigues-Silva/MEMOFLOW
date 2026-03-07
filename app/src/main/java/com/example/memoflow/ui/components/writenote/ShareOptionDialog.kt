@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.TextSnippet
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,7 +22,6 @@ fun ShareOptionDialog(
     onDismiss: () -> Unit,
     onShareAsImage: () -> Unit,
     onShareAsText: () -> Unit,
-    onShareAsPdf: () -> Unit,
     neonGreen: Color = Color(0xFF00FFC2)
 ) {
     AlertDialog(
@@ -59,16 +57,6 @@ fun ShareOptionDialog(
                     color = neonGreen,
                     onClick = {
                         onShareAsText()
-                        onDismiss()
-                    }
-                )
-                ShareOptionItem(
-                    icon = Icons.Default.PictureAsPdf,
-                    title = "Documento PDF",
-                    subtitle = "Salvar ou enviar como arquivo oficial",
-                    color = neonGreen,
-                    onClick = {
-                        onShareAsPdf()
                         onDismiss()
                     }
                 )

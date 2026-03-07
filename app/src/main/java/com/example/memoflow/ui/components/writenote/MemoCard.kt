@@ -38,11 +38,24 @@ fun MemoCard(
     val neonGreen = Color(0xFF00FFC2)
     val context = LocalContext.current
 
-    // Limita o conteúdo para caber no card
-    val contentSnippet = if (content.length > 450) {
-        content.substring(0, 450) + "..."
+    // Limita o conteúdo para caber no card, mas permite mais texto antes de truncar
+    val contentSnippet = if (content.length > 600) {
+        content.substring(0, 600) + "..."
     } else {
         content
+    }
+
+    // Ajusta o tamanho da fonte com base no comprimento do texto para evitar que fique escondido
+    val fontSize = when {
+        content.length > 400 -> 14.sp
+        content.length > 200 -> 16.sp
+        else -> 19.sp
+    }
+    
+    val lineHeight = when {
+        content.length > 400 -> 20.sp
+        content.length > 200 -> 24.sp
+        else -> 28.sp
     }
 
     Box(
@@ -75,7 +88,7 @@ fun MemoCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(vertical = 40.dp),
+                .padding(top = 40.dp, bottom = 60.dp), // Espaço para data e rodapé
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -83,24 +96,26 @@ fun MemoCard(
                 Text(
                     text = title,
                     color = Color.White,
-                    fontSize = 24.sp,
+                    fontSize = if (content.length > 300) 20.sp else 24.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamily,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             Text(
                 text = contentSnippet,
                 color = Color.White.copy(alpha = 0.95f),
-                fontSize = 19.sp,
-                lineHeight = 28.sp,
+                fontSize = fontSize,
+                lineHeight = lineHeight,
                 fontFamily = fontFamily,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                modifier = Modifier.padding(horizontal = 8.dp),
+                maxLines = if (title.length > 30) 12 else 15,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -115,12 +130,12 @@ fun MemoCard(
                 modifier = Modifier.align(Alignment.CenterStart),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = emoji, fontSize = 32.sp)
-                Spacer(modifier = Modifier.width(10.dp))
+                Text(text = emoji, fontSize = 28.sp)
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = humor,
                     color = neonGreen,
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = fontFamily
                 )
@@ -130,7 +145,7 @@ fun MemoCard(
             Text(
                 text = "MemoFlow",
                 color = Color.Gray.copy(alpha = 0.3f),
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Light,
                 modifier = Modifier.align(Alignment.Center)
             )
@@ -149,9 +164,9 @@ fun MemoCard(
                             .build(),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(0.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(10.dp)),
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(0.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
                         contentScale = ContentScale.Crop
                     )
                 }

@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 6,
-    "identityHash": "347761e40e0647063952c62b093987fa",
+    "version": 8,
+    "identityHash": "33563674cd6cfee32fa7fa342ca02a89",
     "entities": [
       {
         "tableName": "notes",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `contentHtml` TEXT NOT NULL, `emoji` TEXT NOT NULL, `humor` TEXT NOT NULL, `date` INTEGER NOT NULL, `images` TEXT NOT NULL, `audioPath` TEXT, `isLocked` INTEGER NOT NULL, `isTimeCapsule` INTEGER NOT NULL, `unlockDate` INTEGER, `fontFamilyResId` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `contentHtml` TEXT NOT NULL, `emoji` TEXT NOT NULL, `humor` TEXT NOT NULL, `date` INTEGER NOT NULL, `images` TEXT NOT NULL, `audioPath` TEXT, `isLocked` INTEGER NOT NULL, `isTimeCapsule` INTEGER NOT NULL, `unlockDate` INTEGER, `fontFamilyName` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -75,9 +75,9 @@
             "notNull": false
           },
           {
-            "fieldPath": "fontFamilyResId",
-            "columnName": "fontFamilyResId",
-            "affinity": "INTEGER",
+            "fieldPath": "fontFamilyName",
+            "columnName": "fontFamilyName",
+            "affinity": "TEXT",
             "notNull": false
           }
         ],
@@ -212,7 +212,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '347761e40e0647063952c62b093987fa')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '33563674cd6cfee32fa7fa342ca02a89')"
     ]
   }
 }

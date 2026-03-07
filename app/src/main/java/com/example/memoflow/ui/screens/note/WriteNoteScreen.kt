@@ -38,7 +38,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,6 +51,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.memoflow.R
 import com.example.memoflow.ui.components.EmojiSelector
 import com.example.memoflow.ui.components.FloatingColorMenu
 import com.example.memoflow.ui.components.PhotoGrid
@@ -100,6 +103,40 @@ fun WriteNoteScreen(
         label = "snow"
     )
 
+    // Função utilitária para obter FontFamily pelo nome salvo
+    fun getFontFamilyByName(name: String?): FontFamily {
+        return when (name) {
+            "Special Elite" -> FontFamily(Font(R.font.special_elite_regular))
+            "Homemade Apple" -> FontFamily(Font(R.font.homemade_apple_regular))
+            "Patrick Hand" -> FontFamily(Font(R.font.patrick_hand_regular))
+            "VT323" -> FontFamily(Font(R.font.vt323_regular))
+            "Exo 2" -> FontFamily(Font(R.font.exo2_regular))
+            else -> FontFamily.Default
+        }
+    }
+
+    // Estado da fonte carregada do banco
+    val currentFontFamily = remember(uiState.fontFamilyName) {
+        getFontFamilyByName(uiState.fontFamilyName)
+    }
+
+    // CORREÇÃO CRUCIAL: Força a fonte no RichTextEditor sempre que ele carrega
+    LaunchedEffect(uiState.fontFamilyName, richTextState.annotatedString) {
+        if (richTextState.annotatedString.text.isNotEmpty()) {
+            richTextState.toggleSpanStyle(SpanStyle(fontFamily = currentFontFamily))
+        }
+    }
+
+    // Auto-scroll robusto: Escuta mudanças tanto no texto quanto na seleção (cursor)
+    LaunchedEffect(richTextState.annotatedString, richTextState.selection) {
+        // Se o cursor estiver nas últimas linhas ou o texto mudou no final
+        if (richTextState.selection.end >= richTextState.annotatedString.length - 2) {
+            // Pequeno delay para garantir que o layout do novo texto foi calculado
+            delay(50)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
     LaunchedEffect(noteId) {
         if (noteId != null && noteId > 0) {
             viewModel.loadNote(noteId)
@@ -117,7 +154,6 @@ fun WriteNoteScreen(
     var showShareDialog by remember { mutableStateOf(false) }
     var isGeneratingCard by remember { mutableStateOf(false) }
     
-    var selectedFontFamily by remember { mutableStateOf<FontFamily>(FontFamily.Default) }
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
 
     val datePickerState = rememberDatePickerState(
@@ -156,7 +192,7 @@ fun WriteNoteScreen(
                         humor = uiState.selectedHumor,
                         date = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(uiState.date)),
                         images = uiState.images.map { it.toString() },
-                        fontFamily = selectedFontFamily,
+                        fontFamily = currentFontFamily,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -170,7 +206,7 @@ fun WriteNoteScreen(
                         ShareUtils.shareBitmap(context, bitmap, "Minha Memória")
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, "Erro ao gerar card: ${e.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "Erro ao gerar card", Toast.LENGTH_SHORT).show()
                     }
                     isGeneratingCard = false
                 }
@@ -193,9 +229,6 @@ fun WriteNoteScreen(
                 }
                 val shareIntent = Intent.createChooser(sendIntent, null)
                 context.startActivity(shareIntent)
-            },
-            onShareAsPdf = {
-                Toast.makeText(context, "Gerando PDF... (Em breve)", Toast.LENGTH_SHORT).show()
             },
             neonGreen = neonGreen
         )
@@ -436,7 +469,7 @@ fun WriteNoteScreen(
                 }
 
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                     colors = CardDefaults.cardColors(containerColor = surfaceDark.copy(alpha = if (readOnly) 0.4f else 0.6f)),
                     shape = RoundedCornerShape(24.dp),
                     border = if (readOnly) BorderStroke(1.dp, iceBlue.copy(alpha = 0.3f)) else null
@@ -453,7 +486,13 @@ fun WriteNoteScreen(
                                     onValueChange = { if(!readOnly) viewModel.updateTitle(it) },
                                     readOnly = readOnly,
                                     enabled = !readOnly,
-                                    textStyle = TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textStyle = TextStyle(
+                                        color = Color.White, 
+                                        fontSize = 22.sp, 
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = currentFontFamily
+                                    ),
                                     cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
                                 )
                                 Text("Humor: ${uiState.selectedHumor}", color = if (uiState.isTimeCapsule) iceBlue else neonGreen, fontSize = 14.sp)
@@ -466,14 +505,18 @@ fun WriteNoteScreen(
                         RichTextEditor(
                             state = richTextState,
                             readOnly = readOnly,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
                             colors = RichTextEditorDefaults.richTextEditorColors(
                                 containerColor = Color.Transparent,
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent,
                                 textColor = Color.White.copy(alpha = 0.8f)
                             ),
-                            textStyle = TextStyle(fontSize = 16.sp, lineHeight = 24.sp)
+                            textStyle = TextStyle(
+                                fontSize = 16.sp, 
+                                lineHeight = 24.sp,
+                                fontFamily = currentFontFamily
+                            )
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -498,7 +541,7 @@ fun WriteNoteScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(100.dp))
             }
 
             if (readOnly) {
@@ -520,11 +563,10 @@ fun WriteNoteScreen(
     
     if (showAppearanceMenu) {
         AppearanceBottomSheet(
-            selectedFontFamily = selectedFontFamily,
+            selectedFontFamily = currentFontFamily,
             onDismiss = { showAppearanceMenu = false },
-            onFontSelected = { 
-                selectedFontFamily = it
-                viewModel.updateFontFamily(it)
+            onFontSelected = { family, name -> 
+                viewModel.updateFontFamily(family, name)
             },
             neonGreen = neonGreen
         )

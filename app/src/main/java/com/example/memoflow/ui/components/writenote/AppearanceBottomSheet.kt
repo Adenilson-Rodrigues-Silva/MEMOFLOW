@@ -20,17 +20,17 @@ import com.example.memoflow.R
 @Composable
 fun AppearanceBottomSheet(
     selectedFontFamily: FontFamily,
-    onFontSelected: (FontFamily) -> Unit,
+    onFontSelected: (FontFamily, String?) -> Unit,
     onDismiss: () -> Unit,
     neonGreen: Color = Color(0xFF00FFC2)
 ) {
     val fonts = listOf(
-        FontOption("Padrão", FontFamily.Default),
-        FontOption("Máquina de Escrever", FontFamily(Font(R.font.special_elite_regular))),
-        FontOption("Escrita à Mão", FontFamily(Font(R.font.homemade_apple_regular))),
-        FontOption("Patrick Hand", FontFamily(Font(R.font.patrick_hand_regular))),
-        FontOption("Digital (VT323)", FontFamily(Font(R.font.vt323_regular))),
-        FontOption("Moderna (Exo 2)", FontFamily(Font(R.font.exo2_regular)))
+        FontOption("Padrão", FontFamily.Default, null),
+        FontOption("Máquina de Escrever", FontFamily(Font(R.font.special_elite_regular)), "Special Elite"),
+        FontOption("Escrita à Mão", FontFamily(Font(R.font.homemade_apple_regular)), "Homemade Apple"),
+        FontOption("Patrick Hand", FontFamily(Font(R.font.patrick_hand_regular)), "Patrick Hand"),
+        FontOption("Digital (VT323)", FontFamily(Font(R.font.vt323_regular)), "VT323"),
+        FontOption("Moderna (Exo 2)", FontFamily(Font(R.font.exo2_regular)), "Exo 2")
     )
 
     ModalBottomSheet(
@@ -58,8 +58,8 @@ fun AppearanceBottomSheet(
                 
                 Surface(
                     onClick = { 
-                        onFontSelected(option.fontFamily)
-                        onDismiss() // Fecha o menu automaticamente após selecionar
+                        onFontSelected(option.fontFamily, option.name)
+                        onDismiss()
                     },
                     color = if (isSelected) neonGreen.copy(alpha = 0.1f) else Color.Transparent,
                     shape = RoundedCornerShape(16.dp),
@@ -73,7 +73,7 @@ fun AppearanceBottomSheet(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = option.name,
+                            text = option.displayName,
                             color = if (isSelected) neonGreen else Color.White,
                             fontFamily = option.fontFamily,
                             fontSize = 17.sp
@@ -89,4 +89,4 @@ fun AppearanceBottomSheet(
     }
 }
 
-data class FontOption(val name: String, val fontFamily: FontFamily)
+data class FontOption(val displayName: String, val fontFamily: FontFamily, val name: String?)
