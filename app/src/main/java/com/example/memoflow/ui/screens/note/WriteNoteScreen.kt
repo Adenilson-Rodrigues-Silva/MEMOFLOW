@@ -31,6 +31,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -103,7 +104,6 @@ fun WriteNoteScreen(
         label = "snow"
     )
 
-    // Função utilitária para obter FontFamily pelo nome salvo
     fun getFontFamilyByName(name: String?): FontFamily {
         return when (name) {
             "Special Elite" -> FontFamily(Font(R.font.special_elite_regular))
@@ -115,27 +115,19 @@ fun WriteNoteScreen(
         }
     }
 
-    // Estado da fonte carregada do banco
     val currentFontFamily = remember(uiState.fontFamilyName) {
         getFontFamilyByName(uiState.fontFamilyName)
     }
 
-    // CORREÇÃO CRUCIAL: Força a fonte no RichTextEditor sempre que ele carrega
-    LaunchedEffect(uiState.fontFamilyName, richTextState.annotatedString) {
+    // Aplica a fonte apenas no carregamento ou troca de fonte, sem atrapalhar a digitação
+    LaunchedEffect(uiState.fontFamilyName) {
         if (richTextState.annotatedString.text.isNotEmpty()) {
             richTextState.toggleSpanStyle(SpanStyle(fontFamily = currentFontFamily))
         }
     }
 
-    // Auto-scroll robusto: Escuta mudanças tanto no texto quanto na seleção (cursor)
-    LaunchedEffect(richTextState.annotatedString, richTextState.selection) {
-        // Se o cursor estiver nas últimas linhas ou o texto mudou no final
-        if (richTextState.selection.end >= richTextState.annotatedString.length - 2) {
-            // Pequeno delay para garantir que o layout do novo texto foi calculado
-            delay(50)
-            scrollState.animateScrollTo(scrollState.maxValue)
-        }
-    }
+    // REMOVIDO: O LaunchedEffect que forçava o scroll para o maxValue foi removido 
+    // pois causava o pulo para o topo no início da digitação.
 
     LaunchedEffect(noteId) {
         if (noteId != null && noteId > 0) {
@@ -206,7 +198,6 @@ fun WriteNoteScreen(
                         ShareUtils.shareBitmap(context, bitmap, "Minha Memória")
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, "Erro ao gerar card", Toast.LENGTH_SHORT).show()
                     }
                     isGeneratingCard = false
                 }
@@ -505,7 +496,9 @@ fun WriteNoteScreen(
                         RichTextEditor(
                             state = richTextState,
                             readOnly = readOnly,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 200.dp), // Reduzido min height para evitar scroll fantasma
                             colors = RichTextEditorDefaults.richTextEditorColors(
                                 containerColor = Color.Transparent,
                                 focusedIndicatorColor = Color.Transparent,
@@ -541,7 +534,7 @@ fun WriteNoteScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(100.dp))
+                Spacer(modifier = Modifier.height(120.dp))
             }
 
             if (readOnly) {
