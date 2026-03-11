@@ -84,7 +84,6 @@ fun WriteNoteScreen(
     securityViewModel: SecurityViewModel = viewModel(factory = SecurityViewModel.Factory)
 ) {
     val context = LocalContext.current
-    val view = LocalView.current
     val richTextState = viewModel.richTextState
     val uiState by viewModel.uiStateFlow.collectAsState()
     val securitySettings by securityViewModel.userSettings.collectAsState()
@@ -119,19 +118,23 @@ fun WriteNoteScreen(
         getFontFamilyByName(uiState.fontFamilyName)
     }
 
-    // Aplica a fonte apenas no carregamento ou troca de fonte, sem atrapalhar a digitação
-    LaunchedEffect(uiState.fontFamilyName) {
-        if (richTextState.annotatedString.text.isNotEmpty()) {
-            richTextState.toggleSpanStyle(SpanStyle(fontFamily = currentFontFamily))
+    // AUTO-SCROLL OTIMIZADO: Mantém o cursor visível sem interferir na fonte
+    LaunchedEffect(richTextState.selection) {
+        val textLength = richTextState.annotatedString.text.length
+        if (textLength > 0 && richTextState.selection.end >= textLength - 1) {
+            scrollState.animateScrollTo(scrollState.maxValue)
         }
     }
 
-    // REMOVIDO: O LaunchedEffect que forçava o scroll para o maxValue foi removido 
-    // pois causava o pulo para o topo no início da digitação.
-
+    // Carregamento inicial da nota
     LaunchedEffect(noteId) {
         if (noteId != null && noteId > 0) {
             viewModel.loadNote(noteId)
+            // Aguarda o carregamento do HTML e aplica a fonte inicial apenas se o editor estiver vazio
+            delay(500)
+            if (richTextState.annotatedString.text.isEmpty()) {
+                richTextState.toggleSpanStyle(SpanStyle(fontFamily = currentFontFamily))
+            }
         }
     }
 
@@ -164,18 +167,11 @@ fun WriteNoteScreen(
         viewModel.onImageSelected(context, uri)
     }
 
+    // --- DIÁLOGOS (Preservados) ---
     if (isGeneratingCard) {
-        Dialog(
-            onDismissRequest = { isGeneratingCard = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
+        Dialog(onDismissRequest = { isGeneratingCard = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             val dialogView = LocalView.current
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
                 Box(modifier = Modifier.width(360.dp).wrapContentHeight()) {
                     MemoCard(
                         title = uiState.title,
@@ -188,7 +184,6 @@ fun WriteNoteScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                
                 LaunchedEffect(Unit) {
                     delay(1500)
                     try {
@@ -196,9 +191,7 @@ fun WriteNoteScreen(
                         val canvas = Canvas(bitmap)
                         dialogView.draw(canvas)
                         ShareUtils.shareBitmap(context, bitmap, "Minha Memória")
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                    } catch (e: Exception) { e.printStackTrace() }
                     isGeneratingCard = false
                 }
             }
@@ -208,18 +201,14 @@ fun WriteNoteScreen(
     if (showShareDialog) {
         ShareOptionDialog(
             onDismiss = { showShareDialog = false },
-            onShareAsImage = {
-                showShareDialog = false
-                isGeneratingCard = true
-            },
+            onShareAsImage = { showShareDialog = false; isGeneratingCard = true },
             onShareAsText = {
                 val sendIntent: Intent = Intent().apply {
                     action = Intent.ACTION_SEND
                     putExtra(Intent.EXTRA_TEXT, "${uiState.title}\n\n${richTextState.annotatedString.text}")
                     type = "text/plain"
                 }
-                val shareIntent = Intent.createChooser(sendIntent, null)
-                context.startActivity(shareIntent)
+                context.startActivity(Intent.createChooser(sendIntent, null))
             },
             neonGreen = neonGreen
         )
@@ -232,20 +221,15 @@ fun WriteNoteScreen(
                 TextButton(onClick = {
                     val selectedDate = datePickerState.selectedDateMillis
                     if (selectedDate != null && selectedDate > System.currentTimeMillis()) {
-                        viewModel.setTimeCapsule(selectedDate)
-                        viewModel.saveNote()
+                        viewModel.setTimeCapsule(selectedDate); viewModel.saveNote()
                         Toast.makeText(context, "Nota enviada para o futuro! ❄️", Toast.LENGTH_LONG).show()
                         onBack()
                     }
                     showDatePicker = false
                 }) { Text("CONGELAR", color = iceBlue) }
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("CANCELAR", color = Color.White) }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("CANCELAR", color = Color.White) } }
+        ) { DatePicker(state = datePickerState) }
     }
 
     if (showLockConfirmDialog) {
@@ -253,24 +237,15 @@ fun WriteNoteScreen(
             onDismissRequest = { showLockConfirmDialog = false },
             containerColor = Color(0xFF1A1A1A),
             title = { Text(if (uiState.isLocked) "Destrancar Memória?" else "Trancar Memória?", color = Color.White) },
-            text = { 
-                Text(
-                    if (uiState.isLocked) "Deseja remover o bloqueio desta nota?" else "Tem certeza que deseja trancar esta memória? Ela só poderá ser aberta com o seu PIN.",
-                    color = Color.Gray
-                ) 
-            },
+            text = { Text(if (uiState.isLocked) "Deseja remover o bloqueio desta nota?" else "Tem certeza que deseja trancar esta memória? Ela só poderá ser aberta com o seu PIN.", color = Color.Gray) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.toggleLock()
-                    viewModel.saveNote()
-                    showLockConfirmDialog = false
+                    viewModel.toggleLock(); viewModel.saveNote(); showLockConfirmDialog = false
                     Toast.makeText(context, if (!uiState.isLocked) "Memória Trancada!" else "Memória Destrancada!", Toast.LENGTH_SHORT).show()
                     onBack()
                 }) { Text("CONFIRMAR", color = neonGreen) }
             },
-            dismissButton = {
-                TextButton(onClick = { showLockConfirmDialog = false }) { Text("CANCELAR", color = Color.White) }
-            }
+            dismissButton = { TextButton(onClick = { showLockConfirmDialog = false }) { Text("CANCELAR", color = Color.White) } }
         )
     }
 
@@ -280,33 +255,15 @@ fun WriteNoteScreen(
             charCount = richTextState.annotatedString.text.length,
             hasAudio = uiState.audioPath != null,
             imageCount = uiState.images.size,
-            date = "HOJE",
-            onDismiss = { showDetailsDialog = false },
-            neonGreen = neonGreen
+            date = "HOJE", onDismiss = { showDetailsDialog = false }, neonGreen = neonGreen
         )
     }
 
     if (selectedImageFullScreen != null) {
         Dialog(onDismissRequest = { selectedImageFullScreen = null }) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { selectedImageFullScreen = null },
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = selectedImageFullScreen,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight()
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.FillWidth
-                )
-                IconButton(
-                    onClick = { selectedImageFullScreen = null },
-                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                ) {
+            Box(modifier = Modifier.fillMaxSize().clickable { selectedImageFullScreen = null }, contentAlignment = Alignment.Center) {
+                AsyncImage(model = selectedImageFullScreen, contentDescription = null, modifier = Modifier.fillMaxWidth().wrapContentHeight().clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.FillWidth)
+                IconButton(onClick = { selectedImageFullScreen = null }, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)) {
                     Icon(Icons.Default.Close, null, tint = Color.White)
                 }
             }
@@ -317,129 +274,39 @@ fun WriteNoteScreen(
         containerColor = Color.Black,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { 
-                    Text(if (readOnly) "Modo Espiadinha ❄️" else "Entrada", color = Color.White, fontSize = 18.sp)
-                }, 
+                title = { Text(if (readOnly) "Modo Espiadinha ❄️" else "Entrada", color = Color.White, fontSize = 18.sp) }, 
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = Color.White, modifier = Modifier.size(32.dp))
-                    }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = Color.White, modifier = Modifier.size(32.dp)) }
                 },
                 actions = {
                     if (readOnly) {
-                        TextButton(onClick = onBack) {
-                            Text("SAIR", color = iceBlue, fontWeight = FontWeight.ExtraBold)
-                        }
+                        TextButton(onClick = onBack) { Text("SAIR", color = iceBlue, fontWeight = FontWeight.ExtraBold) }
                     } else {
-                        IconButton(onClick = { showOverflowMenu = true }) {
-                            Icon(Icons.Default.MoreVert, null, tint = Color.White)
-                        }
+                        IconButton(onClick = { showOverflowMenu = true }) { Icon(Icons.Default.MoreVert, null, tint = Color.White) }
                         NoteOptionsOverflowMenu(
-                            expanded = showOverflowMenu,
-                            isLocked = uiState.isLocked,
-                            onDismissRequest = { showOverflowMenu = false },
-                            onShareClick = { 
-                                showShareDialog = true
-                                showOverflowMenu = false
-                            },
-                            onFontStyleClick = { 
-                                showAppearanceMenu = true
-                                showOverflowMenu = false
-                            },
-                            onDetailsClick = { 
-                                showDetailsDialog = true
-                                showOverflowMenu = false
-                            },
+                            expanded = showOverflowMenu, isLocked = uiState.isLocked, onDismissRequest = { showOverflowMenu = false },
+                            onShareClick = { showShareDialog = true; showOverflowMenu = false },
+                            onFontStyleClick = { showAppearanceMenu = true; showOverflowMenu = false },
+                            onDetailsClick = { showDetailsDialog = true; showOverflowMenu = false },
                             onLockClick = { 
-                                if (securitySettings.pin.isNullOrEmpty()) {
-                                    Toast.makeText(context, "Defina um PIN nas configurações primeiro!", Toast.LENGTH_LONG).show()
-                                } else {
-                                    showLockConfirmDialog = true
-                                }
+                                if (securitySettings.pin.isNullOrEmpty()) Toast.makeText(context, "Defina um PIN primeiro!", Toast.LENGTH_LONG).show()
+                                else showLockConfirmDialog = true
                                 showOverflowMenu = false
                             },
-                            onTimeCapsuleClick = { 
-                                showDatePicker = true
-                                showOverflowMenu = false
-                            },
+                            onTimeCapsuleClick = { showDatePicker = true; showOverflowMenu = false },
                             neonGreen = neonGreen
                         )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Black)
             )
-        },
-        bottomBar = {
-            if (!readOnly) {
-                Column(modifier = Modifier.fillMaxWidth().imePadding()) {
-                    AnimatedVisibility(visible = showFormatMenu) {
-                        TextFormattingPanel(state = richTextState, isVisible = showFormatMenu)
-                    }
-                    AnimatedVisibility(visible = showMarkerMenu) {
-                        FloatingColorMenu(
-                            selectedTextColor = richTextState.currentSpanStyle.color,
-                            selectedMarkerColor = (richTextState.currentSpanStyle.background as? Color) ?: Color.Transparent,
-                            onTextColorSelected = { color -> viewModel.updateTextColor(color) },
-                            onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
-                            onDismiss = { showMarkerMenu = false },
-                            neonGreen = neonGreen
-                        )
-                    }
-                    AnimatedVisibility(
-                        visible = showEmojiMenu,
-                        enter = slideInVertically(initialOffsetY = { it }),
-                        exit = slideOutVertically(targetOffsetY = { it }),
-                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 15.dp)
-                    ) {
-                        Surface(
-                            color = Color(0xFF1E1E1E),
-                            shape = RoundedCornerShape(24.dp),
-                            shadowElevation = 8.dp,
-                            modifier = Modifier.padding(16.dp).border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
-                        ) {
-                            EmojiSelector(
-                                emojis = uiState.diaryEmojis,
-                                selectedEmoji = uiState.selectedEmoji,
-                                onEmojiSelected = { emoji, humor ->
-                                    viewModel.updateEmoji(emoji, humor)
-                                    showEmojiMenu = false
-                                }
-                            )
-                        }
-                    }
-                    NoteBottomToolbar(
-                        imageCount = uiState.images.size,
-                        accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
-                        onFormatClick = { 
-                            showFormatMenu = !showFormatMenu
-                            showEmojiMenu = false
-                            showMarkerMenu = false
-                        },
-                        onEmojiClick = { 
-                            showEmojiMenu = !showEmojiMenu
-                            showFormatMenu = false
-                            showMarkerMenu = false
-                        },
-                        onMarkerClick = { 
-                            showMarkerMenu = !showMarkerMenu
-                            showFormatMenu = false
-                            showEmojiMenu = false
-                        },
-                        onAddImageClick = { launcher.launch("image/*") },
-                        onVoiceClick = { handleVoiceClick(context, uiState.isRecording, uiState.audioPath, viewModel, permissionLauncher) },
-                        onSaveClick = {
-                            viewModel.saveNote()
-                            onBack()
-                        }
-                    )
-                }
-            }
         }
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
         ) {
             Column(
                 modifier = Modifier
@@ -449,13 +316,8 @@ fun WriteNoteScreen(
             ) {
                 if (uiState.isTimeCapsule) {
                     Text(
-                        text = "CONGELADA ATÉ ${uiState.unlockDate?.let { 
-                            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) 
-                        }}",
-                        color = iceBlue,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        text = "CONGELADA ATÉ ${uiState.unlockDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) }}",
+                        color = iceBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp)
                     )
                 }
 
@@ -466,23 +328,15 @@ fun WriteNoteScreen(
                     border = if (readOnly) BorderStroke(1.dp, iceBlue.copy(alpha = 0.3f)) else null
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 androidx.compose.foundation.text.BasicTextField(
                                     value = uiState.title,
                                     onValueChange = { if(!readOnly) viewModel.updateTitle(it) },
-                                    readOnly = readOnly,
-                                    enabled = !readOnly,
-                                    modifier = Modifier.fillMaxWidth(),
+                                    readOnly = readOnly, enabled = !readOnly, modifier = Modifier.fillMaxWidth(),
                                     textStyle = TextStyle(
-                                        color = Color.White, 
-                                        fontSize = 22.sp, 
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = currentFontFamily
+                                        color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, 
+                                        fontFamily = currentFontFamily // O Título ainda segue a fonte principal
                                     ),
                                     cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
                                 )
@@ -496,58 +350,65 @@ fun WriteNoteScreen(
                         RichTextEditor(
                             state = richTextState,
                             readOnly = readOnly,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 200.dp), // Reduzido min height para evitar scroll fantasma
-                            colors = RichTextEditorDefaults.richTextEditorColors(
-                                containerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                textColor = Color.White.copy(alpha = 0.8f)
-                            ),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp),
+                            colors = RichTextEditorDefaults.richTextEditorColors(containerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, textColor = Color.White.copy(alpha = 0.8f)),
                             textStyle = TextStyle(
                                 fontSize = 16.sp, 
                                 lineHeight = 24.sp,
-                                fontFamily = currentFontFamily
+                                fontFamily = FontFamily.Default // FONTE BASE FIXA: Agora a troca de fontes é feita via Spans locais
                             )
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            PhotoGrid(
-                                images = uiState.images,
-                                onRemove = { if(!readOnly) viewModel.removeImage(it) },
-                                onExpand = { selectedImageFullScreen = it }
-                            )
+                            PhotoGrid(images = uiState.images, onRemove = { if(!readOnly) viewModel.removeImage(it) }, onExpand = { selectedImageFullScreen = it })
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
-                        VoiceNoteSection(
-                            isRecording = uiState.isRecording,
-                            recordingTime = uiState.recordingTime,
-                            audioPath = uiState.audioPath,
-                            viewModel = viewModel,
-                            context = context,
-                            permissionLauncher = permissionLauncher,
-                            accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen
-                        )
+                        VoiceNoteSection(isRecording = uiState.isRecording, recordingTime = uiState.recordingTime, audioPath = uiState.audioPath, viewModel = viewModel, context = context, permissionLauncher = permissionLauncher, accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen)
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(120.dp))
+                Spacer(modifier = Modifier.height(220.dp))
+            }
+
+            if (!readOnly) {
+                Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                    AnimatedVisibility(visible = showFormatMenu) {
+                        TextFormattingPanel(state = richTextState, isVisible = showFormatMenu)
+                    }
+                    AnimatedVisibility(visible = showMarkerMenu) {
+                        FloatingColorMenu(
+                            selectedTextColor = richTextState.currentSpanStyle.color,
+                            selectedMarkerColor = (richTextState.currentSpanStyle.background as? Color) ?: Color.Transparent,
+                            onTextColorSelected = { color -> viewModel.updateTextColor(color) },
+                            onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
+                            onDismiss = { showMarkerMenu = false }, neonGreen = neonGreen
+                        )
+                    }
+                    AnimatedVisibility(visible = showEmojiMenu, enter = slideInVertically(initialOffsetY = { it }), exit = slideOutVertically(targetOffsetY = { it }), modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 15.dp)) {
+                        Surface(color = Color(0xFF1E1E1E), shape = RoundedCornerShape(24.dp), shadowElevation = 8.dp, modifier = Modifier.padding(16.dp).border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(24.dp))) {
+                            EmojiSelector(emojis = uiState.diaryEmojis, selectedEmoji = uiState.selectedEmoji, onEmojiSelected = { emoji, humor -> viewModel.updateEmoji(emoji, humor); showEmojiMenu = false })
+                        }
+                    }
+                    NoteBottomToolbar(
+                        imageCount = uiState.images.size, accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
+                        onFormatClick = { showFormatMenu = !showFormatMenu; showEmojiMenu = false; showMarkerMenu = false },
+                        onEmojiClick = { showEmojiMenu = !showEmojiMenu; showFormatMenu = false; showMarkerMenu = false },
+                        onMarkerClick = { showMarkerMenu = !showMarkerMenu; showFormatMenu = false; showEmojiMenu = false },
+                        onAddImageClick = { launcher.launch("image/*") },
+                        onVoiceClick = { handleVoiceClick(context, uiState.isRecording, uiState.audioPath, viewModel, permissionLauncher) },
+                        onSaveClick = { viewModel.saveNote(); onBack() }
+                    )
+                }
             }
 
             if (readOnly) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val snowflakeCount = 45
                     for (i in 0 until snowflakeCount) {
-                        val x = ( (i * 123f + (snowMove * 0.5f)) % size.width )
-                        val y = ( (i * 87f + snowMove) % size.height )
-                        drawCircle(
-                            color = Color.White.copy(alpha = 0.5f),
-                            radius = 3.dp.toPx(),
-                            center = Offset(x, y)
-                        )
+                        val x = ( (i * 123f + (snowMove * 0.5f)) % size.width ); val y = ( (i * 87f + snowMove) % size.height )
+                        drawCircle(color = Color.White.copy(alpha = 0.5f), radius = 3.dp.toPx(), center = Offset(x, y))
                     }
                 }
             }
@@ -556,57 +417,33 @@ fun WriteNoteScreen(
     
     if (showAppearanceMenu) {
         AppearanceBottomSheet(
-            selectedFontFamily = currentFontFamily,
-            onDismiss = { showAppearanceMenu = false },
+            selectedFontFamily = currentFontFamily, 
+            onDismiss = { showAppearanceMenu = false }, 
             onFontSelected = { family, name -> 
-                viewModel.updateFontFamily(family, name)
-            },
+                // CORREÇÃO CRUCIAL: Atualiza o nome da fonte no banco, mas aplica o estilo apenas dali para frente
+                viewModel.updateFontFamilyOnly(name)
+                richTextState.toggleSpanStyle(SpanStyle(fontFamily = family))
+            }, 
             neonGreen = neonGreen
         )
     }
 }
 
 @Composable
-fun NoteBottomToolbar(
-    imageCount: Int,
-    accentColor: Color,
-    onFormatClick: () -> Unit,
-    onEmojiClick: () -> Unit,
-    onMarkerClick: () -> Unit,
-    onAddImageClick: () -> Unit,
-    onVoiceClick: () -> Unit,
-    onSaveClick: () -> Unit
-) {
+fun NoteBottomToolbar(imageCount: Int, accentColor: Color, onFormatClick: () -> Unit, onEmojiClick: () -> Unit, onMarkerClick: () -> Unit, onAddImageClick: () -> Unit, onVoiceClick: () -> Unit, onSaveClick: () -> Unit) {
     val canAddMoreImages = imageCount < 3
-    Surface(
-        color = Color(0xFF121212),
-        modifier = Modifier.fillMaxWidth().height(80.dp),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    Surface(color = Color(0xFF121212), modifier = Modifier.fillMaxWidth().height(80.dp), shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
+        Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
                 ToolbarButton(Icons.Default.Mic, "Voz", onClick = onVoiceClick)
                 ToolbarButton(Icons.Default.FormatBold, "Formatar", onClick = onFormatClick)
                 ToolbarButton(Icons.Default.Face, "Emoji", onClick = onEmojiClick)
                 IconButton(onClick = onAddImageClick, enabled = canAddMoreImages) {
-                    Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = "Adicionar Imagem",
-                        tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f)
-                    )
+                    Icon(imageVector = Icons.Default.Image, contentDescription = "Adicionar Imagem", tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f))
                 }
                 ToolbarButton(icon = Icons.Default.Brush, desc = "Marcador", onClick = onMarkerClick)
             }
-            FloatingActionButton(
-                onClick = onSaveClick,
-                containerColor = accentColor,
-                shape = CircleShape,
-                modifier = Modifier.size(56.dp).offset(y = (-10).dp)
-            ) {
+            FloatingActionButton(onClick = onSaveClick, containerColor = accentColor, shape = CircleShape, modifier = Modifier.size(56.dp).offset(y = (-10).dp)) {
                 Icon(Icons.Default.Check, null, tint = Color.Black)
             }
         }
@@ -615,7 +452,5 @@ fun NoteBottomToolbar(
 
 @Composable
 fun ToolbarButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Icon(icon, desc, tint = Color.Gray)
-    }
+    IconButton(onClick = onClick) { Icon(icon, desc, tint = Color.Gray) }
 }

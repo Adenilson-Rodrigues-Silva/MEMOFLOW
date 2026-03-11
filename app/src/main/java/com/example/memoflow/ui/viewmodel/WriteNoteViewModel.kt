@@ -148,6 +148,10 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
         richTextState.toggleSpanStyle(SpanStyle(background = color.copy(alpha = 0.3f)))
     }
 
+    fun updateFontFamilyOnly(name: String?) {
+        _uiStateFlow.update { it.copy(fontFamilyName = name) }
+    }
+
     fun updateFontFamily(fontFamily: FontFamily, name: String?) {
         _uiStateFlow.update { it.copy(fontFamilyName = name) }
         richTextState.toggleSpanStyle(SpanStyle(fontFamily = fontFamily))
@@ -240,7 +244,7 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                 setOnCompletionListener {
                     this@WriteNoteViewModel.isPlaying = false
                     progressJob?.cancel()
-                    _uiStateFlow.update { it.copy(recordingTime = 0) }
+                    _uiStateFlow.update { state -> state.copy(recordingTime = 0) }
                 }
                 prepareAsync()
             }
