@@ -480,3 +480,5 @@ fun NoteBottomToolbar(
 fun ToolbarButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
     IconButton(onClick = onClick) { Icon(icon, desc, tint = Color.Gray) }
 }
+//inserir fontes na proxima versao apos a playstore
+
