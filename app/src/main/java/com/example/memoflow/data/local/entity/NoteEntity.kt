@@ -17,5 +17,5 @@ data class NoteEntity(
     val isLocked: Boolean = false,
     val isTimeCapsule: Boolean = false,
     val unlockDate: Long? = null,
-    val fontFamilyName: String? = null // Salva o nome da fonte (ex: "Special Elite")
+    val fontFamilyName: String? = null // Mantido apenas para evitar erro de schema do Room
 )

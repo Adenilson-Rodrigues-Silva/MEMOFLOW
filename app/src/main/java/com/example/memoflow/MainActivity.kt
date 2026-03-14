@@ -3,9 +3,11 @@ package com.example.memoflow
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.core.view.WindowCompat
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -26,6 +28,12 @@ import com.example.memoflow.ui.theme.MemoFlowTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // CORREÇÃO CRUCIAL: Habilita o modo Edge-to-Edge e diz ao sistema 
+        // para não ajustar o layout automaticamente pelo teclado (o Compose fará isso)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
+
         setContent {
             MemoFlowTheme {
                 val navController = rememberNavController()

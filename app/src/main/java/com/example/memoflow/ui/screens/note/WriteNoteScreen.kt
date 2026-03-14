@@ -4,7 +4,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.Uri
-import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,6 +18,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,7 +32,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -39,12 +39,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -59,7 +56,6 @@ import com.example.memoflow.ui.components.PhotoGrid
 import com.example.memoflow.ui.components.TextFormattingPanel
 import com.example.memoflow.ui.components.VoiceNoteSection
 import com.example.memoflow.ui.components.handleVoiceClick
-import com.example.memoflow.ui.components.writenote.AppearanceBottomSheet
 import com.example.memoflow.ui.components.writenote.MemoCard
 import com.example.memoflow.ui.components.writenote.NoteDetailsDialog
 import com.example.memoflow.ui.components.writenote.NoteOptionsOverflowMenu
@@ -93,7 +89,7 @@ fun WriteNoteScreen(
     val surfaceDark = Color(0xFF1E1E1E)
 
     val scrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     val infiniteTransition = rememberInfiniteTransition(label = "snow_effects")
     val snowMove by infiniteTransition.animateFloat(
@@ -103,38 +99,16 @@ fun WriteNoteScreen(
         label = "snow"
     )
 
-    fun getFontFamilyByName(name: String?): FontFamily {
-        return when (name) {
-            "Special Elite" -> FontFamily(Font(R.font.special_elite_regular))
-            "Homemade Apple" -> FontFamily(Font(R.font.homemade_apple_regular))
-            "Patrick Hand" -> FontFamily(Font(R.font.patrick_hand_regular))
-            "VT323" -> FontFamily(Font(R.font.vt323_regular))
-            "Exo 2" -> FontFamily(Font(R.font.exo2_regular))
-            else -> FontFamily.Default
+    // Acompanha o cursor de forma inteligente
+    LaunchedEffect(richTextState.annotatedString.text.length) {
+        if (!readOnly && richTextState.selection.end >= richTextState.annotatedString.text.length - 1) {
+            bringIntoViewRequester.bringIntoView()
         }
     }
 
-    val currentFontFamily = remember(uiState.fontFamilyName) {
-        getFontFamilyByName(uiState.fontFamilyName)
-    }
-
-    // AUTO-SCROLL OTIMIZADO: Mantém o cursor visível sem interferir na fonte
-    LaunchedEffect(richTextState.selection) {
-        val textLength = richTextState.annotatedString.text.length
-        if (textLength > 0 && richTextState.selection.end >= textLength - 1) {
-            scrollState.animateScrollTo(scrollState.maxValue)
-        }
-    }
-
-    // Carregamento inicial da nota
     LaunchedEffect(noteId) {
         if (noteId != null && noteId > 0) {
             viewModel.loadNote(noteId)
-            // Aguarda o carregamento do HTML e aplica a fonte inicial apenas se o editor estiver vazio
-            delay(500)
-            if (richTextState.annotatedString.text.isEmpty()) {
-                richTextState.toggleSpanStyle(SpanStyle(fontFamily = currentFontFamily))
-            }
         }
     }
 
@@ -143,12 +117,10 @@ fun WriteNoteScreen(
     var showMarkerMenu by remember { mutableStateOf(false) }
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
-    var showAppearanceMenu by remember { mutableStateOf(false) }
     var showLockConfirmDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
     var isGeneratingCard by remember { mutableStateOf(false) }
-    
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
 
     val datePickerState = rememberDatePickerState(
@@ -157,17 +129,218 @@ fun WriteNoteScreen(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) viewModel.onVoiceClick(context.cacheDir)
-    }
+    ) { isGranted -> if (isGranted) viewModel.onVoiceClick(context.cacheDir) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        viewModel.onImageSelected(context, uri)
+    ) { uri: Uri? -> viewModel.onImageSelected(context, uri) }
+
+    if (selectedImageFullScreen != null) {
+        Dialog(onDismissRequest = { selectedImageFullScreen = null }) {
+            Box(
+                modifier = Modifier.fillMaxSize().clickable { selectedImageFullScreen = null },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = selectedImageFullScreen,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight().clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.FillWidth
+                )
+                IconButton(
+                    onClick = { selectedImageFullScreen = null },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, null, tint = Color.White)
+                }
+            }
+        }
     }
 
-    // --- DIÁLOGOS (Preservados) ---
+    Scaffold(
+        containerColor = Color.Black,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(if (readOnly) "Modo Espiadinha ❄️" else "Entrada", color = Color.White, fontSize = 18.sp) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = Color.White, modifier = Modifier.size(32.dp)) }
+                },
+                actions = {
+                    if (readOnly) {
+                        TextButton(onClick = onBack) { Text("SAIR", color = iceBlue, fontWeight = FontWeight.ExtraBold) }
+                    } else {
+                        IconButton(onClick = { showOverflowMenu = true }) { Icon(Icons.Default.MoreVert, null, tint = Color.White) }
+                        NoteOptionsOverflowMenu(
+                            expanded = showOverflowMenu,
+                            isLocked = uiState.isLocked,
+                            onDismissRequest = { showOverflowMenu = false },
+                            onShareClick = { showShareDialog = true; showOverflowMenu = false },
+                            onFontStyleClick = { 
+                                // ✅ Removido para v2.0 - Feedback para o usuário
+                                Toast.makeText(context, "Estilos de fonte em breve na v2.0! ✨", Toast.LENGTH_SHORT).show()
+                                showOverflowMenu = false 
+                            },
+                            onDetailsClick = { showDetailsDialog = true; showOverflowMenu = false },
+                            onLockClick = {
+                                if (securitySettings.pin.isNullOrEmpty()) Toast.makeText(context, "Defina um PIN primeiro!", Toast.LENGTH_LONG).show()
+                                else showLockConfirmDialog = true
+                                showOverflowMenu = false
+                            },
+                            onTimeCapsuleClick = { showDatePicker = true; showOverflowMenu = false },
+                            neonGreen = neonGreen
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Black)
+            )
+        },
+        bottomBar = {
+            if (!readOnly) {
+                Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
+                    AnimatedVisibility(visible = showFormatMenu) { TextFormattingPanel(state = richTextState, isVisible = showFormatMenu) }
+                    AnimatedVisibility(visible = showMarkerMenu) {
+                        FloatingColorMenu(
+                            selectedTextColor = richTextState.currentSpanStyle.color,
+                            selectedMarkerColor = (richTextState.currentSpanStyle.background as? Color) ?: Color.Transparent,
+                            onTextColorSelected = { color -> viewModel.updateTextColor(color) },
+                            onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
+                            onDismiss = { showMarkerMenu = false },
+                            neonGreen = neonGreen
+                        )
+                    }
+                    AnimatedVisibility(
+                        visible = showEmojiMenu,
+                        enter = slideInVertically(initialOffsetY = { it }),
+                        exit = slideOutVertically(targetOffsetY = { it }),
+                        modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 15.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFF1E1E1E),
+                            shape = RoundedCornerShape(24.dp),
+                            shadowElevation = 8.dp,
+                            modifier = Modifier.padding(16.dp).border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                        ) {
+                            EmojiSelector(
+                                emojis = uiState.diaryEmojis,
+                                selectedEmoji = uiState.selectedEmoji,
+                                onEmojiSelected = { emoji, humor -> viewModel.updateEmoji(emoji, humor); showEmojiMenu = false }
+                            )
+                        }
+                    }
+                    NoteBottomToolbar(
+                        imageCount = uiState.images.size,
+                        accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
+                        onFormatClick = { showFormatMenu = !showFormatMenu; showEmojiMenu = false; showMarkerMenu = false },
+                        onEmojiClick = { showEmojiMenu = !showEmojiMenu; showFormatMenu = false; showMarkerMenu = false },
+                        onMarkerClick = { showMarkerMenu = !showMarkerMenu; showFormatMenu = false; showEmojiMenu = false },
+                        onAddImageClick = { launcher.launch("image/*") },
+                        onVoiceClick = { handleVoiceClick(context, uiState.isRecording, uiState.audioPath, viewModel, permissionLauncher) },
+                        onSaveClick = { viewModel.saveNote(); onBack() }
+                    )
+                }
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(scrollState).padding(16.dp)
+        ) {
+            if (uiState.isTimeCapsule) {
+                Text(
+                    text = "CONGELADA ATÉ ${uiState.unlockDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) }}",
+                    color = iceBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                colors = CardDefaults.cardColors(containerColor = surfaceDark.copy(alpha = if (readOnly) 0.4f else 0.6f)),
+                shape = RoundedCornerShape(24.dp),
+                border = if (readOnly) BorderStroke(1.dp, iceBlue.copy(alpha = 0.3f)) else null
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = uiState.title,
+                                onValueChange = { if(!readOnly) viewModel.updateTitle(it) },
+                                readOnly = readOnly,
+                                enabled = !readOnly,
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = TextStyle(
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Default
+                                ),
+                                cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
+                            )
+                            Text(
+                                "Humor: ${uiState.selectedHumor}",
+                                color = if (uiState.isTimeCapsule) iceBlue else neonGreen,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Text(uiState.selectedEmoji, fontSize = 40.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    RichTextEditor(
+                        state = richTextState,
+                        readOnly = readOnly,
+                        modifier = Modifier.fillMaxWidth().wrapContentHeight().heightIn(min = 100.dp).bringIntoViewRequester(bringIntoViewRequester).padding(bottom = 80.dp),
+                        colors = RichTextEditorDefaults.richTextEditorColors(
+                            containerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            textColor = Color.White.copy(alpha = 0.8f)
+                        ),
+                        textStyle = TextStyle(
+                            fontSize = 16.sp,
+                            lineHeight = 24.sp,
+                            fontFamily = FontFamily.Default
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PhotoGrid(
+                        images = uiState.images,
+                        onRemove = { if(!readOnly) viewModel.removeImage(it) },
+                        onExpand = { selectedImageFullScreen = it }
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                    VoiceNoteSection(
+                        isRecording = uiState.isRecording,
+                        recordingTime = uiState.recordingTime,
+                        audioPath = uiState.audioPath,
+                        viewModel = viewModel,
+                        context = context,
+                        permissionLauncher = permissionLauncher,
+                        accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(100.dp))
+        }
+
+        if (readOnly) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val snowflakeCount = 45
+                for (i in 0 until snowflakeCount) {
+                    val x = ((i * 123f + (snowMove * 0.5f)) % size.width)
+                    val y = ((i * 87f + snowMove) % size.height)
+                    drawCircle(color = Color.White.copy(alpha = 0.5f), radius = 3.dp.toPx(), center = Offset(x, y))
+                }
+            }
+        }
+    }
+
+    // --- DIÁLOGOS (PRESERVADOS) ---
     if (isGeneratingCard) {
         Dialog(onDismissRequest = { isGeneratingCard = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             val dialogView = LocalView.current
@@ -175,12 +348,11 @@ fun WriteNoteScreen(
                 Box(modifier = Modifier.width(360.dp).wrapContentHeight()) {
                     MemoCard(
                         title = uiState.title,
-                        content = richTextState.annotatedString.text,
+                        content = richTextState.annotatedString,
                         emoji = uiState.selectedEmoji,
                         humor = uiState.selectedHumor,
                         date = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(uiState.date)),
                         images = uiState.images.map { it.toString() },
-                        fontFamily = currentFontFamily,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -221,7 +393,8 @@ fun WriteNoteScreen(
                 TextButton(onClick = {
                     val selectedDate = datePickerState.selectedDateMillis
                     if (selectedDate != null && selectedDate > System.currentTimeMillis()) {
-                        viewModel.setTimeCapsule(selectedDate); viewModel.saveNote()
+                        viewModel.setTimeCapsule(selectedDate)
+                        viewModel.saveNote()
                         Toast.makeText(context, "Nota enviada para o futuro! ❄️", Toast.LENGTH_LONG).show()
                         onBack()
                     }
@@ -240,7 +413,9 @@ fun WriteNoteScreen(
             text = { Text(if (uiState.isLocked) "Deseja remover o bloqueio desta nota?" else "Tem certeza que deseja trancar esta memória? Ela só poderá ser aberta com o seu PIN.", color = Color.Gray) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.toggleLock(); viewModel.saveNote(); showLockConfirmDialog = false
+                    viewModel.toggleLock()
+                    viewModel.saveNote()
+                    showLockConfirmDialog = false
                     Toast.makeText(context, if (!uiState.isLocked) "Memória Trancada!" else "Memória Destrancada!", Toast.LENGTH_SHORT).show()
                     onBack()
                 }) { Text("CONFIRMAR", color = neonGreen) }
@@ -255,182 +430,24 @@ fun WriteNoteScreen(
             charCount = richTextState.annotatedString.text.length,
             hasAudio = uiState.audioPath != null,
             imageCount = uiState.images.size,
-            date = "HOJE", onDismiss = { showDetailsDialog = false }, neonGreen = neonGreen
-        )
-    }
-
-    if (selectedImageFullScreen != null) {
-        Dialog(onDismissRequest = { selectedImageFullScreen = null }) {
-            Box(modifier = Modifier.fillMaxSize().clickable { selectedImageFullScreen = null }, contentAlignment = Alignment.Center) {
-                AsyncImage(model = selectedImageFullScreen, contentDescription = null, modifier = Modifier.fillMaxWidth().wrapContentHeight().clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.FillWidth)
-                IconButton(onClick = { selectedImageFullScreen = null }, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)) {
-                    Icon(Icons.Default.Close, null, tint = Color.White)
-                }
-            }
-        }
-    }
-
-    Scaffold(
-        containerColor = Color.Black,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(if (readOnly) "Modo Espiadinha ❄️" else "Entrada", color = Color.White, fontSize = 18.sp) }, 
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = Color.White, modifier = Modifier.size(32.dp)) }
-                },
-                actions = {
-                    if (readOnly) {
-                        TextButton(onClick = onBack) { Text("SAIR", color = iceBlue, fontWeight = FontWeight.ExtraBold) }
-                    } else {
-                        IconButton(onClick = { showOverflowMenu = true }) { Icon(Icons.Default.MoreVert, null, tint = Color.White) }
-                        NoteOptionsOverflowMenu(
-                            expanded = showOverflowMenu, isLocked = uiState.isLocked, onDismissRequest = { showOverflowMenu = false },
-                            onShareClick = { showShareDialog = true; showOverflowMenu = false },
-                            onFontStyleClick = { showAppearanceMenu = true; showOverflowMenu = false },
-                            onDetailsClick = { showDetailsDialog = true; showOverflowMenu = false },
-                            onLockClick = { 
-                                if (securitySettings.pin.isNullOrEmpty()) Toast.makeText(context, "Defina um PIN primeiro!", Toast.LENGTH_LONG).show()
-                                else showLockConfirmDialog = true
-                                showOverflowMenu = false
-                            },
-                            onTimeCapsuleClick = { showDatePicker = true; showOverflowMenu = false },
-                            neonGreen = neonGreen
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Black)
-            )
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(16.dp)
-            ) {
-                if (uiState.isTimeCapsule) {
-                    Text(
-                        text = "CONGELADA ATÉ ${uiState.unlockDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) }}",
-                        color = iceBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-
-                Card(
-                    modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                    colors = CardDefaults.cardColors(containerColor = surfaceDark.copy(alpha = if (readOnly) 0.4f else 0.6f)),
-                    shape = RoundedCornerShape(24.dp),
-                    border = if (readOnly) BorderStroke(1.dp, iceBlue.copy(alpha = 0.3f)) else null
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                androidx.compose.foundation.text.BasicTextField(
-                                    value = uiState.title,
-                                    onValueChange = { if(!readOnly) viewModel.updateTitle(it) },
-                                    readOnly = readOnly, enabled = !readOnly, modifier = Modifier.fillMaxWidth(),
-                                    textStyle = TextStyle(
-                                        color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, 
-                                        fontFamily = currentFontFamily // O Título ainda segue a fonte principal
-                                    ),
-                                    cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
-                                )
-                                Text("Humor: ${uiState.selectedHumor}", color = if (uiState.isTimeCapsule) iceBlue else neonGreen, fontSize = 14.sp)
-                            }
-                            Text(uiState.selectedEmoji, fontSize = 40.sp)
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        RichTextEditor(
-                            state = richTextState,
-                            readOnly = readOnly,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp),
-                            colors = RichTextEditorDefaults.richTextEditorColors(containerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, textColor = Color.White.copy(alpha = 0.8f)),
-                            textStyle = TextStyle(
-                                fontSize = 16.sp, 
-                                lineHeight = 24.sp,
-                                fontFamily = FontFamily.Default // FONTE BASE FIXA: Agora a troca de fontes é feita via Spans locais
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            PhotoGrid(images = uiState.images, onRemove = { if(!readOnly) viewModel.removeImage(it) }, onExpand = { selectedImageFullScreen = it })
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-                        VoiceNoteSection(isRecording = uiState.isRecording, recordingTime = uiState.recordingTime, audioPath = uiState.audioPath, viewModel = viewModel, context = context, permissionLauncher = permissionLauncher, accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen)
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(220.dp))
-            }
-
-            if (!readOnly) {
-                Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                    AnimatedVisibility(visible = showFormatMenu) {
-                        TextFormattingPanel(state = richTextState, isVisible = showFormatMenu)
-                    }
-                    AnimatedVisibility(visible = showMarkerMenu) {
-                        FloatingColorMenu(
-                            selectedTextColor = richTextState.currentSpanStyle.color,
-                            selectedMarkerColor = (richTextState.currentSpanStyle.background as? Color) ?: Color.Transparent,
-                            onTextColorSelected = { color -> viewModel.updateTextColor(color) },
-                            onMarkerColorSelected = { color -> viewModel.applyMarker(color) },
-                            onDismiss = { showMarkerMenu = false }, neonGreen = neonGreen
-                        )
-                    }
-                    AnimatedVisibility(visible = showEmojiMenu, enter = slideInVertically(initialOffsetY = { it }), exit = slideOutVertically(targetOffsetY = { it }), modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 15.dp)) {
-                        Surface(color = Color(0xFF1E1E1E), shape = RoundedCornerShape(24.dp), shadowElevation = 8.dp, modifier = Modifier.padding(16.dp).border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(24.dp))) {
-                            EmojiSelector(emojis = uiState.diaryEmojis, selectedEmoji = uiState.selectedEmoji, onEmojiSelected = { emoji, humor -> viewModel.updateEmoji(emoji, humor); showEmojiMenu = false })
-                        }
-                    }
-                    NoteBottomToolbar(
-                        imageCount = uiState.images.size, accentColor = if (uiState.isTimeCapsule) iceBlue else neonGreen,
-                        onFormatClick = { showFormatMenu = !showFormatMenu; showEmojiMenu = false; showMarkerMenu = false },
-                        onEmojiClick = { showEmojiMenu = !showEmojiMenu; showFormatMenu = false; showMarkerMenu = false },
-                        onMarkerClick = { showMarkerMenu = !showMarkerMenu; showFormatMenu = false; showEmojiMenu = false },
-                        onAddImageClick = { launcher.launch("image/*") },
-                        onVoiceClick = { handleVoiceClick(context, uiState.isRecording, uiState.audioPath, viewModel, permissionLauncher) },
-                        onSaveClick = { viewModel.saveNote(); onBack() }
-                    )
-                }
-            }
-
-            if (readOnly) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val snowflakeCount = 45
-                    for (i in 0 until snowflakeCount) {
-                        val x = ( (i * 123f + (snowMove * 0.5f)) % size.width ); val y = ( (i * 87f + snowMove) % size.height )
-                        drawCircle(color = Color.White.copy(alpha = 0.5f), radius = 3.dp.toPx(), center = Offset(x, y))
-                    }
-                }
-            }
-        }
-    }
-    
-    if (showAppearanceMenu) {
-        AppearanceBottomSheet(
-            selectedFontFamily = currentFontFamily, 
-            onDismiss = { showAppearanceMenu = false }, 
-            onFontSelected = { family, name -> 
-                // CORREÇÃO CRUCIAL: Atualiza o nome da fonte no banco, mas aplica o estilo apenas dali para frente
-                viewModel.updateFontFamilyOnly(name)
-                richTextState.toggleSpanStyle(SpanStyle(fontFamily = family))
-            }, 
+            date = "HOJE",
+            onDismiss = { showDetailsDialog = false },
             neonGreen = neonGreen
         )
     }
 }
 
 @Composable
-fun NoteBottomToolbar(imageCount: Int, accentColor: Color, onFormatClick: () -> Unit, onEmojiClick: () -> Unit, onMarkerClick: () -> Unit, onAddImageClick: () -> Unit, onVoiceClick: () -> Unit, onSaveClick: () -> Unit) {
+fun NoteBottomToolbar(
+    imageCount: Int,
+    accentColor: Color,
+    onFormatClick: () -> Unit,
+    onEmojiClick: () -> Unit,
+    onMarkerClick: () -> Unit,
+    onAddImageClick: () -> Unit,
+    onVoiceClick: () -> Unit,
+    onSaveClick: () -> Unit
+) {
     val canAddMoreImages = imageCount < 3
     Surface(color = Color(0xFF121212), modifier = Modifier.fillMaxWidth().height(80.dp), shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -439,11 +456,20 @@ fun NoteBottomToolbar(imageCount: Int, accentColor: Color, onFormatClick: () -> 
                 ToolbarButton(Icons.Default.FormatBold, "Formatar", onClick = onFormatClick)
                 ToolbarButton(Icons.Default.Face, "Emoji", onClick = onEmojiClick)
                 IconButton(onClick = onAddImageClick, enabled = canAddMoreImages) {
-                    Icon(imageVector = Icons.Default.Image, contentDescription = "Adicionar Imagem", tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f))
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Adicionar Imagem",
+                        tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f)
+                    )
                 }
                 ToolbarButton(icon = Icons.Default.Brush, desc = "Marcador", onClick = onMarkerClick)
             }
-            FloatingActionButton(onClick = onSaveClick, containerColor = accentColor, shape = CircleShape, modifier = Modifier.size(56.dp).offset(y = (-10).dp)) {
+            FloatingActionButton(
+                onClick = onSaveClick,
+                containerColor = accentColor,
+                shape = CircleShape,
+                modifier = Modifier.size(56.dp).offset(y = (-10).dp)
+            ) {
                 Icon(Icons.Default.Check, null, tint = Color.Black)
             }
         }

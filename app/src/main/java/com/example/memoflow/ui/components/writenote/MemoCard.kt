@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,12 +26,11 @@ import coil.request.ImageRequest
 @Composable
 fun MemoCard(
     title: String,
-    content: String,
+    content: Any, 
     emoji: String,
     humor: String,
     date: String,
     images: List<String>,
-    fontFamily: FontFamily,
     modifier: Modifier = Modifier
 ) {
     val cyan = Color(0xFF00E5FF)
@@ -38,30 +38,33 @@ fun MemoCard(
     val neonGreen = Color(0xFF00FFC2)
     val context = LocalContext.current
 
-    // Limita o conteúdo para caber no card, mas permite mais texto antes de truncar
-    val contentSnippet = if (content.length > 600) {
-        content.substring(0, 600) + "..."
-    } else {
-        content
+    val annotatedContent = when (content) {
+        is AnnotatedString -> content
+        else -> AnnotatedString(content.toString())
     }
 
-    // Ajusta o tamanho da fonte com base no comprimento do texto para evitar que fique escondido
+    val contentSnippet = if (annotatedContent.length > 600) {
+        annotatedContent.subSequence(0, 600)
+    } else {
+        annotatedContent
+    }
+
     val fontSize = when {
-        content.length > 400 -> 14.sp
-        content.length > 200 -> 16.sp
+        annotatedContent.length > 400 -> 14.sp
+        annotatedContent.length > 200 -> 16.sp
         else -> 19.sp
     }
     
     val lineHeight = when {
-        content.length > 400 -> 20.sp
-        content.length > 200 -> 24.sp
+        annotatedContent.length > 400 -> 20.sp
+        annotatedContent.length > 200 -> 24.sp
         else -> 28.sp
     }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(9f / 16f) // Proporção de Story
+            .aspectRatio(9f / 16f)
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.verticalGradient(
@@ -75,20 +78,18 @@ fun MemoCard(
             )
             .padding(24.dp)
     ) {
-        // Data no topo
         Text(
             text = date,
             color = Color.Gray.copy(alpha = 0.6f),
             fontSize = 12.sp,
-            fontFamily = fontFamily,
+            fontFamily = FontFamily.Default,
             modifier = Modifier.align(Alignment.TopCenter)
         )
 
-        // Conteúdo centralizado verticalmente
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 40.dp, bottom = 60.dp), // Espaço para data e rodapé
+                .padding(top = 40.dp, bottom = 60.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -96,9 +97,9 @@ fun MemoCard(
                 Text(
                     text = title,
                     color = Color.White,
-                    fontSize = if (content.length > 300) 20.sp else 24.sp,
+                    fontSize = if (annotatedContent.length > 300) 20.sp else 24.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = fontFamily,
+                    fontFamily = FontFamily.Default,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -111,7 +112,7 @@ fun MemoCard(
                 color = Color.White.copy(alpha = 0.95f),
                 fontSize = fontSize,
                 lineHeight = lineHeight,
-                fontFamily = fontFamily,
+                fontFamily = FontFamily.Default,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 8.dp),
                 maxLines = if (title.length > 30) 12 else 15,
@@ -119,13 +120,11 @@ fun MemoCard(
             )
         }
 
-        // Rodapé
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
         ) {
-            // Humor à esquerda
             Row(
                 modifier = Modifier.align(Alignment.CenterStart),
                 verticalAlignment = Alignment.CenterVertically
@@ -137,11 +136,10 @@ fun MemoCard(
                     color = neonGreen,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    fontFamily = fontFamily
+                    fontFamily = FontFamily.Default
                 )
             }
 
-            // Branding centralizado mas muito discreto
             Text(
                 text = "MemoFlow",
                 color = Color.Gray.copy(alpha = 0.3f),
@@ -150,7 +148,6 @@ fun MemoCard(
                 modifier = Modifier.align(Alignment.Center)
             )
 
-            // Imagens à direita
             Row(
                 modifier = Modifier.align(Alignment.CenterEnd),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
