@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -42,16 +43,44 @@ import java.time.format.DateTimeFormatter
 import com.example.memoflow.R
 import java.util.Date
 
+// Cores do Efeito IA
+val CyanAI = Color(0xFF00E5FF)
+val PurpleAI = Color(0xFFD500F9)
+
 // Gradiente Brilhante Global (Prateado/Cinza/Branco)
 val GlobalSilverGradient = Brush.linearGradient(
     colors = listOf(
         Color.White.copy(alpha = 0.8f),
-        Color(0xFFC0C0C0), // Prateado
-        Color(0xFFE0E0E0), // Platina
-        Color(0xFF8E8E8E), // Cinza
+        Color(0xFFC0C0C0), 
+        Color(0xFFE0E0E0), 
+        Color(0xFF8E8E8E), 
         Color.White.copy(alpha = 0.8f)
     )
 )
+
+@Composable
+fun rememberAnimatedAiGradient(): Brush {
+    val infiniteTransition = rememberInfiniteTransition(label = "ai_gradient")
+    
+    // Animamos de 0 a 2000 para cobrir uma área maior e permitir um loop suave
+    val offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(5000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "offset"
+    )
+    
+    // Usamos TileMode.Repeated para que o gradiente se repita infinitamente
+    // e as cores Cyan -> Purple -> Cyan garantem que o início e fim do ciclo sejam iguais
+    return Brush.linearGradient(
+        colors = listOf(CyanAI, PurpleAI, CyanAI),
+        start = Offset(offset, offset),
+        end = Offset(offset + 1000f, offset + 1000f),
+        tileMode = TileMode.Repeated
+    )
+}
 
 @Composable
 fun HubButton(icon: ImageVector, label: String, color: Color, onClick: () -> Unit) {
@@ -156,6 +185,7 @@ fun CalendarRow(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val formatterDia = remember { DateTimeFormatter.ofPattern("EEE", java.util.Locale("pt", "BR")) }
+    val animatedAiGradient = rememberAnimatedAiGradient()
 
     LazyRow(
         state = listState,
@@ -173,10 +203,10 @@ fun CalendarRow(
                 modifier = Modifier
                     .width(55.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (isSelected) neonGreen else Color(0xFF1A1A1A))
+                    .background(if (isSelected) Color(0xFF1A1A1A) else Color(0xFF1A1A1A))
                     .border(
-                        width = 1.2.dp,
-                        brush = if (isSelected) GlobalSilverGradient else SolidColor(Color.White.copy(alpha = 0.1f)),
+                        width = if (isSelected) 2.dp else 1.dp,
+                        brush = if (isSelected) animatedAiGradient else SolidColor(Color.White.copy(alpha = 0.1f)),
                         shape = RoundedCornerShape(16.dp)
                     )
                     .clickable {
@@ -189,14 +219,14 @@ fun CalendarRow(
             ) {
                 Text(
                     text = diaSemana,
-                    color = if (isSelected) Color.Black else Color.Gray,
+                    color = if (isSelected) CyanAI else Color.Gray,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = numeroDia,
-                    color = if (isSelected) Color.Black else Color.White,
+                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 18.sp
                 )
@@ -349,12 +379,14 @@ fun MoodChartCard(
     points: List<Float>,
     onHeaderClick: () -> Unit
 ) {
+    val animatedAiGradient = rememberAnimatedAiGradient()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
             .clickable { onHeaderClick() }
-            .border(1.2.dp, GlobalSilverGradient, RoundedCornerShape(28.dp)),
+            .border(1.5.dp, animatedAiGradient, RoundedCornerShape(28.dp)),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF161616))
     ) {
@@ -365,7 +397,7 @@ fun MoodChartCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Humor da Semana", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Icon(Icons.Default.KeyboardArrowRight, null, tint = Color.Gray)
+                Icon(Icons.Default.KeyboardArrowRight, null, tint = CyanAI)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Box(
@@ -389,12 +421,12 @@ fun MoodChartCard(
                                 val x = i * spaceX
                                 val y = height - (point * height / 5f)
                                 if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                                drawCircle(neonGreen, radius = 3.dp.toPx(), center = Offset(x, y))
+                                drawCircle(CyanAI, radius = 3.dp.toPx(), center = Offset(x, y))
                             }
-                            drawPath(path, neonGreen, style = Stroke(width = 2.dp.toPx()))
+                            drawPath(path, CyanAI, style = Stroke(width = 2.dp.toPx()))
                         } else if (points.size == 1) {
                             val y = height - (points[0] * height / 5f)
-                            drawCircle(neonGreen, radius = 4.dp.toPx(), center = Offset(width / 2, y))
+                            drawCircle(CyanAI, radius = 4.dp.toPx(), center = Offset(width / 2, y))
                         }
                     }
                 }

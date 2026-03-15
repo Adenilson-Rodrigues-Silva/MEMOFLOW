@@ -56,6 +56,7 @@ import com.example.memoflow.ui.components.PhotoGrid
 import com.example.memoflow.ui.components.TextFormattingPanel
 import com.example.memoflow.ui.components.VoiceNoteSection
 import com.example.memoflow.ui.components.handleVoiceClick
+import com.example.memoflow.ui.components.home.rememberAnimatedAiGradient
 import com.example.memoflow.ui.components.writenote.MemoCard
 import com.example.memoflow.ui.components.writenote.NoteDetailsDialog
 import com.example.memoflow.ui.components.writenote.NoteOptionsOverflowMenu
@@ -87,6 +88,9 @@ fun WriteNoteScreen(
     val neonGreen = Color(0xFF00FFC2)
     val iceBlue = Color(0xFF80DEEA)
     val surfaceDark = Color(0xFF1E1E1E)
+    
+    // Gradiente Animado para o Card
+    val animatedAiGradient = rememberAnimatedAiGradient()
 
     val scrollState = rememberScrollState()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -176,7 +180,6 @@ fun WriteNoteScreen(
                             onDismissRequest = { showOverflowMenu = false },
                             onShareClick = { showShareDialog = true; showOverflowMenu = false },
                             onFontStyleClick = { 
-                                // ✅ Removido para v2.0 - Feedback para o usuário
                                 Toast.makeText(context, "Estilos de fonte em breve na v2.0! ✨", Toast.LENGTH_SHORT).show()
                                 showOverflowMenu = false 
                             },
@@ -252,10 +255,17 @@ fun WriteNoteScreen(
             }
 
             Card(
-                modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .border(
+                        width = if (uiState.isLocked || uiState.isTimeCapsule) 1.dp else 1.5.dp,
+                        brush = if (uiState.isLocked || uiState.isTimeCapsule) SolidColor(Color.Transparent) else animatedAiGradient,
+                        shape = RoundedCornerShape(24.dp)
+                    ),
                 colors = CardDefaults.cardColors(containerColor = surfaceDark.copy(alpha = if (readOnly) 0.4f else 0.6f)),
                 shape = RoundedCornerShape(24.dp),
-                border = if (readOnly) BorderStroke(1.dp, iceBlue.copy(alpha = 0.3f)) else null
+                border = if (readOnly && !uiState.isTimeCapsule) BorderStroke(1.dp, iceBlue.copy(alpha = 0.3f)) else null
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Row(
@@ -480,5 +490,3 @@ fun NoteBottomToolbar(
 fun ToolbarButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
     IconButton(onClick = onClick) { Icon(icon, desc, tint = Color.Gray) }
 }
-//inserir fontes na proxima versao apos a playstore
-
