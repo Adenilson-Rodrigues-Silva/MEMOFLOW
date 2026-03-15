@@ -39,7 +39,6 @@ import com.airbnb.lottie.compose.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import com.example.memoflow.R
 import java.util.Date
 
 // Cores do Efeito IA
@@ -239,19 +238,32 @@ fun DiaryNoteCard(
     
     val infiniteTransition = rememberInfiniteTransition(label = "global_effects")
     
-    val animationValue by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1.0f,
+    val shimmerValue by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "border_pulse"
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "shimmer"
     )
 
     val borderBrush = when {
         isTimeCapsule -> Brush.linearGradient(listOf(cyan, iceBlue, deepBlue, cyan))
         isLocked -> Brush.linearGradient(listOf(neonGreen, forestGreen, neonGreen))
-        else -> Brush.linearGradient(listOf(Color.DarkGray, Color.Gray.copy(alpha = animationValue), Color.DarkGray))
+        else -> {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFF424242), 
+                    Color(0xFFBDBDBD), 
+                    Color.White,       
+                    Color(0xFFE0E0E0), 
+                    Color(0xFF424242)  
+                ),
+                start = Offset(shimmerValue, shimmerValue),
+                end = Offset(shimmerValue + 400f, shimmerValue + 400f),
+                tileMode = TileMode.Repeated
+            )
+        }
     }
 
     Box(
@@ -261,7 +273,11 @@ fun DiaryNoteCard(
             .height(95.dp)
             .clip(RoundedCornerShape(24.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .border(width = 1.5.dp, brush = borderBrush, shape = RoundedCornerShape(24.dp))
+            .border(
+                width = if (isTimeCapsule || isLocked) 1.5.dp else 1.2.dp, 
+                brush = borderBrush, 
+                shape = RoundedCornerShape(24.dp)
+            )
             .background(Color(0xFF161616).copy(alpha = 0.85f))
     ) {
         Row(
@@ -277,7 +293,7 @@ fun DiaryNoteCard(
                     )
                     .border(
                         1.5.dp, 
-                        if (isTimeCapsule) cyan.copy(alpha = 0.6f) else if (isLocked) neonGreen.copy(alpha = 0.6f) else Color.Gray.copy(alpha = 0.3f), 
+                        if (isTimeCapsule) cyan.copy(alpha = 0.6f) else if (isLocked) neonGreen.copy(alpha = 0.6f) else Color.Gray.copy(alpha = 0.4f), 
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -372,7 +388,7 @@ fun MoodChartCard(
 
 @Composable
 fun EmptyStateLottie() {
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.layout_vazio))
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(com.example.memoflow.R.raw.layout_vazio))
     val progress by animateLottieCompositionAsState(composition, iterations = LottieConstants.IterateForever)
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
