@@ -16,6 +16,7 @@ import androidx.navigation.navArgument
 import com.example.memoflow.navigation.Screen
 import com.example.memoflow.ui.screens.home.HomeScreen
 import com.example.memoflow.ui.screens.profile.ProfileScreen
+import com.example.memoflow.ui.screens.profile.NotificationCenterScreen
 import com.example.memoflow.ui.screens.security.SecurityScreen
 import com.example.memoflow.ui.screens.splash.SplashScreen
 import com.example.memoflow.ui.screens.common.UnderConstructionScreen
@@ -29,8 +30,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // CORREÇÃO CRUCIAL: Habilita o modo Edge-to-Edge e diz ao sistema 
-        // para não ajustar o layout automaticamente pelo teclado (o Compose fará isso)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
 
@@ -82,8 +81,13 @@ class MainActivity : ComponentActivity() {
                         ProfileScreen(
                             onBack = { navController.popBackStack() },
                             onSecurityClick = { navController.navigate("security") },
+                            onNotificationsClick = { navController.navigate(Screen.Notifications.route) },
                             onBackupClick = { navController.navigate("construction") }
                         )
+                    }
+
+                    composable(Screen.Notifications.route) {
+                        NotificationCenterScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(Screen.Statistics.route) {

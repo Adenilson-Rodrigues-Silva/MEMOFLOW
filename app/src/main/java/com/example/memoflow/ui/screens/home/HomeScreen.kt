@@ -325,7 +325,6 @@ fun HomeContent(
             CalendarRow(
                 days = daysList,
                 selectedDay = selectedDate,
-                neonGreen = neonGreen,
                 onDateSelected = onDateSelected
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -373,7 +372,6 @@ fun HomeContent(
 
         item {
             MoodChartCard(
-                neonGreen = neonGreen, 
                 points = moodPoints,
                 onHeaderClick = { navController.navigate(Screen.Statistics.route) }
             )

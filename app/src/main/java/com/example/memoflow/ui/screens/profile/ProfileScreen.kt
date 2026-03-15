@@ -23,34 +23,27 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.memoflow.ui.screens.common.ThemeColorSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
     onSecurityClick: () -> Unit,
+    onNotificationsClick: () -> Unit, // Nova navegação para central de notificações
     onBackupClick: () -> Unit,
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
 ) {
     val context = LocalContext.current
     val userSettings by viewModel.userSettings.collectAsState()
 
-    var showTimePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var showAppearanceSheet by remember { mutableStateOf(false) }
     var showEditNameDialog by remember { mutableStateOf(false) }
     var showEditBioDialog by remember { mutableStateOf(false) }
 
-    val timePickerState = rememberTimePickerState(initialHour = 20, initialMinute = 0, is24Hour = true)
-    var reminderDisplayText by remember { mutableStateOf("Desativado") }
-    var isReminderActive by remember { mutableStateOf(false) }
     val neonGreen = Color(0xFF00FFC2)
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -116,7 +109,7 @@ fun ProfileScreen(
                         text = if (userSettings.bio.isEmpty()) "Toque para adicionar uma bio" else userSettings.bio, 
                         color = Color.Gray, 
                         fontSize = 14.sp, 
-                        textAlign = TextAlign.Center, 
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center, 
                         modifier = Modifier.padding(vertical = 8.dp).clickable { showEditBioDialog = true }
                     )
                     Text("membro desde fev 2026", color = neonGreen.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -129,14 +122,12 @@ fun ProfileScreen(
                 }
 
                 item {
-                    SectionTitle("Personalização")
-                    ProfileOptionItem(title = "Aparência", subtitle = "Tema e Cores", icon = Icons.Default.Palette, onClick = { showAppearanceSheet = true })
-
+                    SectionTitle("Comunicação")
                     ProfileOptionItem(
-                        title = "Lembrete Diário",
-                        subtitle = if (isReminderActive) "Definido para $reminderDisplayText" else "Toque para ativar",
-                        icon = Icons.Default.Notifications,
-                        onClick = { showTimePicker = true }
+                        title = "Central de Notificações", 
+                        subtitle = "Lembretes, Cápsulas e Gratidão", 
+                        icon = Icons.Default.NotificationsActive, 
+                        onClick = onNotificationsClick
                     )
                 }
 
@@ -223,40 +214,6 @@ fun ProfileScreen(
                 text = { Text("Esta ação é irreversível.", color = Color.Gray) },
                 confirmButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("APAGAR TUDO", color = Color.Red) } },
                 dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("CANCELAR", color = Color.White) } }
-            )
-        }
-
-        if (showTimePicker) {
-            AlertDialog(
-                onDismissRequest = { showTimePicker = false },
-                containerColor = Color(0xFF1A1A1A),
-                confirmButton = {
-                    TextButton(onClick = {
-                        val h = timePickerState.hour.toString().padStart(2, '0')
-                        val m = timePickerState.minute.toString().padStart(2, '0')
-                        reminderDisplayText = "$h:$m"
-                        isReminderActive = true
-                        showTimePicker = false
-                    }) { Text("DEFINIR", color = neonGreen) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { isReminderActive = false; showTimePicker = false }) { Text("REMOVER", color = Color.Red) }
-                },
-                text = {
-                    Column {
-                        Text("Horário do lembrete", color = Color.White, modifier = Modifier.padding(bottom = 16.dp))
-                        TimePicker(state = timePickerState, colors = TimePickerDefaults.colors(selectorColor = neonGreen, containerColor = Color(0xFF1A1A1A)))
-                    }
-                }
-            )
-        }
-        
-        if (showAppearanceSheet) {
-            ThemeColorSheet(
-                onDismiss = { showAppearanceSheet = false },
-                onColorSelected = { 
-                    showAppearanceSheet = false 
-                }
             )
         }
     }

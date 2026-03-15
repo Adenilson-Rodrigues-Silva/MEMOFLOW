@@ -1,7 +1,6 @@
 package com.example.memoflow.ui.components.home
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -15,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -33,6 +31,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.SolidColor
 import coil.compose.AsyncImage
@@ -47,22 +46,9 @@ import java.util.Date
 val CyanAI = Color(0xFF00E5FF)
 val PurpleAI = Color(0xFFD500F9)
 
-// Gradiente Brilhante Global (Prateado/Cinza/Branco)
-val GlobalSilverGradient = Brush.linearGradient(
-    colors = listOf(
-        Color.White.copy(alpha = 0.8f),
-        Color(0xFFC0C0C0), 
-        Color(0xFFE0E0E0), 
-        Color(0xFF8E8E8E), 
-        Color.White.copy(alpha = 0.8f)
-    )
-)
-
 @Composable
 fun rememberAnimatedAiGradient(): Brush {
     val infiniteTransition = rememberInfiniteTransition(label = "ai_gradient")
-    
-    // Animamos de 0 a 2000 para cobrir uma área maior e permitir um loop suave
     val offset by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 2000f,
@@ -72,8 +58,6 @@ fun rememberAnimatedAiGradient(): Brush {
         ), label = "offset"
     )
     
-    // Usamos TileMode.Repeated para que o gradiente se repita infinitamente
-    // e as cores Cyan -> Purple -> Cyan garantem que o início e fim do ciclo sejam iguais
     return Brush.linearGradient(
         colors = listOf(CyanAI, PurpleAI, CyanAI),
         start = Offset(offset, offset),
@@ -179,7 +163,6 @@ fun HomeHeader(
 fun CalendarRow(
     days: List<LocalDate>,
     selectedDay: LocalDate,
-    neonGreen: Color,
     onDateSelected: (LocalDate) -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -203,7 +186,7 @@ fun CalendarRow(
                 modifier = Modifier
                     .width(55.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (isSelected) Color(0xFF1A1A1A) else Color(0xFF1A1A1A))
+                    .background(Color(0xFF1A1A1A))
                     .border(
                         width = if (isSelected) 2.dp else 1.dp,
                         brush = if (isSelected) animatedAiGradient else SolidColor(Color.White.copy(alpha = 0.1f)),
@@ -253,8 +236,6 @@ fun DiaryNoteCard(
     val iceBlue = Color(0xFFB3E5FC)
     val deepBlue = Color(0xFF01579B)
     val forestGreen = Color(0xFF1B5E20)
-    val silverWhite = Color(0xFFE0E0E0)
-    val darkSilver = Color(0xFF424242)
     
     val infiniteTransition = rememberInfiniteTransition(label = "global_effects")
     
@@ -268,21 +249,9 @@ fun DiaryNoteCard(
     )
 
     val borderBrush = when {
-        isTimeCapsule -> Brush.linearGradient(
-            listOf(cyan, iceBlue, deepBlue, cyan),
-            start = Offset.Zero,
-            end = Offset.Infinite
-        )
-        isLocked -> Brush.linearGradient(
-            listOf(neonGreen, forestGreen, neonGreen),
-            start = Offset.Zero,
-            end = Offset.Infinite
-        )
-        else -> Brush.linearGradient(
-            listOf(darkSilver, silverWhite.copy(alpha = animationValue), darkSilver),
-            start = Offset.Zero,
-            end = Offset.Infinite
-        )
+        isTimeCapsule -> Brush.linearGradient(listOf(cyan, iceBlue, deepBlue, cyan))
+        isLocked -> Brush.linearGradient(listOf(neonGreen, forestGreen, neonGreen))
+        else -> Brush.linearGradient(listOf(Color.DarkGray, Color.Gray.copy(alpha = animationValue), Color.DarkGray))
     }
 
     Box(
@@ -292,18 +261,8 @@ fun DiaryNoteCard(
             .height(95.dp)
             .clip(RoundedCornerShape(24.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .border(
-                width = 1.5.dp, 
-                brush = borderBrush,
-                shape = RoundedCornerShape(24.dp)
-            )
-            .background(
-                when {
-                    isTimeCapsule -> Color.Black.copy(alpha = 0.9f)
-                    isLocked -> Color.Black.copy(alpha = 0.95f)
-                    else -> Color(0xFF161616).copy(alpha = 0.85f)
-                }
-            )
+            .border(width = 1.5.dp, brush = borderBrush, shape = RoundedCornerShape(24.dp))
+            .background(Color(0xFF161616).copy(alpha = 0.85f))
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -313,29 +272,19 @@ fun DiaryNoteCard(
                 modifier = Modifier
                     .size(52.dp)
                     .background(
-                        when {
-                            isTimeCapsule -> cyan.copy(alpha = 0.15f)
-                            isLocked -> neonGreen.copy(alpha = 0.15f)
-                            else -> Color.White.copy(alpha = 0.05f)
-                        }, 
+                        if (isTimeCapsule) cyan.copy(alpha = 0.15f) else if (isLocked) neonGreen.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f), 
                         CircleShape
                     )
                     .border(
                         1.5.dp, 
-                        when {
-                            isTimeCapsule -> cyan.copy(alpha = 0.6f)
-                            isLocked -> neonGreen.copy(alpha = 0.6f)
-                            else -> silverWhite.copy(alpha = 0.3f)
-                        }, 
+                        if (isTimeCapsule) cyan.copy(alpha = 0.6f) else if (isLocked) neonGreen.copy(alpha = 0.6f) else Color.Gray.copy(alpha = 0.3f), 
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                when {
-                    isTimeCapsule -> Icon(Icons.Default.AcUnit, null, tint = cyan, modifier = Modifier.size(26.dp))
-                    isLocked -> Icon(Icons.Default.Lock, null, tint = neonGreen, modifier = Modifier.size(26.dp))
-                    else -> Text(text = emoji, fontSize = 26.sp)
-                }
+                if (isTimeCapsule) Icon(Icons.Default.AcUnit, null, tint = cyan, modifier = Modifier.size(26.dp))
+                else if (isLocked) Icon(Icons.Default.Lock, null, tint = neonGreen, modifier = Modifier.size(26.dp))
+                else Text(text = emoji, fontSize = 26.sp)
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -343,29 +292,16 @@ fun DiaryNoteCard(
             Column {
                 Text(text = time, color = Color.Gray, fontSize = 11.sp)
                 Text(
-                    text = when {
-                        isTimeCapsule -> "Cápsula do Tempo"
-                        isLocked -> "Memória Trancada"
-                        else -> title
-                    },
-                    color = when {
-                        isTimeCapsule -> cyan
-                        isLocked -> neonGreen
-                        else -> Color.White
-                    },
+                    text = if (isTimeCapsule) "Cápsula do Tempo" else if (isLocked) "Memória Trancada" else title,
+                    color = if (isTimeCapsule) cyan else if (isLocked) neonGreen else Color.White,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
                 Text(
-                    text = when {
-                        isTimeCapsule -> "Disponível em ${unlockDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy").format(Date(it)) }}"
-                        isLocked -> "Segredo protegido por PIN"
-                        else -> content
-                    },
+                    text = if (isTimeCapsule) "Disponível em ${unlockDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy").format(Date(it)) }}" else if (isLocked) "Segredo protegido por PIN" else content,
                     color = Color.White.copy(alpha = 0.6f),
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
                     maxLines = 1
                 )
             }
@@ -375,7 +311,6 @@ fun DiaryNoteCard(
 
 @Composable
 fun MoodChartCard(
-    neonGreen: Color,
     points: List<Float>,
     onHeaderClick: () -> Unit
 ) {
@@ -397,7 +332,7 @@ fun MoodChartCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Humor da Semana", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Icon(Icons.Default.KeyboardArrowRight, null, tint = CyanAI)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = CyanAI)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Box(
