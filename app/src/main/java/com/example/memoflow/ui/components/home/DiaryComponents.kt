@@ -39,6 +39,7 @@ import com.airbnb.lottie.compose.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.example.memoflow.R
 import java.util.Date
 
 // Cores do Efeito IA
