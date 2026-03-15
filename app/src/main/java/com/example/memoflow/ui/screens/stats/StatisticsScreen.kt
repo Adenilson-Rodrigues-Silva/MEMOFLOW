@@ -1,5 +1,6 @@
 package com.example.memoflow.ui.screens.stats
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -27,9 +28,34 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.memoflow.ui.components.home.rememberAnimatedAiGradient
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.*
+
+// Cores Temáticas para Estatísticas (Cyber Data)
+val DataGreen = Color(0xFF00FFC2)
+val DataCyan = Color(0xFF00E5FF)
+
+@Composable
+fun rememberDataAiGradient(): Brush {
+    val infiniteTransition = rememberInfiniteTransition(label = "data_gradient")
+    val offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(6000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "offset"
+    )
+    
+    return Brush.linearGradient(
+        colors = listOf(DataGreen, DataCyan, DataGreen),
+        start = Offset(offset, offset),
+        end = Offset(offset + 1000f, offset + 1000f),
+        tileMode = TileMode.Repeated
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,18 +70,9 @@ fun StatisticsScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     
     var showSpecialDaysDialog by remember { mutableStateOf(false) }
-    var filterType by remember { mutableStateOf("") } // "Lock" ou "Capsule"
+    var filterType by remember { mutableStateOf("") } 
 
-    // Gradiente Prateado/Brilhante para as bordas
-    val silverGradient = Brush.linearGradient(
-        colors = listOf(
-            Color.White,
-            Color(0xFFC0C0C0), // Silver
-            Color(0xFFE0E0E0), // Platinum
-            Color(0xFF8E8E8E), // Gray
-            Color.White
-        )
-    )
+    val dataGradient = rememberDataAiGradient()
 
     Scaffold(
         containerColor = Color.Black,
@@ -79,17 +96,18 @@ fun StatisticsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(26.dp))
                         .background(Color(0xFF1A1A1A))
+                        .border(1.dp, dataGradient, RoundedCornerShape(26.dp))
                         .padding(4.dp)
                 ) {
                     Row(modifier = Modifier.fillMaxSize()) {
-                        PeriodTab(Modifier.weight(1f), "Semanal", selectedTab == 0) { 
+                        PeriodTab(Modifier.weight(1f), "Semanal", selectedTab == 0, dataGradient) { 
                             selectedTab = 0
                             viewModel.setPeriod(0)
                         }
-                        PeriodTab(Modifier.weight(1f), "Mensal", selectedTab == 1) { 
+                        PeriodTab(Modifier.weight(1f), "Mensal", selectedTab == 1, dataGradient) { 
                             selectedTab = 1
                             viewModel.setPeriod(1)
                         }
@@ -97,11 +115,10 @@ fun StatisticsScreen(
                 }
             }
 
-            // --- BLOCO DE GRATIDÃO ---
             item {
                 SectionHeader("Luz no Pote")
                 Card(
-                    modifier = Modifier.fillMaxWidth().border(1.dp, silverGradient, RoundedCornerShape(24.dp)),
+                    modifier = Modifier.fillMaxWidth().border(1.5.dp, dataGradient, RoundedCornerShape(24.dp)),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
                 ) {
@@ -136,22 +153,20 @@ fun StatisticsScreen(
                 }
             }
 
-            // --- CONTEÚDO DINÂMICO BASEADO NA TAB ---
             item {
                 if (selectedTab == 1) {
                     SectionHeader("Termômetro de Humores")
-                    MonthlyMoodThermometer(statsData.topMoods, statsData.monthName, silverGradient)
+                    MonthlyMoodThermometer(statsData.topMoods, statsData.monthName, dataGradient)
                 } else {
                     SectionHeader("Resumo da Semana")
-                    WeeklyMoodInsight(statsData.topMoods, silverGradient)
+                    WeeklyMoodInsight(statsData.topMoods, dataGradient)
                 }
             }
 
-            // --- BLOCO DE ANÁLISE GRÁFICA ---
             item {
                 Column {
                     SectionHeader(if (selectedTab == 0) "Tendência Semanal" else "Tendência Mensal")
-                    MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen, silverGradient)
+                    MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen, dataGradient)
                 }
             }
 
@@ -165,7 +180,7 @@ fun StatisticsScreen(
                         "notas", 
                         Icons.Default.Lock, 
                         neonGreen,
-                        silverGradient,
+                        dataGradient,
                         onClick = { filterType = "Lock"; showSpecialDaysDialog = true }
                     )
                     InsightCardClickable(
@@ -175,7 +190,7 @@ fun StatisticsScreen(
                         "notas", 
                         Icons.Default.AcUnit, 
                         iceBlue,
-                        silverGradient,
+                        dataGradient,
                         onClick = { filterType = "Capsule"; showSpecialDaysDialog = true }
                     )
                 }
@@ -183,11 +198,11 @@ fun StatisticsScreen(
 
             item {
                 SectionHeader("Volume de Memórias")
-                EntriesBarChart(statsData.entriesPerDay, statsData.dayLabels, neonGreen, silverGradient)
+                EntriesBarChart(statsData.entriesPerDay, statsData.dayLabels, neonGreen, dataGradient)
             }
 
             item {
-                MediaSummaryCard(statsData.audioCount, statsData.imageCount, neonGreen, silverGradient)
+                MediaSummaryCard(statsData.audioCount, statsData.imageCount, neonGreen, dataGradient)
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }
@@ -232,7 +247,7 @@ fun StatisticsScreen(
 @Composable
 fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth().border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
+        modifier = Modifier.fillMaxWidth().border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
@@ -312,7 +327,7 @@ fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String, borderBrush
 @Composable
 fun WeeklyMoodInsight(moods: List<MoodStat>, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth().border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
+        modifier = Modifier.fillMaxWidth().border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
@@ -357,7 +372,7 @@ fun WeeklyMoodInsight(moods: List<MoodStat>, borderBrush: Brush) {
 @Composable
 fun InsightCardClickable(modifier: Modifier, title: String, value: String, unit: String, icon: ImageVector, color: Color, borderBrush: Brush, onClick: () -> Unit) {
     Card(
-        modifier = modifier.clickable { onClick() }.border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
+        modifier = modifier.clickable { onClick() }.border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
@@ -375,7 +390,7 @@ fun InsightCardClickable(modifier: Modifier, title: String, value: String, unit:
 }
 
 @Composable
-fun PeriodTab(modifier: Modifier, text: String, isSelected: Boolean, onClick: () -> Unit) {
+fun PeriodTab(modifier: Modifier, text: String, isSelected: Boolean, activeGradient: Brush, onClick: () -> Unit) {
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -384,7 +399,12 @@ fun PeriodTab(modifier: Modifier, text: String, isSelected: Boolean, onClick: ()
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = if (isSelected) Color.White else Color.Gray, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+        Text(
+            text = text, 
+            color = if (isSelected) DataCyan else Color.Gray, 
+            fontSize = 14.sp, 
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
     }
 }
 
@@ -402,7 +422,7 @@ fun SectionHeader(title: String) {
 @Composable
 fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Color, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
+        modifier = Modifier.fillMaxWidth().height(200.dp).border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
@@ -418,9 +438,9 @@ fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Colo
                     val x = i * spaceX
                     val y = height - (pt * height / 5f)
                     if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                    drawCircle(color, radius = 4.dp.toPx(), center = Offset(x, y))
+                    drawCircle(DataGreen, radius = 4.dp.toPx(), center = Offset(x, y))
                 }
-                drawPath(path, color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+                drawPath(path, DataGreen, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -438,7 +458,7 @@ fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Colo
 @Composable
 fun EntriesBarChart(entries: List<Int>, labels: List<String>, color: Color, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth().height(180.dp).border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
+        modifier = Modifier.fillMaxWidth().height(180.dp).border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
@@ -452,7 +472,7 @@ fun EntriesBarChart(entries: List<Int>, labels: List<String>, color: Color, bord
                             .padding(horizontal = 4.dp)
                             .height(barHeight)
                             .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                            .background(Brush.verticalGradient(listOf(color, color.copy(alpha = 0.3f))))
+                            .background(Brush.verticalGradient(listOf(DataGreen, DataCyan.copy(alpha = 0.3f))))
                     )
                 }
             }
@@ -481,14 +501,14 @@ fun EntriesBarChart(entries: List<Int>, labels: List<String>, color: Color, bord
 @Composable
 fun MediaSummaryCard(audios: Int, images: Int, color: Color, borderBrush: Brush) {
     Card(
-        modifier = Modifier.fillMaxWidth().border(1.dp, borderBrush, RoundedCornerShape(24.dp)),
+        modifier = Modifier.fillMaxWidth().border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-            MediaItemStats(audios, "Áudios", Icons.Default.Mic, color)
+            MediaItemStats(audios, "Áudios", Icons.Default.Mic, DataCyan)
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(Color.White.copy(alpha = 0.1f)))
-            MediaItemStats(images, "Fotos", Icons.Default.Image, color)
+            MediaItemStats(images, "Fotos", Icons.Default.Image, DataCyan)
         }
     }
 }

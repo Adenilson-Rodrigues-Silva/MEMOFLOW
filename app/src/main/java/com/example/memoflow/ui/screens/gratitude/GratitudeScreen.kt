@@ -60,6 +60,8 @@ val NeonGreen = Color(0xFF00FFC2)
 val NeonPink = Color(0xFFFF00E5)
 val NeonBlue = Color(0xFF00E0FF)
 val NeonYellow = Color(0xFFFFFF00)
+val SolarGold = Color(0xFFFFD700)
+val SolarOrange = Color(0xFFFF8C00)
 val PostItColors = listOf(NeonPink, NeonBlue, NeonYellow, NeonGreen, Color(0xFFFFA500))
 
 val PostItShape = GenericShape { size, _ ->
@@ -70,6 +72,26 @@ val PostItShape = GenericShape { size, _ ->
     lineTo(size.width - cornerSize, size.height)
     lineTo(0f, size.height)
     close()
+}
+
+@Composable
+fun rememberSolarAiGradient(): Brush {
+    val infiniteTransition = rememberInfiniteTransition(label = "solar_gradient")
+    val offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(5000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "offset"
+    )
+    
+    return Brush.linearGradient(
+        colors = listOf(SolarGold, SolarOrange, SolarGold),
+        start = Offset(offset, offset),
+        end = Offset(offset + 1000f, offset + 1000f),
+        tileMode = TileMode.Repeated
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -88,10 +110,7 @@ fun GratitudeScreen(
     var gratitudeToEdit by remember { mutableStateOf<GratitudeEntity?>(null) }
     var showFlashback by remember { mutableStateOf<GratitudeEntity?>(null) }
     
-    val isNewYear = remember { 
-        val now = LocalDate.now()
-        now.monthValue == 1 && now.dayOfMonth == 1
-    }
+    val solarGradient = rememberSolarAiGradient()
 
     Scaffold(
         containerColor = Color.Black,
@@ -117,7 +136,7 @@ fun GratitudeScreen(
                     )
                 )
         ) {
-            // Mural 2D Cartoon - Showing only TODAY'S gratitudes
+            // Mural 2D Cartoon
             Box(modifier = Modifier.weight(1f).padding(16.dp)) {
                 if (todaysGratitudes.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -162,7 +181,9 @@ fun GratitudeScreen(
                             value = gratitudeText,
                             onValueChange = { gratitudeText = it },
                             placeholder = { Text("Pelo que você é grato agora?", color = Color.Gray) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.5.dp, solarGradient, RoundedCornerShape(20.dp)),
                             shape = RoundedCornerShape(20.dp),
                             keyboardOptions = KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Sentences,
@@ -174,9 +195,9 @@ fun GratitudeScreen(
                                 unfocusedContainerColor = Color(0xFF151515),
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White,
-                                cursorColor = NeonGreen,
-                                focusedBorderColor = NeonGreen,
-                                unfocusedBorderColor = Color.DarkGray
+                                cursorColor = SolarGold,
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent
                             ),
                             trailingIcon = {
                                 IconButton(
@@ -190,7 +211,7 @@ fun GratitudeScreen(
                                         }
                                     }
                                 ) {
-                                    Icon(Icons.Default.Add, null, tint = NeonGreen, modifier = Modifier.size(28.dp))
+                                    Icon(Icons.Default.Add, null, tint = SolarGold, modifier = Modifier.size(28.dp))
                                 }
                             }
                         )
@@ -206,13 +227,13 @@ fun GratitudeScreen(
                                 .fillMaxWidth()
                                 .height(56.dp)
                                 .clip(RoundedCornerShape(20.dp))
-                                .background(NeonGreen.copy(alpha = 0.1f))
-                                .border(1.dp, NeonGreen.copy(alpha = 0.5f), RoundedCornerShape(20.dp)),
+                                .background(SolarGold.copy(alpha = 0.1f))
+                                .border(1.5.dp, solarGradient, RoundedCornerShape(20.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 "Luz total por hoje! Volte amanhã ✨",
-                                color = NeonGreen,
+                                color = SolarGold,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -220,7 +241,7 @@ fun GratitudeScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Pote da Gratidão - Click logic with limit
+                    // Pote da Gratidão
                     Box(modifier = Modifier.clickable {
                         if (allGratitudes.isNotEmpty()) {
                             if (flashbackCount < 3) {
@@ -245,7 +266,7 @@ fun GratitudeScreen(
             }
         }
 
-        // Dialog de Flashback (Reviver momento de luz)
+        // Dialog de Flashback (Removido o efeito de borda animada por estar desalinhado)
         if (showFlashback != null) {
             FlashbackDialog(
                 gratitude = showFlashback!!,
@@ -274,8 +295,8 @@ fun GratitudeScreen(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White,
-                                cursorColor = NeonGreen,
-                                focusedBorderColor = NeonGreen
+                                cursorColor = SolarGold,
+                                focusedBorderColor = SolarGold
                             )
                         )
                     }
@@ -285,7 +306,7 @@ fun GratitudeScreen(
                         viewModel.updateGratitude(currentGratitude.copy(text = editText))
                         gratitudeToEdit = null
                     }) {
-                        Text("SALVAR", color = NeonGreen)
+                        Text("SALVAR", color = SolarGold)
                     }
                 },
                 dismissButton = {
@@ -340,20 +361,21 @@ fun FlashbackDialog(gratitude: GratitudeEntity, onDismiss: () -> Unit) {
             ) {
                 Text(
                     "Em $dateStr você foi grato por:",
-                    color = NeonYellow,
+                    color = SolarGold,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
                 )
                 
+                // Card simples para evitar desalinhamento
                 PostItNote(gratitude = gratitude, onLongClick = {})
                 
                 Spacer(Modifier.height(32.dp))
                 
                 Text(
                     "Toque em qualquer lugar para fechar",
-                    color = Color.Gray,
+                    color = Color.White.copy(alpha = 0.5f),
                     fontSize = 12.sp
                 )
             }
@@ -382,10 +404,8 @@ fun PostItNote(gratitude: GratitudeEntity, onLongClick: () -> Unit) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        // Textura de papel / brilho
         Canvas(modifier = Modifier.fillMaxSize()) {
             val cornerSize = size.width * 0.15f
-            // Dobra do papel no canto
             val path = Path().apply {
                 moveTo(size.width - cornerSize, size.height)
                 lineTo(size.width - cornerSize, size.height - cornerSize)
@@ -396,7 +416,6 @@ fun PostItNote(gratitude: GratitudeEntity, onLongClick: () -> Unit) {
             drawPath(path, Color.Black.copy(alpha = 0.5f), style = Stroke(2f))
         }
         
-        // Tachinha / Pin no topo
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -423,7 +442,6 @@ fun PostItNote(gratitude: GratitudeEntity, onLongClick: () -> Unit) {
 fun GratitudeJar(hasGratitude: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "jar_effects")
     
-    // Levitação suave
     val floatAnim by infiniteTransition.animateFloat(
         initialValue = -8f,
         targetValue = 8f,
@@ -434,7 +452,6 @@ fun GratitudeJar(hasGratitude: Boolean) {
         label = "float"
     )
 
-    // Brilho da Aura - reduced complexity for performance
     val pulse by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.7f,
@@ -445,7 +462,6 @@ fun GratitudeJar(hasGratitude: Boolean) {
         label = "pulse"
     )
 
-    // Firefly blink animation
     val fireflyBlink by infiniteTransition.animateFloat(
         initialValue = 0.2f,
         targetValue = 1.0f,
@@ -465,31 +481,27 @@ fun GratitudeJar(hasGratitude: Boolean) {
                 },
             contentAlignment = Alignment.Center
         ) {
-            // Aura de luz atrás da imagem
             Box(
                 modifier = Modifier
                     .size(140.dp)
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(NeonYellow.copy(alpha = 0.2f * pulse), Color.Transparent)
+                            colors = listOf(SolarGold.copy(alpha = 0.2f * pulse), Color.Transparent)
                         )
                     )
             )
 
-            // A Imagem do Pote
             Image(
                 painter = painterResource(id = R.drawable.jar_gratitude),
                 contentDescription = "Pote da Gratidão",
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Optimized Sparkles
             if (hasGratitude) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val w = size.width
                     val h = size.height
                     
-                    // Fixed positions for fireflies to avoid Random calls in draw phase
                     val fireflyPositions = listOf(
                         Offset(w * 0.45f, h * 0.55f),
                         Offset(w * 0.55f, h * 0.65f),
@@ -502,11 +514,10 @@ fun GratitudeJar(hasGratitude: Boolean) {
                     )
 
                     fireflyPositions.forEachIndexed { i, pos ->
-                        // Alternate blink per index
                         val individualBlink = if (i % 2 == 0) fireflyBlink else (1.2f - fireflyBlink)
                         
                         drawCircle(
-                            color = NeonYellow.copy(alpha = 0.6f * individualBlink),
+                            color = SolarGold.copy(alpha = 0.6f * individualBlink),
                             radius = 4.dp.toPx(),
                             center = pos
                         )
@@ -530,7 +541,7 @@ fun GratitudeJar(hasGratitude: Boolean) {
         )
         Text(
             "Toque para reviver seus momentos de luz",
-            color = NeonGreen.copy(alpha = 0.9f),
+            color = SolarGold.copy(alpha = 0.9f),
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold
         )
