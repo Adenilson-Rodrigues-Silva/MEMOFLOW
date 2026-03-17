@@ -116,8 +116,8 @@ fun HomeScreen(
                     val noteDate = Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()
                     val isNoteFromToday = noteDate == LocalDate.now()
                     
-                    val isFuture = note.unlockDate?.let { it > System.currentTimeMillis() } ?: false
-                    if (note.isLocked || (note.isTimeCapsule && isFuture)) {
+                    // Se for cápsula ou trancada, exige o fluxo de desbloqueio
+                    if (note.isLocked || note.isTimeCapsule) {
                         noteToUnlock = note
                     } else {
                         val route = Screen.WriteNote.createRoute(note.id) + if (!isNoteFromToday) "&readOnly=true" else ""
@@ -196,32 +196,35 @@ fun HomeScreen(
         }
 
         if (showMeltOptions) {
+            val isReady = noteToUnlock?.unlockDate?.let { it <= System.currentTimeMillis() } ?: false
             AlertDialog(
                 onDismissRequest = { showMeltOptions = false; noteToUnlock = null; pinInput = "" },
                 containerColor = Color(0xFF1A1A1A),
-                title = { Text("Como deseja acessar?", color = Color.White) },
-                text = { Text("Escolha se deseja descongelar a memória para sempre ou apenas dar uma espiadinha.", color = Color.Gray) },
+                title = { Text(if(isReady) "O gelo derreteu!" else "Ainda está congelada", color = Color.White) },
+                text = { Text(if(isReady) "Esta memória está pronta para ser revelada. Deseja descongelar para sempre ou apenas dar uma espiadinha?" else "O tempo de espera ainda não acabou, mas você pode dar uma espiadinha silenciosa.", color = Color.Gray) },
                 confirmButton = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Button(
-                            onClick = {
-                                noteToUnlock?.let { writeNoteViewModel.meltPermanently(it.id) }
-                                val id = noteToUnlock?.id
-                                val noteDate = noteToUnlock?.date?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() }
-                                val isNoteFromToday = noteDate == LocalDate.now()
-                                
-                                showMeltOptions = false
-                                noteToUnlock = null
-                                pinInput = ""
-                                val route = Screen.WriteNote.createRoute(id) + if (!isNoteFromToday) "&readOnly=true" else ""
-                                navController.navigate(route)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = neonGreen)
-                        ) {
-                            Text("DERRETER PARA SEMPRE", color = Color.Black, fontWeight = FontWeight.Bold)
+                        if (isReady) {
+                            Button(
+                                onClick = {
+                                    noteToUnlock?.let { writeNoteViewModel.meltPermanently(it.id) }
+                                    val id = noteToUnlock?.id
+                                    val noteDate = noteToUnlock?.date?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() }
+                                    val isNoteFromToday = noteDate == LocalDate.now()
+                                    
+                                    showMeltOptions = false
+                                    noteToUnlock = null
+                                    pinInput = ""
+                                    val route = Screen.WriteNote.createRoute(id) + if (!isNoteFromToday) "&readOnly=true" else ""
+                                    navController.navigate(route)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = neonGreen)
+                            ) {
+                                Text("DERRETER PARA SEMPRE", color = Color.Black, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.height(8.dp))
                         }
-                        Spacer(Modifier.height(8.dp))
                         OutlinedButton(
                             onClick = {
                                 val id = noteToUnlock?.id
@@ -282,8 +285,8 @@ fun HomeContent(
     if (noteToDelete != null) {
         AlertDialog(
             onDismissRequest = { noteToDelete = null },
-            title = { Text("Apagar memória?") },
-            text = { Text("Esta ação não pode ser desfeita. Deseja apagar esta nota para sempre?") },
+            title = { Text("Apagar memória?", color = Color.White) },
+            text = { Text("Esta ação não pode ser desfeita. Deseja apagar esta nota para sempre?", color = Color.Gray) },
             confirmButton = {
                 TextButton(onClick = {
                     noteToDelete?.let { onDeleteNote(it) }
@@ -297,9 +300,7 @@ fun HomeContent(
                     Text("Cancelar", color = Color.White)
                 }
             },
-            containerColor = Color(0xFF1A1A1A),
-            titleContentColor = Color.White,
-            textContentColor = Color.Gray
+            containerColor = Color(0xFF1A1A1A)
         )
     }
 
@@ -342,10 +343,8 @@ fun HomeContent(
                     .toLocalTime()
                     .format(timeFormatter)
 
-                val isFuture = note.unlockDate?.let { it > System.currentTimeMillis() } ?: false
-                val isActuallyTimeCapsule = note.isTimeCapsule && isFuture
-
-                val snippet = if (isActuallyTimeCapsule) "Memória congelada no tempo" 
+                // IMPORTANTE: Mantemos o snippet de cápsula sempre que isTimeCapsule for verdadeiro
+                val snippet = if (note.isTimeCapsule) "Memória congelada no tempo" 
                               else if (note.isLocked) "Memória protegida por PIN" 
                               else {
                                 note.contentHtml
@@ -361,7 +360,7 @@ fun HomeContent(
                     content = snippet,
                     neonGreen = neonGreen,
                     isLocked = note.isLocked,
-                    isTimeCapsule = isActuallyTimeCapsule,
+                    isTimeCapsule = note.isTimeCapsule, // Passa o estado real
                     unlockDate = note.unlockDate,
                     onClick = { onNoteClick(note) },
                     onLongClick = { noteToDelete = note }
@@ -450,31 +449,6 @@ fun FabMenu(
                 contentDescription = null,
                 tint = Color.Black,
                 modifier = Modifier.size(32.dp)
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, device = "id:pixel_8")
-@Composable
-fun HomeScreenPreview() {
-    MemoFlowTheme(darkTheme = true) {
-        val previewNavController = rememberNavController()
-        Scaffold(
-            containerColor = Color.Black
-        ) { padding ->
-            HomeContent(
-                padding = padding,
-                neonGreen = Color(0xFF00FFC2),
-                navController = previewNavController,
-                notes = emptyList(),
-                selectedDate = LocalDate.now(),
-                onDateSelected = {},
-                onDeleteNote = {},
-                userPhotoUrl = null,
-                moodPoints = emptyList(),
-                onCalendarClick = {},
-                onNoteClick = {}
             )
         }
     }

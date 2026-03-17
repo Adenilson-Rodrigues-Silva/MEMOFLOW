@@ -1,5 +1,11 @@
 package com.example.memoflow.ui.components.home
 
+import android.content.Context
+import android.media.MediaPlayer
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -22,8 +28,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +49,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.example.memoflow.R
 import java.util.Date
+import kotlin.random.Random
 
 // Cores do Efeito IA
 val CyanAI = Color(0xFF00E5FF)
@@ -232,13 +241,37 @@ fun DiaryNoteCard(
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val cyan = Color(0xFF00E5FF)
     val iceBlue = Color(0xFFB3E5FC)
     val deepBlue = Color(0xFF01579B)
     val forestGreen = Color(0xFF1B5E20)
     
+    // Lógica: Está PRONTA se for cápsula e o tempo já deu (hoje ou passado)
+    val isReadyToMelt = isTimeCapsule && (unlockDate != null && unlockDate <= System.currentTimeMillis())
+
     val infiniteTransition = rememberInfiniteTransition(label = "global_effects")
     
+    // Animação de sacudir (Shake)
+    val shakeAnim by infiniteTransition.animateFloat(
+        initialValue = -2f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(80, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "shake"
+    )
+
+    // Animação de brilho (Sparkle)
+    val sparkleAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "sparkle"
+    )
+
     val shimmerValue by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1000f,
@@ -249,17 +282,17 @@ fun DiaryNoteCard(
     )
 
     val borderBrush = when {
+        isReadyToMelt -> Brush.linearGradient(
+            listOf(cyan, Color.White, Color(0xFF84FFFF), Color.White, cyan),
+            start = Offset(shimmerValue, shimmerValue),
+            end = Offset(shimmerValue + 500f, shimmerValue + 500f),
+            tileMode = TileMode.Repeated
+        )
         isTimeCapsule -> Brush.linearGradient(listOf(cyan, iceBlue, deepBlue, cyan))
         isLocked -> Brush.linearGradient(listOf(neonGreen, forestGreen, neonGreen))
         else -> {
             Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFF424242), 
-                    Color(0xFFBDBDBD), 
-                    Color.White,       
-                    Color(0xFFE0E0E0), 
-                    Color(0xFF424242)  
-                ),
+                colors = listOf(Color(0xFF424242), Color(0xFFBDBDBD), Color.White, Color(0xFFE0E0E0), Color(0xFF424242)),
                 start = Offset(shimmerValue, shimmerValue),
                 end = Offset(shimmerValue + 400f, shimmerValue + 400f),
                 tileMode = TileMode.Repeated
@@ -272,15 +305,76 @@ fun DiaryNoteCard(
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
             .height(95.dp)
+            .graphicsLayer {
+                if (isReadyToMelt) {
+                    rotationZ = shakeAnim
+                    translationX = shakeAnim * 1.5f
+                }
+            }
             .clip(RoundedCornerShape(24.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(
+                onClick = {
+                    if (isReadyToMelt) {
+                        try {
+                            val mp = MediaPlayer.create(context, R.raw.ice_sound)
+                            mp.start()
+                            mp.setOnCompletionListener { it.release() }
+                        } catch (e: Exception) { e.printStackTrace() }
+
+                        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+                        } else {
+                            @Suppress("DEPRECATION")
+                            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                        }
+                        vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                    }
+                    onClick()
+                }, 
+                onLongClick = onLongClick
+            )
             .border(
-                width = if (isTimeCapsule || isLocked) 1.5.dp else 1.2.dp, 
+                width = if (isTimeCapsule || isLocked) 2.dp else 1.2.dp, 
                 brush = borderBrush, 
                 shape = RoundedCornerShape(24.dp)
             )
             .background(Color(0xFF161616).copy(alpha = 0.85f))
     ) {
+        // Camada de Efeitos Visuais (Listras e Brilhos)
+        if (isTimeCapsule) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val random = Random(42)
+                
+                // Desenha as LISTRAS AZUIS (conforme o seu desenho)
+                if (isReadyToMelt) {
+                    val strokeWidth = 15.dp.toPx()
+                    val spacing = 40.dp.toPx()
+                    for (i in -10..10) {
+                        val startX = i * spacing + (shimmerValue / 1000f * spacing)
+                        drawLine(
+                            color = cyan.copy(alpha = 0.15f),
+                            start = Offset(startX, 0f),
+                            end = Offset(startX - size.height, size.height),
+                            strokeWidth = strokeWidth
+                        )
+                    }
+                }
+
+                // Brilhos (Sparkles)
+                if (isReadyToMelt) {
+                    repeat(12) {
+                        val x = random.nextFloat() * size.width
+                        val y = random.nextFloat() * size.height
+                        drawCircle(
+                            color = Color.White.copy(alpha = sparkleAlpha),
+                            radius = 1.5.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                    }
+                }
+            }
+        }
+
         Row(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -299,7 +393,7 @@ fun DiaryNoteCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (isTimeCapsule) Icon(Icons.Default.AcUnit, null, tint = cyan, modifier = Modifier.size(26.dp))
+                if (isTimeCapsule) Icon(if (isReadyToMelt) Icons.Default.Whatshot else Icons.Default.AcUnit, null, tint = if (isReadyToMelt) Color.White else cyan, modifier = Modifier.size(26.dp))
                 else if (isLocked) Icon(Icons.Default.Lock, null, tint = neonGreen, modifier = Modifier.size(26.dp))
                 else Text(text = emoji, fontSize = 26.sp)
             }
@@ -309,15 +403,15 @@ fun DiaryNoteCard(
             Column {
                 Text(text = time, color = Color.Gray, fontSize = 11.sp)
                 Text(
-                    text = if (isTimeCapsule) "Cápsula do Tempo" else if (isLocked) "Memória Trancada" else title,
-                    color = if (isTimeCapsule) cyan else if (isLocked) neonGreen else Color.White,
+                    text = if (isReadyToMelt) "PRONTA PARA ABRIR!" else if (isTimeCapsule) "Cápsula do Tempo" else if (isLocked) "Memória Trancada" else title,
+                    color = if (isReadyToMelt) Color.White else if (isTimeCapsule) cyan else if (isLocked) neonGreen else Color.White,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
                 Text(
-                    text = if (isTimeCapsule) "Disponível em ${unlockDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy").format(Date(it)) }}" else if (isLocked) "Segredo protegido por PIN" else content,
-                    color = Color.White.copy(alpha = 0.6f),
+                    text = if (isReadyToMelt) "Toque para derreter o gelo ✨" else if (isTimeCapsule) "Disponível em ${unlockDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy").format(Date(it)) }}" else if (isLocked) "Segredo protegido por PIN" else content,
+                    color = if (isReadyToMelt) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     maxLines = 1
                 )

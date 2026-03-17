@@ -128,7 +128,7 @@ fun WriteNoteScreen(
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
 
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000)
+        initialSelectedDateMillis = System.currentTimeMillis() // Começa em hoje
     )
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -402,11 +402,14 @@ fun WriteNoteScreen(
             confirmButton = {
                 TextButton(onClick = {
                     val selectedDate = datePickerState.selectedDateMillis
-                    if (selectedDate != null && selectedDate > System.currentTimeMillis()) {
+                    // ✅ CORREÇÃO: Permite selecionar hoje (>= data atual menos margem de erro)
+                    if (selectedDate != null && selectedDate >= (System.currentTimeMillis() - 60000)) {
                         viewModel.setTimeCapsule(selectedDate)
-                        viewModel.saveNote()
+                        viewModel.saveNote() // Salva imediatamente
                         Toast.makeText(context, "Nota enviada para o futuro! ❄️", Toast.LENGTH_LONG).show()
-                        onBack()
+                        onBack() // Fecha a tela e volta para a Home
+                    } else {
+                        Toast.makeText(context, "Escolha uma data presente ou futura!", Toast.LENGTH_SHORT).show()
                     }
                     showDatePicker = false
                 }) { Text("CONGELAR", color = iceBlue) }
@@ -480,7 +483,7 @@ fun NoteBottomToolbar(
                 shape = CircleShape,
                 modifier = Modifier.size(56.dp).offset(y = (-10).dp)
             ) {
-                Icon(Icons.Default.Check, null, tint = Color.Black)
+                Icon(Icons.Default.Add, null, tint = Color.Black)
             }
         }
     }
