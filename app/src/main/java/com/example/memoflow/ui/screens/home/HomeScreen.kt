@@ -112,6 +112,7 @@ fun HomeScreen(
                 userPhotoUrl = userSettings.profilePhotoUri,
                 moodPoints = statsData.moodPoints,
                 onCalendarClick = { showChronosCalendar = true },
+                onStoreClick = { navController.navigate(Screen.Store.route) },
                 onNoteClick = { note ->
                     val noteDate = Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()
                     val isNoteFromToday = noteDate == LocalDate.now()
@@ -264,6 +265,7 @@ fun HomeContent(
     userPhotoUrl: String?,
     moodPoints: List<Float>,
     onCalendarClick: () -> Unit,
+    onStoreClick: () -> Unit,
     onNoteClick: (com.example.memoflow.data.local.entity.NoteEntity) -> Unit
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM", Locale("pt", "BR")) }
@@ -317,7 +319,8 @@ fun HomeContent(
                 onProfileClick = {
                     navController.navigate(Screen.Profile.route)
                 },
-                onCalendarClick = onCalendarClick
+                onCalendarClick = onCalendarClick,
+                onStoreClick = onStoreClick
             )
             Spacer(modifier = Modifier.height(16.dp))
         }

@@ -387,8 +387,21 @@ fun HomeHeader(
     date: String,
     userPhotoUrl: String?,
     onProfileClick: () -> Unit,
-    onCalendarClick: () -> Unit
+    onCalendarClick: () -> Unit,
+    onStoreClick: () -> Unit
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "diamond_glow")
+    
+    // Animação do brilho que "passa" (shimmer sweep)
+    val shineOffset by infiniteTransition.animateFloat(
+        initialValue = -100f,
+        targetValue = 300f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = "shine_offset"
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -402,6 +415,40 @@ fun HomeHeader(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onStoreClick,
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(PurpleAI.copy(alpha = 0.1f), CircleShape)
+                    .border(1.dp, PurpleAI.copy(alpha = 0.3f), CircleShape)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Diamond, 
+                        contentDescription = "Loja", 
+                        tint = PurpleAI, 
+                        modifier = Modifier.size(24.dp)
+                    )
+                    
+                    // Camada de Brilho Extra (Sweep)
+                    Canvas(modifier = Modifier.size(24.dp).clip(CircleShape)) {
+                        drawRect(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.White.copy(alpha = 0.6f),
+                                    Color.Transparent
+                                ),
+                                start = Offset(shineOffset, 0f),
+                                end = Offset(shineOffset + 30.dp.toPx(), size.height)
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             IconButton(
                 onClick = onCalendarClick,
                 modifier = Modifier

@@ -24,6 +24,7 @@ import com.example.memoflow.ui.screens.note.WriteNoteScreen
 import com.example.memoflow.ui.screens.stats.StatisticsScreen
 import com.example.memoflow.ui.screens.gratitude.GratitudeScreen
 import com.example.memoflow.ui.screens.recall.RecallScreen
+import com.example.memoflow.ui.screens.store.StoreScreen
 import com.example.memoflow.ui.theme.MemoFlowTheme
 
 class MainActivity : ComponentActivity() {
@@ -100,6 +101,10 @@ class MainActivity : ComponentActivity() {
 
                     composable(Screen.Recall.route) {
                         RecallScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable(Screen.Store.route) {
+                        StoreScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(
