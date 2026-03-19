@@ -12,66 +12,64 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.memoflow.MainActivity
 import com.example.memoflow.R
+import kotlin.random.Random
 
 class NotificationHelper(private val context: Context) {
 
     companion object {
-        // IDs de referência usados pelo resto do App
-        const val CHANNEL_DAILY = "daily_ref"
-        const val CHANNEL_GRATITUDE = "gratitude_ref"
-        const val CHANNEL_CAPSULE = "capsule_ref"
-        const val CHANNEL_INSIGHT = "insight_ref"
-        const val CHANNEL_EVENTS = "events_ref"
+        const val CHANNEL_DAILY = "daily"
+        const val CHANNEL_GRATITUDE = "gratitude"
+        const val CHANNEL_CAPSULE = "capsule"
+        const val CHANNEL_INSIGHT = "insight"
+        const val CHANNEL_EVENTS = "events"
 
-        // Canais REAIS v7 (Som)
-        private const val CH_DAILY_SOUND = "daily_sound_v7"
-        private const val CH_GRATITUDE_SOUND = "gratitude_sound_v7"
-        private const val CH_CAPSULE_SOUND = "capsule_sound_v7"
-        private const val CH_INSIGHT_SOUND = "insight_sound_v7"
-        private const val CH_EVENTS_SOUND = "events_sound_v7"
-
-        // Canais REAIS v7 (Silencioso/Vibração)
-        private const val CH_DAILY_SILENT = "daily_silent_v7"
-        private const val CH_GRATITUDE_SILENT = "gratitude_silent_v7"
-        private const val CH_CAPSULE_SILENT = "capsule_silent_v7"
-        private const val CH_INSIGHT_SILENT = "insight_silent_v7"
-        private const val CH_EVENTS_SILENT = "events_silent_v7"
+        // v12 para resetar qualquer política de silenciamento do sistema
+        private const val SUFFIX_S1V1 = "_s1v1_v12"
+        private const val SUFFIX_S1V0 = "_s1v0_v12"
+        private const val SUFFIX_S0V1 = "_s0v1_v12"
+        private const val SUFFIX_S0V0 = "_s0v0_v12"
     }
 
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val audioAttributes = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                .build()
-
-            val config = listOf(
-                Triple(CH_DAILY_SOUND, CH_DAILY_SILENT, "Momento Flow"),
-                Triple(CH_GRATITUDE_SOUND, CH_GRATITUDE_SILENT, "Pote de Gratidão"),
-                Triple(CH_CAPSULE_SOUND, CH_CAPSULE_SILENT, "Descongelamento"),
-                Triple(CH_INSIGHT_SOUND, CH_INSIGHT_SILENT, "Insight Semanal"),
-                Triple(CH_EVENTS_SOUND, CH_EVENTS_SILENT, "Eventos Especiais")
+            val categories = listOf(
+                CHANNEL_DAILY to "Momento Flow",
+                CHANNEL_GRATITUDE to "Pote de Gratidão",
+                CHANNEL_CAPSULE to "Descongelamento",
+                CHANNEL_INSIGHT to "Insight Semanal",
+                CHANNEL_EVENTS to "Eventos Especiais"
             )
 
-            config.forEach { (soundId, silentId, name) ->
-                // Canal Som
-                val soundUri = getSoundUriForChannel(soundId)
-                notificationManager.createNotificationChannel(
-                    NotificationChannel(soundId, "$name (Som)", NotificationManager.IMPORTANCE_HIGH).apply {
-                        setSound(soundUri, audioAttributes)
-                        enableVibration(true)
-                    }
-                )
-                // Canal Silencioso
-                notificationManager.createNotificationChannel(
-                    NotificationChannel(silentId, "$name (Vibração)", NotificationManager.IMPORTANCE_HIGH).apply {
-                        setSound(null, null)
-                        enableVibration(true)
-                    }
-                )
+            categories.forEach { (id, name) ->
+                createChannelVariant(id + SUFFIX_S1V1, name, hasSound = true, hasVib = true)
+                createChannelVariant(id + SUFFIX_S1V0, "$name (Sem Vibração)", hasSound = true, hasVib = false)
+                createChannelVariant(id + SUFFIX_S0V1, "$name (Silencioso)", hasSound = false, hasVib = true)
+                createChannelVariant(id + SUFFIX_S0V0, "$name (Mudo)", hasSound = false, hasVib = false)
             }
+        }
+    }
+
+    private fun createChannelVariant(id: String, name: String, hasSound: Boolean, hasVib: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(id, name, importance).apply {
+                if (hasSound) {
+                    val audioAttributes = AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .build()
+                    setSound(getSoundUriForCategory(id), audioAttributes)
+                } else {
+                    setSound(null, null)
+                }
+
+                enableVibration(hasVib)
+                vibrationPattern = if (hasVib) longArrayOf(0, 400, 200, 400) else null
+                setShowBadge(true)
+            }
+            notificationManager.createNotificationChannel(channel)
         }
     }
 
@@ -82,15 +80,13 @@ class NotificationHelper(private val context: Context) {
         soundEnabled: Boolean = true, 
         vibrationEnabled: Boolean = true
     ) {
-        // Mapeia o canal de referência para o canal REAL baseado na preferência de som
-        val targetChannelId = when (channelId) {
-            CHANNEL_DAILY -> if (soundEnabled) CH_DAILY_SOUND else CH_DAILY_SILENT
-            CHANNEL_GRATITUDE -> if (soundEnabled) CH_GRATITUDE_SOUND else CH_GRATITUDE_SILENT
-            CHANNEL_CAPSULE -> if (soundEnabled) CH_CAPSULE_SOUND else CH_CAPSULE_SILENT
-            CHANNEL_INSIGHT -> if (soundEnabled) CH_INSIGHT_SOUND else CH_INSIGHT_SILENT
-            CHANNEL_EVENTS -> if (soundEnabled) CH_EVENTS_SOUND else CH_EVENTS_SILENT
-            else -> if (soundEnabled) CH_DAILY_SOUND else CH_DAILY_SILENT
+        val suffix = when {
+            soundEnabled && vibrationEnabled -> SUFFIX_S1V1
+            soundEnabled && !vibrationEnabled -> SUFFIX_S1V0
+            !soundEnabled && vibrationEnabled -> SUFFIX_S0V1
+            else -> SUFFIX_S0V0
         }
+        val targetChannelId = channelId + suffix
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -99,26 +95,26 @@ class NotificationHelper(private val context: Context) {
 
         val builder = NotificationCompat.Builder(context, targetChannelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.ic_app))
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(false) // CRUCIAL: Força alertar toda vez
 
         if (vibrationEnabled) {
             builder.setVibrate(longArrayOf(0, 400, 200, 400))
-        } else {
-            builder.setVibrate(longArrayOf(0))
         }
 
-        notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
+        // Usa ID aleatório para evitar que o sistema agrupe/silencie como "update"
+        val notificationId = Random.nextInt(1000, 999999)
+        notificationManager.notify(notificationId, builder.build())
     }
 
-    private fun getSoundUriForChannel(id: String): Uri {
+    private fun getSoundUriForCategory(channelFullId: String): Uri {
         val res = when {
-            id.contains("daily") -> R.raw.sound_pulse
-            id.contains("events") -> R.raw.sound_echo
+            channelFullId.contains(CHANNEL_DAILY) -> R.raw.sound_pulse
+            channelFullId.contains(CHANNEL_EVENTS) -> R.raw.sound_echo
             else -> R.raw.sound_crystal
         }
         return Uri.parse("android.resource://${context.packageName}/$res")

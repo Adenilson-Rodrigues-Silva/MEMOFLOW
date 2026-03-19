@@ -121,23 +121,6 @@ fun NotificationCenterScreen(
                 )
             }
 
-            // BOTÃO DE TESTE (TEMPORÁRIO)
-            item {
-                AnimatedVisibility(visible = settings!!.allEnabled) {
-                    Button(
-                        onClick = { viewModel.triggerTestNotification(context) },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A)),
-                        shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00FFC2).copy(alpha = 0.3f))
-                    ) {
-                        Icon(Icons.Default.BugReport, null, tint = Color(0xFF00FFC2))
-                        Spacer(Modifier.width(8.dp))
-                        Text("ENVIAR TESTE AGORA (CONFIRMAR SOM/VIBRAÇÃO)", color = Color.White, fontSize = 12.sp)
-                    }
-                }
-            }
-
             item {
                 Text("EVENTOS ESPECIAIS", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp, start = 8.dp))
             }
@@ -195,7 +178,7 @@ fun NotificationCenterScreen(
 
                         Text("PREFERÊNCIAS DE ALERTA", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp, start = 8.dp))
 
-                        NotificationCard(title = "Alertas Sonoros", subtitle = "Tocar som ao receber notificações", icon = if (settings!!.soundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff, isChecked = settings!!.soundEnabled, onCheckedChange = { viewModel.updateNotificationToggle(NotificationPrefs.SOUND_ENABLED, it) })
+                        NotificationCard(title = "Alertas Sonoros", subtitle = "Tocar som ao receber notifications", icon = if (settings!!.soundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff, isChecked = settings!!.soundEnabled, onCheckedChange = { viewModel.updateNotificationToggle(NotificationPrefs.SOUND_ENABLED, it) })
                         NotificationCard(title = "Vibração", subtitle = "Vibrar ao receber alertas", icon = Icons.Default.Vibration, isChecked = settings!!.vibrationEnabled, onCheckedChange = { viewModel.updateNotificationToggle(NotificationPrefs.VIBRATION_ENABLED, it) })
                     }
                 }
