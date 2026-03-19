@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.memoflow.data.local.entity.UserEntity
 import com.example.memoflow.data.repository.MemoRepository
+import com.example.memoflow.utils.NotificationHelper
+import com.example.memoflow.utils.NotificationPhrases
 import com.example.memoflow.utils.NotificationPrefs
 import com.example.memoflow.utils.NotificationScheduler
 import com.example.memoflow.utils.NotificationSettings
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
@@ -55,15 +58,58 @@ class ProfileViewModel(
     fun updateNotificationToggle(key: androidx.datastore.preferences.core.Preferences.Key<Boolean>, value: Boolean) {
         viewModelScope.launch {
             notificationPrefs.updateSettings { it[key] = value }
-            // Se mudou o mestre ou o diário, re-agenda
+            
             _notificationSettings.value?.let { current ->
-                if (value && (key == NotificationPrefs.ALL_ENABLED || key == NotificationPrefs.DAILY_ENABLED)) {
-                    scheduler.scheduleDailyReminder(current.dailyHour, current.dailyMinute)
-                } else if (!value && (key == NotificationPrefs.ALL_ENABLED)) {
-                    scheduler.cancelAll()
+                if (key == NotificationPrefs.ALL_ENABLED) {
+                    if (value) {
+                        rescheduleAllEnabled(current)
+                    } else {
+                        scheduler.cancelAll()
+                    }
+                } else {
+                    if (current.allEnabled) {
+                        handleIndividualToggle(key, value, current)
+                    }
                 }
             }
         }
+    }
+
+    private fun handleIndividualToggle(
+        key: androidx.datastore.preferences.core.Preferences.Key<Boolean>,
+        value: Boolean,
+        current: NotificationSettings
+    ) {
+        when (key) {
+            NotificationPrefs.DAILY_ENABLED -> {
+                if (value) scheduler.scheduleDailyReminder(current.dailyHour, current.dailyMinute)
+                else scheduler.cancelWork("daily_reminder")
+            }
+            NotificationPrefs.GRATITUDE_ENABLED -> {
+                if (value) scheduler.scheduleGratitudeReminder()
+                else scheduler.cancelWork("gratitude")
+            }
+            NotificationPrefs.CAPSULE_ENABLED -> {
+                if (value) scheduler.scheduleTimeCapsuleReminder()
+                else scheduler.cancelWork("capsule")
+            }
+            NotificationPrefs.INSIGHT_ENABLED -> {
+                if (value) scheduler.scheduleWeeklyInsight()
+                else scheduler.cancelWork("insight")
+            }
+            NotificationPrefs.ECHO_ENABLED -> {
+                if (value) scheduler.scheduleLockedNotesReminder()
+                else scheduler.cancelWork("locked_notes")
+            }
+        }
+    }
+
+    private fun rescheduleAllEnabled(settings: NotificationSettings) {
+        if (settings.dailyEnabled) scheduler.scheduleDailyReminder(settings.dailyHour, settings.dailyMinute)
+        if (settings.gratitudeEnabled) scheduler.scheduleGratitudeReminder()
+        if (settings.capsuleEnabled) scheduler.scheduleTimeCapsuleReminder()
+        if (settings.insightEnabled) scheduler.scheduleWeeklyInsight()
+        if (settings.echoEnabled) scheduler.scheduleLockedNotesReminder()
     }
 
     fun updateReminderTime(hour: Int, minute: Int) {
@@ -72,7 +118,27 @@ class ProfileViewModel(
                 it[NotificationPrefs.DAILY_HOUR] = hour
                 it[NotificationPrefs.DAILY_MINUTE] = minute
             }
-            scheduler.scheduleDailyReminder(hour, minute)
+            _notificationSettings.value?.let { 
+                if (it.allEnabled && it.dailyEnabled) {
+                    scheduler.scheduleDailyReminder(hour, minute)
+                }
+            }
+        }
+    }
+
+    fun triggerTestNotification(context: Context) {
+        viewModelScope.launch {
+            val settings = notificationPrefs.notificationSettings.first()
+            val helper = NotificationHelper(context)
+            val phrase = NotificationPhrases.getRandomPhrase(NotificationPhrases.dailyReminder)
+            
+            helper.showNotification(
+                channelId = NotificationHelper.CHANNEL_DAILY,
+                title = "Teste de Fluxo 🚀",
+                message = phrase,
+                soundEnabled = settings.soundEnabled,
+                vibrationEnabled = settings.vibrationEnabled
+            )
         }
     }
 

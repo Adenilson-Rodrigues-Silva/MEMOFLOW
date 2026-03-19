@@ -6,18 +6,18 @@ import androidx.work.WorkerParameters
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
-class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
+class TimeCapsuleWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     override fun doWork(): Result {
         val prefs = NotificationPrefs(applicationContext)
         val helper = NotificationHelper(applicationContext)
         
         runBlocking {
             val settings = prefs.notificationSettings.first()
-            if (settings.allEnabled && settings.dailyEnabled) {
-                val phrase = NotificationPhrases.getRandomPhrase(NotificationPhrases.dailyReminder)
+            if (settings.allEnabled && settings.capsuleEnabled) {
+                val phrase = NotificationPhrases.getRandomPhrase(NotificationPhrases.timeCapsule)
                 helper.showNotification(
-                    channelId = NotificationHelper.CHANNEL_DAILY,
-                    title = "Momento Flow",
+                    channelId = NotificationHelper.CHANNEL_CAPSULE,
+                    title = "Descongelamento",
                     message = phrase,
                     soundEnabled = settings.soundEnabled,
                     vibrationEnabled = settings.vibrationEnabled

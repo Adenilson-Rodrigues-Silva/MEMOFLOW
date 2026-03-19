@@ -202,7 +202,7 @@ fun HomeScreen(
                 onDismissRequest = { showMeltOptions = false; noteToUnlock = null; pinInput = "" },
                 containerColor = Color(0xFF1A1A1A),
                 title = { Text(if(isReady) "O gelo derreteu!" else "Ainda está congelada", color = Color.White) },
-                text = { Text(if(isReady) "Esta memória está pronta para ser revelada. Deseja descongelar para sempre ou apenas dar uma espiadinha?" else "O tempo de espera ainda não acabou, mas você pode dar uma espiadinha silenciosa.", color = Color.Gray) },
+                text = { Text(if(isReady) "Esta memória está pronta para ser revelada. Deseja descongelar para sempre?" else "O tempo de espera ainda não acabou, mas você pode dar uma espiadinha silenciosa.", color = Color.Gray) },
                 confirmButton = {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         if (isReady) {
@@ -224,20 +224,20 @@ fun HomeScreen(
                             ) {
                                 Text("DERRETER PARA SEMPRE", color = Color.Black, fontWeight = FontWeight.Bold)
                             }
-                            Spacer(Modifier.height(8.dp))
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                val id = noteToUnlock?.id
-                                showMeltOptions = false
-                                noteToUnlock = null
-                                pinInput = ""
-                                navController.navigate(Screen.WriteNote.createRoute(id) + "&readOnly=true")
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            border = BorderStroke(1.dp, iceBlue)
-                        ) {
-                            Text("SÓ ESPIAR (CONGELADA)", color = iceBlue)
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    val id = noteToUnlock?.id
+                                    showMeltOptions = false
+                                    noteToUnlock = null
+                                    pinInput = ""
+                                    navController.navigate(Screen.WriteNote.createRoute(id) + "&readOnly=true")
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                border = BorderStroke(1.dp, iceBlue)
+                            ) {
+                                Text("SÓ ESPIAR (CONGELADA)", color = iceBlue)
+                            }
                         }
                         Spacer(Modifier.height(8.dp))
                         TextButton(
