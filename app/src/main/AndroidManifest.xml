@@ -36,10 +36,23 @@
             android:theme="@style/Theme.MemoFlow">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- REGISTRO DO WIDGET -->
+        <receiver
+            android:name=".widget.QuickActionWidgetReceiver"
+            android:exported="true"
+            android:label="Memo Flow Atalhos">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_action_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>
