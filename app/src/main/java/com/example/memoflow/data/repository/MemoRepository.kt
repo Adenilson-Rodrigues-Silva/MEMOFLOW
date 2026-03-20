@@ -21,6 +21,7 @@ class MemoRepository(
     suspend fun insertNote(note: NoteEntity) = noteDao.insertNote(note)
     suspend fun updateNote(note: NoteEntity) = noteDao.updateNote(note)
     suspend fun deleteNote(note: NoteEntity) = noteDao.deleteNote(note)
+    suspend fun deleteAllNotes() = noteDao.deleteAllNotes()
     suspend fun getNoteById(id: Long) = noteDao.getNoteById(id)
     suspend fun unlockAllNotes() = noteDao.unlockAllNotes()
 
@@ -43,6 +44,8 @@ class MemoRepository(
     suspend fun insertGratitude(gratitude: GratitudeEntity) = gratitudeDao.insertGratitude(gratitude)
     
     suspend fun deleteGratitude(gratitude: GratitudeEntity) = gratitudeDao.deleteGratitude(gratitude)
+
+    suspend fun deleteAllGratitudes() = gratitudeDao.deleteAllGratitudes()
 
     suspend fun getGratitudeCountForToday(): Int {
         val today = LocalDate.now()

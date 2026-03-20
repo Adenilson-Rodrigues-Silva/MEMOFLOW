@@ -8,6 +8,7 @@ sealed class Screen(val route: String) {
     object Gratitude : Screen("gratitude_screen")
     object Recall : Screen("recall_screen")
     object Notifications : Screen("notifications_screen")
+    object Backup : Screen("backup_screen")
     object Store : Screen("store_screen")
     object WriteNote : Screen("write_note?noteId={noteId}") {
         fun createRoute(noteId: Long? = null) = if (noteId != null) "write_note?noteId=$noteId" else "write_note"

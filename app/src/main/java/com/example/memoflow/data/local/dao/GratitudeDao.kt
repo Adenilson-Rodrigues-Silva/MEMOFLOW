@@ -20,4 +20,7 @@ interface GratitudeDao {
 
     @Delete
     suspend fun deleteGratitude(gratitude: GratitudeEntity)
+
+    @Query("DELETE FROM gratitudes")
+    suspend fun deleteAllGratitudes()
 }

@@ -17,6 +17,7 @@ import com.example.memoflow.navigation.Screen
 import com.example.memoflow.ui.screens.home.HomeScreen
 import com.example.memoflow.ui.screens.profile.ProfileScreen
 import com.example.memoflow.ui.screens.profile.NotificationCenterScreen
+import com.example.memoflow.ui.screens.profile.BackupScreen
 import com.example.memoflow.ui.screens.security.SecurityScreen
 import com.example.memoflow.ui.screens.splash.SplashScreen
 import com.example.memoflow.ui.screens.common.UnderConstructionScreen
@@ -83,12 +84,16 @@ class MainActivity : ComponentActivity() {
                             onBack = { navController.popBackStack() },
                             onSecurityClick = { navController.navigate("security") },
                             onNotificationsClick = { navController.navigate(Screen.Notifications.route) },
-                            onBackupClick = { navController.navigate("construction") }
+                            onBackupClick = { navController.navigate(Screen.Backup.route) }
                         )
                     }
 
                     composable(Screen.Notifications.route) {
                         NotificationCenterScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable(Screen.Backup.route) {
+                        BackupScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable(Screen.Statistics.route) {

@@ -2,4 +2,5 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <cache-path name="cached_images" path="images/" />
     <cache-path name="cached_documents" path="documents/" />
+    <cache-path name="backup" path="backups/" />
 </paths>
