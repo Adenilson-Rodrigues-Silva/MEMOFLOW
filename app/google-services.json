@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "376900869050-qpiflo6ef678s8obvcpt381hnaaarvee.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.memoflow",
+            "certificate_hash": "bfae7c8f1fa0ac9a008c589d7a0ac8b624a5fda1"
+          }
+        },
+        {
           "client_id": "376900869050-17pdo2u3nuoq5f9ojvd22qni221emhu1.apps.googleusercontent.com",
           "client_type": 3
         }

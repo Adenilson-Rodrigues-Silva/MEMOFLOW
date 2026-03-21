@@ -12,16 +12,29 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.memoflow.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 @Composable
-fun SplashScreen(onFinished: () -> Unit) {
+fun SplashScreen(
+    onFinished: (Boolean) -> Unit, // ✅ Agora retorna se deve mostrar Boas-Vindas ou não
+    viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory)
+) {
     val alphaAnim = remember { Animatable(0f) }
+    
     LaunchedEffect(Unit) {
         alphaAnim.animateTo(1f, animationSpec = tween(1200))
-        delay(1800)
-        onFinished()
+        
+        // Verifica no banco se o usuário já passou pela tela inicial
+        val userSettings = viewModel.getUserSettings().first()
+        val hasSeenWelcome = userSettings?.hasSeenWelcome ?: false
+        
+        delay(1000)
+        onFinished(hasSeenWelcome)
     }
+
     Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
         Text(
             "MEMOFLOW",

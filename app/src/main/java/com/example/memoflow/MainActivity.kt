@@ -7,7 +7,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,6 +32,7 @@ import com.example.memoflow.ui.screens.store.StoreScreen
 import com.example.memoflow.ui.screens.map.PlacesMapScreen
 import com.example.memoflow.ui.screens.auth.WelcomeAuthScreen
 import com.example.memoflow.ui.theme.MemoFlowTheme
+import com.example.memoflow.ui.viewmodel.AuthViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +44,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MemoFlowTheme {
                 val navController = rememberNavController()
+                val authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory)
 
                 NavHost(
                     navController = navController,
@@ -70,27 +75,34 @@ class MainActivity : ComponentActivity() {
                     }
                 ) {
                     composable(Screen.Splash.route) {
-                        SplashScreen(onFinished = {
-                            navController.navigate(Screen.WelcomeAuth.route) {
-                                popUpTo(Screen.Splash.route) { inclusive = true }
+                        SplashScreen(onFinished = { hasSeenWelcome ->
+                            if (hasSeenWelcome) {
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(Screen.Splash.route) { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate(Screen.WelcomeAuth.route) {
+                                    popUpTo(Screen.Splash.route) { inclusive = true }
+                                }
                             }
                         })
                     }
 
                     composable(Screen.WelcomeAuth.route) {
+                        val authState = authViewModel.uiState.collectAsState().value
+                        
                         WelcomeAuthScreen(
-                            onGoogleSignIn = {
-                                // Lógica de login será conectada ao ViewModel em breve
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(Screen.WelcomeAuth.route) { inclusive = true }
-                                }
-                            },
-                            onSkip = {
+                            onSkip = { authViewModel.skipSignIn() },
+                            viewModel = authViewModel
+                        )
+                        
+                        LaunchedEffect(authState.isSuccess) {
+                            if (authState.isSuccess) {
                                 navController.navigate(Screen.Home.route) {
                                     popUpTo(Screen.WelcomeAuth.route) { inclusive = true }
                                 }
                             }
-                        )
+                        }
                     }
 
                     composable(Screen.Home.route) {

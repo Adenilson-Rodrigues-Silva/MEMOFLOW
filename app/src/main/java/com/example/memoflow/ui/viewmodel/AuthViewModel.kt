@@ -6,6 +6,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -16,12 +17,15 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.security.MessageDigest
+import java.util.UUID
 
 data class AuthUiState(
     val isLoading: Boolean = false,
@@ -36,29 +40,43 @@ class AuthViewModel(private val repository: MemoRepository) : ViewModel() {
 
     private val auth = FirebaseAuth.getInstance()
 
+    fun getUserSettings(): Flow<UserEntity?> = repository.userSettings
+
     fun signInWithGoogle(context: Context) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
-            val credentialManager = CredentialManager.create(context)
-            
-            val googleIdOption = GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(false)
-                .setServerClientId("376900869050-17pdo2u3nuoq5f9ojvd22qni221emhu1.apps.googleusercontent.com")
-                .setAutoSelectEnabled(true)
-                .build()
-
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build()
-
             try {
+                val credentialManager = CredentialManager.create(context)
+                
+                val rawNonce = UUID.randomUUID().toString()
+                val bytes = rawNonce.toByteArray()
+                val md = MessageDigest.getInstance("SHA-256")
+                val digest = md.digest(bytes)
+                val hashedNonce = digest.fold("") { str, it -> str + "%02x".format(it) }
+
+                // Mudança Crítica: Permitir que o Google procure por contas mesmo sem autoseleção
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false) // ✅ Mostra todas as contas do celular
+                    .setServerClientId("376900869050-17pdo2u3nuoq5f9ojvd22qni221emhu1.apps.googleusercontent.com")
+                    .setAutoSelectEnabled(false)
+                    .setNonce(hashedNonce)
+                    .build()
+
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+
                 val result = credentialManager.getCredential(context, request)
                 handleSignInResult(result)
+                
+            } catch (e: NoCredentialException) {
+                // Se falhar o seletor novo, avisamos para o usuário verificar as contas
+                _uiState.update { it.copy(isLoading = false, error = "Verifique se há uma conta Google ativa no seu celular.") }
             } catch (e: GetCredentialException) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = "Google: ${e.message}") }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = "Erro inesperado: ${e.message}") }
+                _uiState.update { it.copy(isLoading = false, error = "Erro: ${e.message}") }
             }
         }
     }
@@ -82,14 +100,15 @@ class AuthViewModel(private val repository: MemoRepository) : ViewModel() {
                         email = firebaseUser.email,
                         profilePhotoUri = firebaseUser.photoUrl?.toString() ?: currentUser.profilePhotoUri,
                         firebaseUid = firebaseUser.uid,
-                        isGoogleLogged = true
+                        isGoogleLogged = true,
+                        hasSeenWelcome = true
                     )
                     
                     repository.saveUserSettings(updatedUser)
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = "Erro ao autenticar no Firebase") }
+                _uiState.update { it.copy(isLoading = false, error = "Erro no Firebase") }
             }
         }
     }
@@ -97,7 +116,10 @@ class AuthViewModel(private val repository: MemoRepository) : ViewModel() {
     fun skipSignIn() {
         viewModelScope.launch {
             val currentUser = repository.userSettings.first() ?: UserEntity()
-            repository.saveUserSettings(currentUser.copy(isGoogleLogged = false))
+            repository.saveUserSettings(currentUser.copy(
+                isGoogleLogged = false,
+                hasSeenWelcome = true
+            ))
             _uiState.update { it.copy(isSuccess = true) }
         }
     }
