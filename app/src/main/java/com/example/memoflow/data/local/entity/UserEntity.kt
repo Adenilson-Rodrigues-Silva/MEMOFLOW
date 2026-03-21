@@ -8,6 +8,8 @@ data class UserEntity(
     @PrimaryKey
     val id: Int = 0, // Apenas um usuário/configuração
     val userName: String = "",
+    val email: String? = null,
+    val firebaseUid: String? = null,
     val profilePhotoUri: String? = null,
     val bio: String = "",
     val pin: String? = null, // PIN de 4 números
@@ -19,5 +21,7 @@ data class UserEntity(
     
     // Controle de Gratidão (Pote)
     val lastGratitudeRecallDate: Long = 0,
-    val gratitudeRecallCount: Int = 0
+    val gratitudeRecallCount: Int = 0,
+    
+    val isGoogleLogged: Boolean = false
 )

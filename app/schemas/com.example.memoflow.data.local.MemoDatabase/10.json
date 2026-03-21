@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 10,
-    "identityHash": "9e42cdb6f59a23609f4d617d57ac9ad9",
+    "identityHash": "0b9b46bf1db68eaa848d1563fa90955d",
     "entities": [
       {
         "tableName": "notes",
@@ -110,7 +110,7 @@
       },
       {
         "tableName": "user_settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `userName` TEXT NOT NULL, `profilePhotoUri` TEXT, `bio` TEXT NOT NULL, `pin` TEXT, `isBiometricEnabled` INTEGER NOT NULL, `lastRecallDate` INTEGER NOT NULL, `recallCount` INTEGER NOT NULL, `lastGratitudeRecallDate` INTEGER NOT NULL, `gratitudeRecallCount` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `userName` TEXT NOT NULL, `email` TEXT, `firebaseUid` TEXT, `profilePhotoUri` TEXT, `bio` TEXT NOT NULL, `pin` TEXT, `isBiometricEnabled` INTEGER NOT NULL, `lastRecallDate` INTEGER NOT NULL, `recallCount` INTEGER NOT NULL, `lastGratitudeRecallDate` INTEGER NOT NULL, `gratitudeRecallCount` INTEGER NOT NULL, `isGoogleLogged` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -123,6 +123,18 @@
             "columnName": "userName",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "firebaseUid",
+            "columnName": "firebaseUid",
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
             "fieldPath": "profilePhotoUri",
@@ -169,6 +181,12 @@
           {
             "fieldPath": "gratitudeRecallCount",
             "columnName": "gratitudeRecallCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isGoogleLogged",
+            "columnName": "isGoogleLogged",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -230,7 +248,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9e42cdb6f59a23609f4d617d57ac9ad9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0b9b46bf1db68eaa848d1563fa90955d')"
     ]
   }
 }

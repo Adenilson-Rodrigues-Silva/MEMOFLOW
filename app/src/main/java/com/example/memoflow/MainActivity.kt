@@ -27,6 +27,7 @@ import com.example.memoflow.ui.screens.gratitude.GratitudeScreen
 import com.example.memoflow.ui.screens.recall.RecallScreen
 import com.example.memoflow.ui.screens.store.StoreScreen
 import com.example.memoflow.ui.screens.map.PlacesMapScreen
+import com.example.memoflow.ui.screens.auth.WelcomeAuthScreen
 import com.example.memoflow.ui.theme.MemoFlowTheme
 
 class MainActivity : ComponentActivity() {
@@ -70,10 +71,26 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable(Screen.Splash.route) {
                         SplashScreen(onFinished = {
-                            navController.navigate(Screen.Home.route) {
+                            navController.navigate(Screen.WelcomeAuth.route) {
                                 popUpTo(Screen.Splash.route) { inclusive = true }
                             }
                         })
+                    }
+
+                    composable(Screen.WelcomeAuth.route) {
+                        WelcomeAuthScreen(
+                            onGoogleSignIn = {
+                                // Lógica de login será conectada ao ViewModel em breve
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(Screen.WelcomeAuth.route) { inclusive = true }
+                                }
+                            },
+                            onSkip = {
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(Screen.WelcomeAuth.route) { inclusive = true }
+                                }
+                            }
+                        )
                     }
 
                     composable(Screen.Home.route) {

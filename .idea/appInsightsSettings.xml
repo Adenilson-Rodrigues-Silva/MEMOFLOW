@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.memoflow" />
+                  <option name="mobileSdkAppId" value="1:376900869050:android:3f4929c6f0f5a467f6db83" />
+                  <option name="projectId" value="memoflow-1ad8a" />
+                  <option name="projectNumber" value="376900869050" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

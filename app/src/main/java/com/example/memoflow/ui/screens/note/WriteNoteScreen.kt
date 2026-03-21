@@ -175,7 +175,8 @@ fun WriteNoteScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "O Dino está guardando\nsua memória...",
+                        "Esse momento não vai se perder\nno tempo",
+                        //"O Dino está guardando\nsua memória...",
                         color = Color.White,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,

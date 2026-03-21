@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "376900869050",
+    "project_id": "memoflow-1ad8a",
+    "storage_bucket": "memoflow-1ad8a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:376900869050:android:3f4929c6f0f5a467f6db83",
+        "android_client_info": {
+          "package_name": "com.example.memoflow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "376900869050-17pdo2u3nuoq5f9ojvd22qni221emhu1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBk6cHem3heDdZaN309fOm4CoYAG9SLp8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "376900869050-17pdo2u3nuoq5f9ojvd22qni221emhu1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

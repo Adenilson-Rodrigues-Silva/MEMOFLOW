@@ -132,7 +132,10 @@ fun HomeScreen(
                 onDismiss = { showChronosCalendar = false },
                 selectedDate = selectedDate,
                 markedDates = markedDates,
-                onDateSelected = { viewModel.onDateSelected(it) },
+                onDateSelected = { 
+                    viewModel.onDateSelected(it)
+                    showChronosCalendar = false
+                },
                 neonGreen = neonGreen
             )
         }
