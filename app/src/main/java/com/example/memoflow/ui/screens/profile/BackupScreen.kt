@@ -16,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +37,7 @@ fun BackupScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val isPremium by viewModel.isPremium.collectAsState()
     val animatedGradient = rememberAnimatedAiGradient()
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -87,27 +87,35 @@ fun BackupScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CloudQueue, null, tint = Color(0xFF00FFC2))
+                        Icon(Icons.Default.CloudQueue, null, tint = if (isPremium) Color(0xFFFFD700) else Color(0xFF00FFC2))
                         Spacer(Modifier.width(8.dp))
                         Text("Backup na Nuvem", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Sincronização automática com Google Drive.",
+                        if (isPremium) "Sincronização com Google Drive ativada!" else "Sincronização automática com Google Drive.",
                         color = Color.Gray,
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(20.dp))
                     Button(
-                        onClick = { },
+                        onClick = { 
+                            if (!isPremium) {
+                                // Talvez navegar para a loja ou mostrar aviso
+                            }
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                         modifier = Modifier
                             .background(animatedGradient, RoundedCornerShape(12.dp))
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("DISPONÍVEL EM BREVE (PREMIUM)", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (isPremium) "CONFIGURAR DRIVE (EM BREVE)" else "DISPONÍVEL EM BREVE (PREMIUM)", 
+                            color = Color.White, 
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -149,7 +157,6 @@ fun BackupScreen(
         }
     }
 
-    // OVERLAY LÚDICO DE LOADING (Com animação de 3 segundos garantida pelo ViewModel)
     if (uiState is BackupViewModel.BackupUiState.Loading) {
         BackupLoadingDialog()
     }

@@ -40,6 +40,15 @@ class MemoRepository(
         return noteDao.getNotesByLocationAreaFiltered(minLat, maxLat, minLon, maxLon, sinceDate)
     }
 
+    suspend fun getNoteCountForToday(): Int {
+        val today = LocalDate.now()
+        val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val endOfDay = today.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return noteDao.getCountForDay(startOfDay, endOfDay)
+    }
+
+    suspend fun getTimeCapsuleCount(): Int = noteDao.getTimeCapsuleCount()
+
     // User Settings
     val userSettings: Flow<UserEntity?> = userDao.getUserSettings()
     suspend fun saveUserSettings(user: UserEntity) = userDao.insertUser(user)

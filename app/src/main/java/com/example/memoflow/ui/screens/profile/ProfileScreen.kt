@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.memoflow.R
+import com.example.memoflow.ui.components.home.PurpleAI
 import com.example.memoflow.ui.components.home.rememberAnimatedAiGradient
 import com.example.memoflow.ui.viewmodel.AuthViewModel
 
@@ -48,12 +49,13 @@ fun ProfileScreen(
     onSecurityClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     onBackupClick: () -> Unit,
+    onStoreClick: () -> Unit,
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory),
     authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory)
 ) {
     val context = LocalContext.current
     val userSettings by viewModel.userSettings.collectAsState()
-    val authState by authViewModel.uiState.collectAsState()
+    val isPremium by viewModel.isPremium.collectAsState()
     val animatedGradient = rememberAnimatedAiGradient()
     
     val googleGradient = Brush.linearGradient(
@@ -76,6 +78,13 @@ fun ProfileScreen(
         colors = listOf(Color(0xFF424242), Color(0xFFBDBDBD), Color.White, Color(0xFFE0E0E0), Color(0xFF424242)),
         start = Offset(shimmerValue, shimmerValue),
         end = Offset(shimmerValue + 400f, shimmerValue + 400f),
+        tileMode = TileMode.Repeated
+    )
+
+    val premiumBrush = Brush.linearGradient(
+        colors = listOf(PurpleAI, Color(0xFF6200EE), PurpleAI),
+        start = Offset(shimmerValue, shimmerValue),
+        end = Offset(shimmerValue + 500f, shimmerValue + 500f),
         tileMode = TileMode.Repeated
     )
 
@@ -109,7 +118,7 @@ fun ProfileScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.5.dp, if (userSettings.isGoogleLogged) animatedGradient else silverShimmer, RoundedCornerShape(32.dp)),
+                            .border(1.5.dp, if (isPremium) premiumBrush else if (userSettings.isGoogleLogged) animatedGradient else silverShimmer, RoundedCornerShape(32.dp)),
                         shape = RoundedCornerShape(32.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
                     ) {
@@ -122,7 +131,7 @@ fun ProfileScreen(
                                     modifier = Modifier.size(140.dp).clip(CircleShape).clickable { galleryLauncher.launch("image/*") },
                                     shape = CircleShape,
                                     color = Color(0xFF1A1A1A),
-                                    border = BorderStroke(2.5.dp, if (userSettings.isGoogleLogged) animatedGradient else silverShimmer)
+                                    border = BorderStroke(2.5.dp, if (isPremium) premiumBrush else if (userSettings.isGoogleLogged) animatedGradient else silverShimmer)
                                 ) {
                                     if (userSettings.profilePhotoUri == null) {
                                         Icon(Icons.Default.Person, null, modifier = Modifier.padding(35.dp), tint = Color.DarkGray)
@@ -150,7 +159,10 @@ fun ProfileScreen(
                                     modifier = Modifier.clickable { showEditNameDialog = true },
                                     textAlign = TextAlign.Center
                                 )
-                                if (userSettings.isGoogleLogged) {
+                                if (isPremium) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(Icons.Default.Star, "Premium", tint = Color(0xFFFFD700), modifier = Modifier.size(22.dp))
+                                } else if (userSettings.isGoogleLogged) {
                                     Spacer(Modifier.width(8.dp))
                                     Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4285F4), modifier = Modifier.size(20.dp))
                                 }
@@ -167,15 +179,20 @@ fun ProfileScreen(
                             )
                             
                             Surface(
-                                color = if (userSettings.isGoogleLogged) Color(0xFF6A00FF).copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f),
+                                color = if (isPremium) PurpleAI.copy(alpha = 0.2f) else if (userSettings.isGoogleLogged) Color(0xFF6A00FF).copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                    Icon(if (userSettings.isGoogleLogged) Icons.Default.CloudDone else Icons.Default.AutoAwesome, null, tint = if (userSettings.isGoogleLogged) Color(0xFFBB86FC) else neonGreen, modifier = Modifier.size(12.dp))
+                                    Icon(
+                                        if (isPremium) Icons.Default.Verified else if (userSettings.isGoogleLogged) Icons.Default.CloudDone else Icons.Default.AutoAwesome, 
+                                        null, 
+                                        tint = if (isPremium) PurpleAI else if (userSettings.isGoogleLogged) Color(0xFFBB86FC) else neonGreen, 
+                                        modifier = Modifier.size(12.dp)
+                                    )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        text = if (userSettings.isGoogleLogged) "Conta Sincronizada" else "Membro Flow desde fev 2026", 
-                                        color = if (userSettings.isGoogleLogged) Color(0xFFBB86FC) else neonGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold
+                                        text = if (isPremium) "MEMBRO PREMIUM" else if (userSettings.isGoogleLogged) "Conta Sincronizada" else "Membro Flow desde fev 2026", 
+                                        color = if (isPremium) PurpleAI else if (userSettings.isGoogleLogged) Color(0xFFBB86FC) else neonGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
@@ -183,7 +200,7 @@ fun ProfileScreen(
                     }
                 }
 
-                // BOTÃO DE LOGIN GOOGLE (Logo abaixo do Card de Foto)
+                // BOTÃO DE LOGIN GOOGLE
                 if (!userSettings.isGoogleLogged) {
                     item {
                         Card(
@@ -216,6 +233,13 @@ fun ProfileScreen(
                 // DASHBOARD DE AÇÕES
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ProfileDashboardCard(
+                            title = "Loja de Evolução", 
+                            subtitle = if (isPremium) "Você é Premium! Ver doações" else "Adquira o Premium ou apoie o dev", 
+                            icon = Icons.Default.ShoppingCart, 
+                            gradient = if (isPremium) premiumBrush else animatedGradient, 
+                            onClick = onStoreClick
+                        )
                         ProfileDashboardCard(title = "Segurança Ativa", subtitle = "Gerencie seu PIN e Biometria", icon = Icons.Default.Shield, gradient = animatedGradient, onClick = onSecurityClick)
                         ProfileDashboardCard(title = "Fluxo de Alertas", subtitle = "Central de Notificações Inteligente", icon = Icons.Default.NotificationsActive, gradient = animatedGradient, onClick = onNotificationsClick)
                         ProfileDashboardCard(title = "Arquivos & Backup", subtitle = "Nuvem e Exportação de Memórias", icon = Icons.Default.AutoMode, gradient = animatedGradient, onClick = onBackupClick)

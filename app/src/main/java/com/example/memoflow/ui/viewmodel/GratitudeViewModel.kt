@@ -1,18 +1,26 @@
 package com.example.memoflow.ui.viewmodel
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.example.memoflow.MemoApplication
 import com.example.memoflow.data.local.entity.GratitudeEntity
 import com.example.memoflow.data.local.entity.UserEntity
 import com.example.memoflow.data.repository.MemoRepository
+import com.example.memoflow.utils.BillingPrefs
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 
-class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
+class GratitudeViewModel(
+    application: Application,
+    private val repository: MemoRepository,
+    private val billingPrefs: BillingPrefs
+) : AndroidViewModel(application) {
 
     private val _allGratitudes = MutableStateFlow<List<GratitudeEntity>>(emptyList())
     val allGratitudes: StateFlow<List<GratitudeEntity>> = _allGratitudes.asStateFlow()
@@ -28,20 +36,31 @@ class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
     private val _dailyCount = MutableStateFlow(0)
     val dailyCount: StateFlow<Int> = _dailyCount.asStateFlow()
 
-    // Control logic for jar clicks (limit 3 per day) persisted in UserEntity
     private val _flashbackCount = MutableStateFlow(0)
     val flashbackCount: StateFlow<Int> = _flashbackCount.asStateFlow()
+    
+    private val _maxFlashbacks = MutableStateFlow(3)
+    val maxFlashbacks: StateFlow<Int> = _maxFlashbacks.asStateFlow()
 
     init {
         observeGratitudes()
         updateDailyCount()
         checkFlashbackLimit()
+        observePremiumStatus()
     }
 
     private fun observeGratitudes() {
         viewModelScope.launch {
             repository.allGratitudes.collectLatest { 
                 _allGratitudes.value = it
+            }
+        }
+    }
+
+    private fun observePremiumStatus() {
+        viewModelScope.launch {
+            billingPrefs.isPremium.collectLatest { isPremium ->
+                _maxFlashbacks.value = if (isPremium) 6 else 3
             }
         }
     }
@@ -99,7 +118,10 @@ class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
     fun incrementFlashbackCount() {
         viewModelScope.launch {
             val user = repository.userSettings.first() ?: UserEntity()
-            if (user.gratitudeRecallCount < 3) {
+            val isPremium = billingPrefs.isPremium.first()
+            val limit = if (isPremium) 6 else 3
+            
+            if (user.gratitudeRecallCount < limit) {
                 val newCount = user.gratitudeRecallCount + 1
                 repository.saveUserSettings(user.copy(gratitudeRecallCount = newCount))
                 _flashbackCount.value = newCount
@@ -111,8 +133,8 @@ class GratitudeViewModel(private val repository: MemoRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-                val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as com.example.memoflow.MemoApplication
-                return GratitudeViewModel(application.repository) as T
+                val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as MemoApplication
+                return GratitudeViewModel(application, application.repository, application.billingPrefs) as T
             }
         }
     }

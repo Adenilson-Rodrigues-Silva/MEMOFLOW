@@ -16,8 +16,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.example.memoflow.MemoApplication
 import com.example.memoflow.data.local.entity.NoteEntity
 import com.example.memoflow.data.repository.MemoRepository
+import com.example.memoflow.utils.BillingPrefs
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.mohamedrejeb.richeditor.model.RichTextState
@@ -26,6 +28,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -61,10 +64,14 @@ data class WriteNoteUiState(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val locationName: String? = null,
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+    val error: String? = null
 )
 
-class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
+class WriteNoteViewModel(
+    private val repository: MemoRepository,
+    private val billingPrefs: BillingPrefs
+) : ViewModel() {
 
     private val _uiStateFlow = MutableStateFlow(WriteNoteUiState())
     val uiStateFlow = _uiStateFlow.asStateFlow()
@@ -122,19 +129,36 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
     fun captureLocationAndSave(context: Context, onComplete: () -> Unit) {
         if (_uiStateFlow.value.isSaving) return
         
-        _uiStateFlow.update { it.copy(isSaving = true) }
-        
         viewModelScope.launch {
+            // Verifica limites apenas para notas NOVAS
+            if (_uiStateFlow.value.id == 0L) {
+                // Limite de 3 notas por dia (IGUAL PARA AMBOS conforme pedido)
+                val countToday = repository.getNoteCountForToday()
+                if (countToday >= 3) {
+                    _uiStateFlow.update { it.copy(error = "Limite de 3 notas diárias atingido.") }
+                    return@launch
+                }
+            }
+
+            // Limite de cápsulas do tempo
+            if (_uiStateFlow.value.isTimeCapsule && _uiStateFlow.value.id == 0L) {
+                val isPremium = billingPrefs.isPremium.first()
+                val capsuleCount = repository.getTimeCapsuleCount()
+                if (!isPremium && capsuleCount >= 3) {
+                    _uiStateFlow.update { it.copy(error = "Limite de 3 cápsulas do tempo atingido. Evolua para o Premium!") }
+                    return@launch
+                }
+            }
+
+            _uiStateFlow.update { it.copy(isSaving = true) }
             val startTime = System.currentTimeMillis()
             
             try {
-                // Tenta pegar a última localização conhecida primeiro (mais rápido)
                 val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
                 var location = withTimeoutOrNull(2000) {
                     fusedLocationClient.lastLocation.await()
                 }
                 
-                // Se não tiver última localização, pede a atual
                 if (location == null) {
                     location = withTimeoutOrNull(6000) {
                         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
@@ -158,8 +182,6 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
-                // Garante que o loading dure pelo menos 2 segundos para o usuário ver a animação
-                // e para dar tempo de processar tudo com calma.
                 val elapsedTime = System.currentTimeMillis() - startTime
                 if (elapsedTime < 2000) {
                     delay(2000 - elapsedTime)
@@ -175,15 +197,7 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
     private suspend fun getCityName(context: Context, lat: Double, lon: Double): String? = withContext(Dispatchers.IO) {
         try {
             val geocoder = Geocoder(context, Locale.getDefault())
-            val addresses = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // Em Android 13+, a chamada é assíncrona mas o withContext(IO) nos permite esperar
-                // Infelizmente o Geocoder nativo não tem await() direto fácil sem callback, 
-                // vamos usar a versão síncrona que ainda funciona no IO thread.
-                geocoder.getFromLocation(lat, lon, 1)
-            } else {
-                @Suppress("DEPRECATION")
-                geocoder.getFromLocation(lat, lon, 1)
-            }
+            val addresses = geocoder.getFromLocation(lat, lon, 1)
             addresses?.firstOrNull()?.let { 
                 it.locality ?: it.subAdminArea ?: it.adminArea
             }
@@ -257,6 +271,10 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
             )
             repository.insertNote(note)
         }
+    }
+
+    fun clearError() {
+        _uiStateFlow.update { it.copy(error = null) }
     }
 
     fun onVoiceClick(cacheDir: File) {
@@ -383,8 +401,8 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-                val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as com.example.memoflow.MemoApplication
-                return WriteNoteViewModel(application.repository) as T
+                val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as MemoApplication
+                return WriteNoteViewModel(application.repository, application.billingPrefs) as T
             }
         }
     }

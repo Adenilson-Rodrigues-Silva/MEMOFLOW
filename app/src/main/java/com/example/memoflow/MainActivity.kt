@@ -114,7 +114,8 @@ class MainActivity : ComponentActivity() {
                             onBack = { navController.popBackStack() },
                             onSecurityClick = { navController.navigate("security") },
                             onNotificationsClick = { navController.navigate(Screen.Notifications.route) },
-                            onBackupClick = { navController.navigate(Screen.Backup.route) }
+                            onBackupClick = { navController.navigate(Screen.Backup.route) },
+                            onStoreClick = { navController.navigate(Screen.Store.route) }
                         )
                     }
 

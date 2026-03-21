@@ -388,9 +388,13 @@ fun HomeHeader(
     userPhotoUrl: String?,
     onProfileClick: () -> Unit,
     onCalendarClick: () -> Unit,
-    onStoreClick: () -> Unit
+    onStoreClick: () -> Unit,
+    onStatusClick: () -> Unit,
+    isPremium: Boolean
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "diamond_glow")
+    val gold = Color(0xFFFFD700)
+    val neonGreen = Color(0xFF00FFC2)
     
     // Animação do brilho que "passa" (shimmer sweep)
     val shineOffset by infiniteTransition.animateFloat(
@@ -410,15 +414,32 @@ fun HomeHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text("Meu Diário", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-            Text(date, color = Color(0xFFAAAAAA), fontSize = 14.sp)
+            Text("Memo Flow", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+            Text(date, color = Color(0xFFAAAAAA), fontSize = 13.sp)
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // BOTÃO DE STATUS / LIMITES (NOVO LOCAL)
+            IconButton(
+                onClick = onStatusClick,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
+            ) {
+                Icon(
+                    if (isPremium) Icons.Default.Verified else Icons.Default.AutoGraph, 
+                    contentDescription = "Status", 
+                    tint = if (isPremium) gold else neonGreen, 
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
             IconButton(
                 onClick = onStoreClick,
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(40.dp)
                     .background(PurpleAI.copy(alpha = 0.1f), CircleShape)
                     .border(1.dp, PurpleAI.copy(alpha = 0.3f), CircleShape)
             ) {
@@ -427,11 +448,11 @@ fun HomeHeader(
                         Icons.Default.Diamond, 
                         contentDescription = "Loja", 
                         tint = PurpleAI, 
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                     
                     // Camada de Brilho Extra (Sweep)
-                    Canvas(modifier = Modifier.size(24.dp).clip(CircleShape)) {
+                    Canvas(modifier = Modifier.size(22.dp).clip(CircleShape)) {
                         drawRect(
                             brush = Brush.linearGradient(
                                 colors = listOf(
@@ -447,22 +468,22 @@ fun HomeHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             IconButton(
                 onClick = onCalendarClick,
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(40.dp)
                     .background(Color.White.copy(alpha = 0.05f), CircleShape)
             ) {
-                Icon(Icons.Default.DateRange, null, tint = Color(0xFF00FFC2), modifier = Modifier.size(22.dp))
+                Icon(Icons.Default.DateRange, null, tint = Color(0xFF00FFC2), modifier = Modifier.size(20.dp))
             }
             
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             Surface(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .clickable { onProfileClick() },
                 shape = CircleShape,

@@ -57,4 +57,10 @@ interface NoteDao {
         ORDER BY date DESC
     """)
     fun getNotesByLocationAreaFiltered(minLat: Double, maxLat: Double, minLon: Double, maxLon: Double, sinceDate: Long): Flow<List<NoteEntity>>
+
+    @Query("SELECT COUNT(*) FROM notes WHERE date BETWEEN :startOfDay AND :endOfDay")
+    suspend fun getCountForDay(startOfDay: Long, endOfDay: Long): Int
+
+    @Query("SELECT COUNT(*) FROM notes WHERE isTimeCapsule = 1")
+    suspend fun getTimeCapsuleCount(): Int
 }

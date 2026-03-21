@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.room.Room
 import com.example.memoflow.data.local.MemoDatabase
 import com.example.memoflow.data.repository.MemoRepository
+import com.example.memoflow.utils.BillingManager
+import com.example.memoflow.utils.BillingPrefs
 import com.example.memoflow.utils.NotificationHelper
 
 class MemoApplication : Application() {
@@ -22,9 +24,15 @@ class MemoApplication : Application() {
         MemoRepository(database.noteDao(), database.userDao(), database.gratitudeDao())
     }
 
+    val billingPrefs by lazy { BillingPrefs(this) }
+    val billingManager by lazy { BillingManager(this, billingPrefs) }
+
     override fun onCreate() {
         super.onCreate()
         // ✅ CRUCIAL: Cria os canais de notificação assim que o app inicia
         NotificationHelper(this).createNotificationChannels()
+        
+        // Inicializa o billing
+        billingManager.startConnection()
     }
 }
