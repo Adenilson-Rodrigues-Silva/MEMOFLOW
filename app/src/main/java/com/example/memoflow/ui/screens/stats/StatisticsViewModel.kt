@@ -16,11 +16,12 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.Instant
-import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.*
 
 data class MoodStat(val emoji: String, val label: String, val percentage: Int, val color: androidx.compose.ui.graphics.Color, val count: Int = 0)
+
+data class CityHumorStat(val cityName: String, val averageScore: Float, val count: Int, val insight: String = "")
 
 data class StatsData(
     val moodPoints: List<Float> = emptyList(),
@@ -36,7 +37,10 @@ data class StatsData(
     val capsuleDays: List<LocalDate> = emptyList(),
     val gratitudeCount: Int = 0,
     val totalGratitudesInPote: Int = 0,
-    val monthName: String = ""
+    val monthName: String = "",
+    val happiestCity: CityHumorStat? = null,
+    val totalCitiesVisited: Int = 0,
+    val topCreationPlace: String? = null
 )
 
 class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() {
@@ -127,7 +131,6 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
             tempDate = tempDate.plusDays(1)
         }
 
-        // Processamento de Humores
         val humorCounts = notes.groupingBy { it.emoji }.eachCount()
         val totalNotes = notes.size.coerceAtLeast(1)
         val topMoods = humorCounts.toList()
@@ -142,6 +145,26 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
                 )
             }
 
+        // --- Lógica Geográfica Avançada ---
+        val citiesGrouped = notes.filter { it.locationName != null }.groupBy { it.locationName!! }
+        
+        val happiestCity = citiesGrouped.map { (city, cityNotes) ->
+            val avg = cityNotes.map { mapEmojiToScore(it.emoji) }.average().toFloat()
+            CityHumorStat(
+                cityName = city,
+                averageScore = avg,
+                count = cityNotes.size,
+                insight = when {
+                    avg >= 4.5 -> "Sua vibração aqui é radiante ✨"
+                    avg >= 3.5 -> "Você se sente em equilíbrio aqui."
+                    else -> "Um lugar de superação e reflexão."
+                }
+            )
+        }.maxByOrNull { it.averageScore }
+
+        val topCreationPlace = citiesGrouped.maxByOrNull { it.value.size }?.key
+        val totalCitiesVisited = citiesGrouped.keys.size
+
         return StatsData(
             moodPoints = moodPoints,
             topMoods = topMoods,
@@ -155,7 +178,10 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
             capsuleDays = capsuleDays.toList().sorted(),
             gratitudeCount = gratitudesInRange.size,
             totalGratitudesInPote = totalGratitudes,
-            monthName = monthLabel
+            monthName = monthLabel,
+            happiestCity = happiestCity,
+            totalCitiesVisited = totalCitiesVisited,
+            topCreationPlace = topCreationPlace
         )
     }
 

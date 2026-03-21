@@ -1,5 +1,6 @@
 package com.example.memoflow.ui.screens.stats
 
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -112,6 +113,14 @@ fun StatisticsScreen(
                             viewModel.setPeriod(1)
                         }
                     }
+                }
+            }
+
+            // --- NOVO CARD: LUGAR MAIS FELIZ ---
+            statsData.happiestCity?.let { cityStat ->
+                item {
+                    SectionHeader("Geografia da Felicidade")
+                    HappiestCityCard(cityStat, dataGradient)
                 }
             }
 
@@ -240,6 +249,46 @@ fun StatisticsScreen(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun HappiestCityCard(cityStat: CityHumorStat, borderBrush: Brush) {
+    Card(
+        modifier = Modifier.fillMaxWidth().border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF6A00FF).copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.LocationOn, null, tint = Color(0xFF6A00FF), modifier = Modifier.size(28.dp))
+            }
+            Spacer(Modifier.width(20.dp))
+            Column {
+                Text("Seu Lugar Mais Feliz", color = Color.Gray, fontSize = 12.sp)
+                Text(
+                    text = cityStat.cityName, 
+                    color = Color.White, 
+                    fontSize = 22.sp, 
+                    fontWeight = FontWeight.ExtraBold 
+                )
+                Text(
+                    text = "Você costuma estar mais vibrante aqui!",
+                    color = Color(0xFF00FFC2),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
