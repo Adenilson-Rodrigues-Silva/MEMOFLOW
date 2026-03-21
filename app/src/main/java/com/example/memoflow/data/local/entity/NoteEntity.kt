@@ -19,5 +19,6 @@ data class NoteEntity(
     val unlockDate: Long? = null,
     val fontFamilyName: String? = null,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val locationName: String? = null
 )

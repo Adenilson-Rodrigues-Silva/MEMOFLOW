@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,8 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.*
 import com.example.memoflow.R
 import com.example.memoflow.data.local.entity.NoteEntity
@@ -50,6 +54,7 @@ fun PlacesMapScreen(
     
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
+    var selectedMonthForGallery by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.selectedNotes) {
         if (uiState.selectedNotes.isNotEmpty()) {
@@ -65,14 +70,12 @@ fun PlacesMapScreen(
     }
 
     val cameraPositionState = rememberCameraPositionState {
-        // Pega a última posição do DataStore ou usa Portugal como default
         val initialLat = uiState.initialLocation?.first ?: 38.7223
         val initialLng = uiState.initialLocation?.second ?: -9.1393
         val initialZoom = uiState.initialLocation?.third ?: 10f
         position = CameraPosition.fromLatLngZoom(LatLng(initialLat, initialLng), initialZoom)
     }
 
-    // Salva a posição quando a câmera para de mover
     LaunchedEffect(cameraPositionState.isMoving) {
         if (!cameraPositionState.isMoving) {
             val pos = cameraPositionState.position
@@ -205,6 +208,7 @@ fun PlacesMapScreen(
                 onDismissRequest = { 
                     showBottomSheet = false
                     viewModel.clearSelectedNotes()
+                    selectedMonthForGallery = null
                 },
                 sheetState = sheetState,
                 containerColor = Color(0xFF121212),
@@ -217,7 +221,6 @@ fun PlacesMapScreen(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
                     
                     val groupedNotes = uiState.selectedNotes.groupBy { note ->
                         SimpleDateFormat("MMMM 'de' yyyy", Locale("pt", "BR")).format(Date(note.date))
@@ -225,18 +228,47 @@ fun PlacesMapScreen(
 
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(20.dp),
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp)
+                        modifier = Modifier.fillMaxWidth().weight(1f, fill = false).padding(top = 16.dp)
                     ) {
                         groupedNotes.forEach { (month, notes) ->
                             item {
+                                val locationName = notes.firstOrNull { it.locationName != null }?.locationName
                                 MonthSummaryCard(
                                     month = month.replaceFirstChar { it.uppercase() },
+                                    location = locationName,
                                     totalNotes = notes.size,
                                     lockedNotes = notes.count { it.isLocked },
                                     capsuleNotes = notes.count { it.isTimeCapsule },
                                     accentColor = deepPurple,
-                                    capsuleColor = iceBlue
+                                    capsuleColor = iceBlue,
+                                    onGalleryClick = { selectedMonthForGallery = if (selectedMonthForGallery == month) null else month }
                                 )
+                                
+                                AnimatedVisibility(visible = selectedMonthForGallery == month) {
+                                    val photos = notes.filter { !it.isLocked && !it.isTimeCapsule }
+                                        .flatMap { it.images }
+                                    
+                                    if (photos.isNotEmpty()) {
+                                        Column(modifier = Modifier.padding(top = 12.dp)) {
+                                            Text("Fotos desta região", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                                            LazyRow(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                items(photos) { photoUri ->
+                                                    AsyncImage(
+                                                        model = photoUri,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(120.dp).clip(RoundedCornerShape(12.dp)),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Text("Nenhuma foto pública aqui.", color = Color.DarkGray, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
+                                    }
+                                }
                             }
                         }
                     }
@@ -250,20 +282,33 @@ fun PlacesMapScreen(
 @Composable
 fun MonthSummaryCard(
     month: String,
+    location: String?,
     totalNotes: Int,
     lockedNotes: Int,
     capsuleNotes: Int,
     accentColor: Color,
-    capsuleColor: Color
+    capsuleColor: Color,
+    onGalleryClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = month,
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = month,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                if (location != null) {
+                    Text(text = "em $location", color = Color.Gray, fontSize = 12.sp)
+                }
+            }
+            IconButton(onClick = onGalleryClick) {
+                Icon(Icons.Default.PhotoLibrary, null, tint = Color.White.copy(alpha = 0.6f))
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
         
         Surface(
             color = Color.White.copy(alpha = 0.05f),

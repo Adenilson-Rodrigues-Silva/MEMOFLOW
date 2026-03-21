@@ -12,7 +12,7 @@ import com.example.memoflow.data.local.entity.UserEntity
 
 @Database(
     entities = [NoteEntity::class, UserEntity::class, GratitudeEntity::class],
-    version = 9, // Incrementada para incluir latitude e longitude em NoteEntity
+    version = 10, // Atualizado para suportar novos campos de geolocalização e nomes de lugares
     exportSchema = true
 )
 @TypeConverters(Converters::class)

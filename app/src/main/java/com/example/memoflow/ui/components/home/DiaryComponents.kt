@@ -568,17 +568,12 @@ fun HubButton(icon: ImageVector, label: String, color: Color, onClick: () -> Uni
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .size(56.dp)
-                .neonGlow(color) 
                 .border(1.dp, color, RoundedCornerShape(16.dp)),
             elevation = FloatingActionButtonDefaults.elevation(8.dp)
         ) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
         }
     }
-}
-
-fun Modifier.neonGlow(color: Color) = this.drawBehind {
-    drawCircle(color = color.copy(alpha = 0.25f), radius = size.maxDimension * 0.85f, center = center)
 }
 
 @Composable

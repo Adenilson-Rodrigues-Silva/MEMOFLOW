@@ -2,9 +2,11 @@ package com.example.memoflow.ui.viewmodel
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.location.Geocoder
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -19,6 +21,7 @@ import com.example.memoflow.data.repository.MemoRepository
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.mohamedrejeb.richeditor.model.RichTextState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,8 +29,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.FileOutputStream
+import java.util.*
 
 data class WriteNoteUiState(
     val id: Long = 0,
@@ -53,7 +59,9 @@ data class WriteNoteUiState(
     val unlockDate: Long? = null,
     val date: Long = System.currentTimeMillis(),
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val locationName: String? = null,
+    val isSaving: Boolean = false
 )
 
 class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
@@ -90,7 +98,8 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                         unlockDate = it.unlockDate,
                         date = it.date,
                         latitude = it.latitude,
-                        longitude = it.longitude
+                        longitude = it.longitude,
+                        locationName = it.locationName
                     )
                 }
                 richTextState.setHtml(it.contentHtml)
@@ -111,19 +120,75 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
 
     @SuppressLint("MissingPermission")
     fun captureLocationAndSave(context: Context, onComplete: () -> Unit) {
+        if (_uiStateFlow.value.isSaving) return
+        
+        _uiStateFlow.update { it.copy(isSaving = true) }
+        
         viewModelScope.launch {
+            val startTime = System.currentTimeMillis()
+            
             try {
+                // Tenta pegar a última localização conhecida primeiro (mais rápido)
                 val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-                val location = fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).await()
+                var location = withTimeoutOrNull(2000) {
+                    fusedLocationClient.lastLocation.await()
+                }
+                
+                // Se não tiver última localização, pede a atual
+                if (location == null) {
+                    location = withTimeoutOrNull(6000) {
+                        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
+                    }
+                }
+                
                 if (location != null) {
-                    _uiStateFlow.update { it.copy(latitude = location.latitude, longitude = location.longitude) }
+                    val lat = location.latitude
+                    val lon = location.longitude
+                    
+                    val cityName = withTimeoutOrNull(4000) {
+                        getCityName(context, lat, lon)
+                    }
+                    
+                    _uiStateFlow.update { it.copy(
+                        latitude = lat, 
+                        longitude = lon,
+                        locationName = cityName
+                    ) }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
+                // Garante que o loading dure pelo menos 2 segundos para o usuário ver a animação
+                // e para dar tempo de processar tudo com calma.
+                val elapsedTime = System.currentTimeMillis() - startTime
+                if (elapsedTime < 2000) {
+                    delay(2000 - elapsedTime)
+                }
+                
                 saveNote()
+                _uiStateFlow.update { it.copy(isSaving = false) }
                 onComplete()
             }
+        }
+    }
+
+    private suspend fun getCityName(context: Context, lat: Double, lon: Double): String? = withContext(Dispatchers.IO) {
+        try {
+            val geocoder = Geocoder(context, Locale.getDefault())
+            val addresses = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // Em Android 13+, a chamada é assíncrona mas o withContext(IO) nos permite esperar
+                // Infelizmente o Geocoder nativo não tem await() direto fácil sem callback, 
+                // vamos usar a versão síncrona que ainda funciona no IO thread.
+                geocoder.getFromLocation(lat, lon, 1)
+            } else {
+                @Suppress("DEPRECATION")
+                geocoder.getFromLocation(lat, lon, 1)
+            }
+            addresses?.firstOrNull()?.let { 
+                it.locality ?: it.subAdminArea ?: it.adminArea
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -187,7 +252,8 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                 isTimeCapsule = state.isTimeCapsule,
                 unlockDate = state.unlockDate,
                 latitude = state.latitude,
-                longitude = state.longitude
+                longitude = state.longitude,
+                locationName = state.locationName
             )
             repository.insertNote(note)
         }
