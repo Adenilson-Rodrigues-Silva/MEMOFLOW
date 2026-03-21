@@ -35,4 +35,26 @@ interface NoteDao {
 
     @Query("SELECT * FROM notes WHERE isLocked = 0 AND isTimeCapsule = 0 ORDER BY date ASC")
     fun getRecallableNotes(): Flow<List<NoteEntity>>
+
+    @Query("SELECT * FROM notes WHERE latitude IS NOT NULL AND longitude IS NOT NULL")
+    fun getNotesWithLocation(): Flow<List<NoteEntity>>
+
+    // ✅ Nova query filtrada por data para o Mapa
+    @Query("""
+        SELECT * FROM notes 
+        WHERE latitude IS NOT NULL 
+        AND longitude IS NOT NULL 
+        AND date >= :sinceDate
+        ORDER BY date DESC
+    """)
+    fun getNotesWithLocationSince(sinceDate: Long): Flow<List<NoteEntity>>
+
+    @Query("""
+        SELECT * FROM notes 
+        WHERE latitude BETWEEN :minLat AND :maxLat 
+        AND longitude BETWEEN :minLon AND :maxLon
+        AND date >= :sinceDate
+        ORDER BY date DESC
+    """)
+    fun getNotesByLocationAreaFiltered(minLat: Double, maxLat: Double, minLon: Double, maxLon: Double, sinceDate: Long): Flow<List<NoteEntity>>
 }

@@ -42,7 +42,7 @@ import com.example.memoflow.ui.screens.profile.ProfileViewModel
 import com.example.memoflow.ui.screens.security.SecurityViewModel
 import com.example.memoflow.ui.screens.stats.StatisticsViewModel
 import com.example.memoflow.ui.screens.common.ChronosCalendarSheet
-import com.example.memoflow.viewmodel.WriteNoteViewModel
+import com.example.memoflow.ui.viewmodel.WriteNoteViewModel
 
 @Composable
 fun HomeScreen(
@@ -117,7 +117,6 @@ fun HomeScreen(
                     val noteDate = Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()
                     val isNoteFromToday = noteDate == LocalDate.now()
                     
-                    // Se for cápsula ou trancada, exige o fluxo de desbloqueio
                     if (note.isLocked || note.isTimeCapsule) {
                         noteToUnlock = note
                     } else {
@@ -346,7 +345,6 @@ fun HomeContent(
                     .toLocalTime()
                     .format(timeFormatter)
 
-                // IMPORTANTE: Mantemos o snippet de cápsula sempre que isTimeCapsule for verdadeiro
                 val snippet = if (note.isTimeCapsule) "Memória congelada no tempo" 
                               else if (note.isLocked) "Memória protegida por PIN" 
                               else {
@@ -363,7 +361,7 @@ fun HomeContent(
                     content = snippet,
                     neonGreen = neonGreen,
                     isLocked = note.isLocked,
-                    isTimeCapsule = note.isTimeCapsule, // Passa o estado real
+                    isTimeCapsule = note.isTimeCapsule,
                     unlockDate = note.unlockDate,
                     onClick = { onNoteClick(note) },
                     onLongClick = { noteToDelete = note }
@@ -407,6 +405,11 @@ fun FabMenu(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                HubButton(Icons.Default.Map, "Rastros", neonGreen) {
+                    onToggle()
+                    navController.navigate(Screen.PlacesMap.route)
+                }
+
                 HubButton(Icons.Default.BarChart, "Status", neonGreen) {
                     onToggle()
                     navController.navigate(Screen.Statistics.route)

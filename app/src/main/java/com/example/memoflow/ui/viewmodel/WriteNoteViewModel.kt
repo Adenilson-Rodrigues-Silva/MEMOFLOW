@@ -1,5 +1,6 @@
-package com.example.memoflow.viewmodel
+package com.example.memoflow.ui.viewmodel
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.MediaPlayer
 import android.media.MediaRecorder
@@ -15,6 +16,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.memoflow.data.local.entity.NoteEntity
 import com.example.memoflow.data.repository.MemoRepository
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.mohamedrejeb.richeditor.model.RichTextState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.io.File
 import java.io.FileOutputStream
 
@@ -47,7 +51,9 @@ data class WriteNoteUiState(
     val isLocked: Boolean = false,
     val isTimeCapsule: Boolean = false,
     val unlockDate: Long? = null,
-    val date: Long = System.currentTimeMillis()
+    val date: Long = System.currentTimeMillis(),
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 
 class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
@@ -82,7 +88,9 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                         isLocked = it.isLocked,
                         isTimeCapsule = it.isTimeCapsule,
                         unlockDate = it.unlockDate,
-                        date = it.date
+                        date = it.date,
+                        latitude = it.latitude,
+                        longitude = it.longitude
                     )
                 }
                 richTextState.setHtml(it.contentHtml)
@@ -97,6 +105,24 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                 val updatedNote = it.copy(isTimeCapsule = false, unlockDate = null)
                 repository.insertNote(updatedNote)
                 _uiStateFlow.update { state -> state.copy(isTimeCapsule = false, unlockDate = null) }
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun captureLocationAndSave(context: Context, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+                val location = fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).await()
+                if (location != null) {
+                    _uiStateFlow.update { it.copy(latitude = location.latitude, longitude = location.longitude) }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                saveNote()
+                onComplete()
             }
         }
     }
@@ -159,7 +185,9 @@ class WriteNoteViewModel(private val repository: MemoRepository) : ViewModel() {
                 audioPath = state.audioPath,
                 isLocked = state.isLocked,
                 isTimeCapsule = state.isTimeCapsule,
-                unlockDate = state.unlockDate
+                unlockDate = state.unlockDate,
+                latitude = state.latitude,
+                longitude = state.longitude
             )
             repository.insertNote(note)
         }

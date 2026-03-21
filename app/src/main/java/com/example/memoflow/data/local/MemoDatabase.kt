@@ -12,7 +12,7 @@ import com.example.memoflow.data.local.entity.UserEntity
 
 @Database(
     entities = [NoteEntity::class, UserEntity::class, GratitudeEntity::class],
-    version = 8, // Incrementada para fontFamilyName em NoteEntity
+    version = 9, // Incrementada para incluir latitude e longitude em NoteEntity
     exportSchema = true
 )
 @TypeConverters(Converters::class)

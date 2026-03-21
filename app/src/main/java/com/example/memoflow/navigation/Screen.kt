@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     object Notifications : Screen("notifications_screen")
     object Backup : Screen("backup_screen")
     object Store : Screen("store_screen")
+    object PlacesMap : Screen("places_map_screen")
     object WriteNote : Screen("write_note?noteId={noteId}") {
         fun createRoute(noteId: Long? = null) = if (noteId != null) "write_note?noteId=$noteId" else "write_note"
     }

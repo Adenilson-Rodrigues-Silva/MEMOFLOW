@@ -88,6 +88,13 @@ dependencies {
     // Rich Editor
     implementation(libs.richeditor.compose)
 
+    // Google Maps & Location
+    implementation(libs.google.maps)
+    implementation(libs.maps.compose)
+    implementation(libs.maps.utils.ktx)
+    implementation(libs.play.services.location)
+    implementation(libs.kotlinx.coroutines.play.services)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

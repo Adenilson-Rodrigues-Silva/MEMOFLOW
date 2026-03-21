@@ -31,6 +31,15 @@ class MemoRepository(
 
     fun getRecallableNotes(): Flow<List<NoteEntity>> = noteDao.getRecallableNotes()
 
+    fun getNotesWithLocation(): Flow<List<NoteEntity>> = noteDao.getNotesWithLocation()
+
+    fun getNotesWithLocationSince(sinceDate: Long): Flow<List<NoteEntity>> = 
+        noteDao.getNotesWithLocationSince(sinceDate)
+
+    fun getNotesByLocationAreaFiltered(minLat: Double, maxLat: Double, minLon: Double, maxLon: Double, sinceDate: Long): Flow<List<NoteEntity>> {
+        return noteDao.getNotesByLocationAreaFiltered(minLat, maxLat, minLon, maxLon, sinceDate)
+    }
+
     // User Settings
     val userSettings: Flow<UserEntity?> = userDao.getUserSettings()
     suspend fun saveUserSettings(user: UserEntity) = userDao.insertUser(user)

@@ -17,5 +17,7 @@ data class NoteEntity(
     val isLocked: Boolean = false,
     val isTimeCapsule: Boolean = false,
     val unlockDate: Long? = null,
-    val fontFamilyName: String? = null // Mantido apenas para evitar erro de schema do Room
+    val fontFamilyName: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

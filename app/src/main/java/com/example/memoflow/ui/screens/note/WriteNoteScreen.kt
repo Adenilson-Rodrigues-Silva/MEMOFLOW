@@ -1,5 +1,6 @@
 package com.example.memoflow.ui.screens.note
 
+import android.Manifest
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -63,7 +64,7 @@ import com.example.memoflow.ui.components.writenote.NoteOptionsOverflowMenu
 import com.example.memoflow.ui.components.writenote.ShareOptionDialog
 import com.example.memoflow.ui.screens.security.SecurityViewModel
 import com.example.memoflow.utils.ShareUtils
-import com.example.memoflow.viewmodel.WriteNoteViewModel
+import com.example.memoflow.ui.viewmodel.WriteNoteViewModel
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 import java.text.SimpleDateFormat
@@ -89,9 +90,7 @@ fun WriteNoteScreen(
     val iceBlue = Color(0xFF80DEEA)
     val surfaceDark = Color(0xFF1E1E1E)
     
-    // Gradiente Animado para o Card
     val animatedAiGradient = rememberAnimatedAiGradient()
-
     val scrollState = rememberScrollState()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
@@ -103,7 +102,6 @@ fun WriteNoteScreen(
         label = "snow"
     )
 
-    // Acompanha o cursor de forma inteligente
     LaunchedEffect(richTextState.annotatedString.text.length) {
         if (!readOnly && richTextState.selection.end >= richTextState.annotatedString.text.length - 1) {
             bringIntoViewRequester.bringIntoView()
@@ -128,8 +126,20 @@ fun WriteNoteScreen(
     var selectedImageFullScreen by remember { mutableStateOf<Uri?>(null) }
 
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis() // Começa em hoje
+        initialSelectedDateMillis = System.currentTimeMillis()
     )
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        if (granted) {
+            viewModel.captureLocationAndSave(context) { onBack() }
+        } else {
+            viewModel.saveNote()
+            onBack()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -238,7 +248,19 @@ fun WriteNoteScreen(
                         onMarkerClick = { showMarkerMenu = !showMarkerMenu; showFormatMenu = false; showEmojiMenu = false },
                         onAddImageClick = { launcher.launch("image/*") },
                         onVoiceClick = { handleVoiceClick(context, uiState.isRecording, uiState.audioPath, viewModel, permissionLauncher) },
-                        onSaveClick = { viewModel.saveNote(); onBack() }
+                        onSaveClick = {
+                            if (uiState.latitude == null) {
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            } else {
+                                viewModel.saveNote()
+                                onBack()
+                            }
+                        }
                     )
                 }
             }
@@ -289,12 +311,12 @@ fun WriteNoteScreen(
                                 cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
                             )
                             Text(
-                                "Humor: ${uiState.selectedHumor}",
+                                text = "Humor: ${uiState.selectedHumor}",
                                 color = if (uiState.isTimeCapsule) iceBlue else neonGreen,
                                 fontSize = 14.sp
                             )
                         }
-                        Text(uiState.selectedEmoji, fontSize = 40.sp)
+                        Text(text = uiState.selectedEmoji, fontSize = 40.sp)
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -350,7 +372,6 @@ fun WriteNoteScreen(
         }
     }
 
-    // --- DIÁLOGOS (PRESERVADOS) ---
     if (isGeneratingCard) {
         Dialog(onDismissRequest = { isGeneratingCard = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             val dialogView = LocalView.current
@@ -402,12 +423,11 @@ fun WriteNoteScreen(
             confirmButton = {
                 TextButton(onClick = {
                     val selectedDate = datePickerState.selectedDateMillis
-                    // ✅ CORREÇÃO: Permite selecionar hoje (>= data atual menos margem de erro)
                     if (selectedDate != null && selectedDate >= (System.currentTimeMillis() - 60000)) {
                         viewModel.setTimeCapsule(selectedDate)
-                        viewModel.saveNote() // Salva imediatamente
+                        viewModel.saveNote()
                         Toast.makeText(context, "Nota enviada para o futuro! ❄️", Toast.LENGTH_LONG).show()
-                        onBack() // Fecha a tela e volta para a Home
+                        onBack()
                     } else {
                         Toast.makeText(context, "Escolha uma data presente ou futura!", Toast.LENGTH_SHORT).show()
                     }

@@ -9,18 +9,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.* // Aqui já inclui o getValue e setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-
-// IMPORTANTE: Verifique se este é o caminho real do seu State e ViewModel
-//import com.example.memoflow.ui.viewmodel.WriteNoteViewModel
-//import com.example.memoflow.ui.screens.WriteNoteState
-import com.example.memoflow.viewmodel.WriteNoteViewModel
+import com.example.memoflow.ui.viewmodel.WriteNoteViewModel
 
 @Composable
 fun VoiceNoteSection(
@@ -51,7 +47,6 @@ fun VoiceNoteSection(
         )
     }
 
-    // Só mostra o player se estiver gravando ou se já existir um áudio salvo
     if (isRecording || audioPath != null) {
         AudioPlayerComponent(
             accentColor = accentColor,
@@ -65,12 +60,11 @@ fun VoiceNoteSection(
     }
 }
 
-// Mova sua função @Composable AudioPlayerComponent para cá também!
 @Composable
 fun AudioPlayerComponent(
     accentColor: Color,
     isRecording: Boolean,
-    isPlaying: Boolean, // A "chave" que adicionamos
+    isPlaying: Boolean,
     currentTime: Int,
     audioPath: String?,
     onPlayClick: () -> Unit,
@@ -85,7 +79,6 @@ fun AudioPlayerComponent(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // BOTÃO DE PLAY/PAUSE/MIC
             IconButton(
                 onClick = { onPlayClick() },
                 modifier = Modifier.size(48.dp)
@@ -99,7 +92,7 @@ fun AudioPlayerComponent(
                     contentDescription = "Play/Pause",
                     tint = when {
                         isRecording -> Color.Red
-                        isPlaying -> accentColor // Fica Neon Green (0xFF00FFC2)
+                        isPlaying -> accentColor
                         else -> Color.White
                     },
                     modifier = Modifier.size(28.dp)
@@ -114,21 +107,16 @@ fun AudioPlayerComponent(
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
 
-            // BARRA DE PROGRESSO
+            // ✅ Correção: Usando o parâmetro 'progress' como lambda se necessário ou valor simples conforme versão
             LinearProgressIndicator(
-                progress = currentTime / 30f,
+                progress = { currentTime / 30f },
                 modifier = Modifier
                     .weight(1f)
                     .height(4.dp),
-                color = when {
-                    isRecording -> Color.Red
-                    isPlaying -> accentColor
-                    else -> accentColor.copy(alpha = 0.5f)
-                },
+                color = if (isRecording) Color.Red else accentColor,
                 trackColor = Color.DarkGray
             )
 
-            // LIXEIRA (Só aparece se tiver áudio e não estiver gravando)
             if (audioPath != null && !isRecording) {
                 IconButton(onClick = onDeleteClick) {
                     Icon(
@@ -143,9 +131,6 @@ fun AudioPlayerComponent(
     }
 }
 
-/**
- * Função utilitária para ser chamada no botão de Microfone da BottomBar
- */
 fun handleVoiceClick(
     context: Context,
     isRecording: Boolean,
