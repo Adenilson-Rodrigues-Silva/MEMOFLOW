@@ -110,7 +110,7 @@ fun HomeScreen(
                         onToggle = { isMenuExpanded = !isMenuExpanded },
                         canAddNote = viewModel.canAddNote(),
                         onLimitReached = {
-                            Toast.makeText(context, "Limite de 3 notas por dia atingido!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Limite de 3 notas diárias atingido!", Toast.LENGTH_SHORT).show()
                         },
                         isToday = isToday
                     )

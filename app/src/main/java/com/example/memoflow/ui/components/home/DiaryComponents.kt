@@ -571,7 +571,7 @@ fun HubButton(icon: ImageVector, label: String, color: Color, onClick: () -> Uni
                 .border(1.dp, color, RoundedCornerShape(16.dp)),
             elevation = FloatingActionButtonDefaults.elevation(8.dp)
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
         }
     }
 }

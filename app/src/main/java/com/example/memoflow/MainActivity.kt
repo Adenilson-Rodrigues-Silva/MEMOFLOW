@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.example.memoflow.navigation.Screen
 import com.example.memoflow.ui.screens.home.HomeScreen
 import com.example.memoflow.ui.screens.profile.ProfileScreen
@@ -77,6 +78,9 @@ class MainActivity : ComponentActivity() {
                     composable(Screen.Splash.route) {
                         SplashScreen(onFinished = { hasSeenWelcome ->
                             if (hasSeenWelcome) {
+                                // Se houver um deep link, ele será processado pelo NavController.
+                                // Se não houver, vamos para a Home.
+                                // Nota: O NavController gerencia deep links automaticamente se não consumirmos.
                                 navController.navigate(Screen.Home.route) {
                                     popUpTo(Screen.Splash.route) { inclusive = true }
                                 }
@@ -131,11 +135,17 @@ class MainActivity : ComponentActivity() {
                         StatisticsScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composable(Screen.Gratitude.route) {
+                    composable(
+                        route = Screen.Gratitude.route,
+                        deepLinks = listOf(navDeepLink { uriPattern = "memoflow://gratitude" })
+                    ) {
                         GratitudeScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composable(Screen.Recall.route) {
+                    composable(
+                        route = Screen.Recall.route,
+                        deepLinks = listOf(navDeepLink { uriPattern = "memoflow://recall" })
+                    ) {
                         RecallScreen(onBack = { navController.popBackStack() })
                     }
 
@@ -143,7 +153,10 @@ class MainActivity : ComponentActivity() {
                         StoreScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composable(Screen.PlacesMap.route) {
+                    composable(
+                        route = Screen.PlacesMap.route,
+                        deepLinks = listOf(navDeepLink { uriPattern = "memoflow://map" })
+                    ) {
                         PlacesMapScreen(onBack = { navController.popBackStack() })
                     }
 
@@ -158,7 +171,8 @@ class MainActivity : ComponentActivity() {
                                 type = NavType.BoolType
                                 defaultValue = false
                             }
-                        )
+                        ),
+                        deepLinks = listOf(navDeepLink { uriPattern = "memoflow://write_note" })
                     ) { backStackEntry ->
                         val noteId = backStackEntry.arguments?.getLong("noteId") ?: -1L
                         val readOnly = backStackEntry.arguments?.getBoolean("readOnly") ?: false

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_note"
+        android:enabled="true"
+        android:icon="@drawable/ic_widget_note_center"
+        android:shortcutShortLabel="@string/shortcut_new_note">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.memoflow"
+            android:targetClass="com.example.memoflow.MainActivity"
+            android:data="memoflow://write_note" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="recall"
+        android:enabled="true"
+        android:icon="@drawable/ic_widget_recall_center"
+        android:shortcutShortLabel="@string/shortcut_recall">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.memoflow"
+            android:targetClass="com.example.memoflow.MainActivity"
+            android:data="memoflow://recall" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="gratitude"
+        android:enabled="true"
+        android:icon="@drawable/ic_widget_gratitude_center"
+        android:shortcutShortLabel="@string/shortcut_gratitude">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.memoflow"
+            android:targetClass="com.example.memoflow.MainActivity"
+            android:data="memoflow://gratitude" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="map"
+        android:enabled="true"
+        android:icon="@drawable/ic_app"
+        android:shortcutShortLabel="@string/shortcut_map">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.example.memoflow"
+            android:targetClass="com.example.memoflow.MainActivity"
+            android:data="memoflow://map" />
+    </shortcut>
+</shortcuts>

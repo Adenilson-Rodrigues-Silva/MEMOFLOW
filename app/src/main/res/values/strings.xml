@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Memo Flow</string>
+    <string name="shortcut_new_note">Nova Nota</string>
+    <string name="shortcut_recall">Relembrar</string>
+    <string name="shortcut_gratitude">Gratidão</string>
+    <string name="shortcut_map">Mapa de Rastros</string>
 </resources>

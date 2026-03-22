@@ -118,7 +118,26 @@ fun WriteNoteScreen(
     LaunchedEffect(noteId) {
         if (noteId != null && noteId > 0) {
             viewModel.loadNote(noteId)
+        } else if (!readOnly) {
+            viewModel.checkNoteLimit()
         }
+    }
+
+    if (uiState.isLimitReached) {
+        AlertDialog(
+            onDismissRequest = { onBack() },
+            containerColor = Color(0xFF1A1A1A),
+            title = { Text("Limite Atingido", color = Color.White) },
+            text = { Text("Você já atingiu o limite de 3 notas hoje. Guarde suas próximas memórias amanhã!", color = Color.Gray) },
+            confirmButton = {
+                Button(
+                    onClick = { onBack() },
+                    colors = ButtonDefaults.buttonColors(containerColor = neonGreen)
+                ) {
+                    Text("VOLTAR", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
     }
 
     var showFormatMenu by remember { mutableStateOf(false) }
@@ -156,7 +175,6 @@ fun WriteNoteScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? -> viewModel.onImageSelected(context, uri) }
 
-    // --- DIALOG DE LOADING DO DINO AO SALVAR ---
     if (uiState.isSaving) {
         Dialog(
             onDismissRequest = { },
@@ -188,21 +206,18 @@ fun WriteNoteScreen(
                             "Sua jornada está sendo escrita\nnas estrelas... 🌌",
                             "Arquivando um momento\nprecioso... 💾",
                             "Deixando sua marca no\nfluxo do tempo... 🌊",
-
                             "Salvando esse instante\nespecial... 💛",
                             "Transformando agora em\nlembrança... 🧠",
                             "Registrando um capítulo\nda sua vida... 📖",
                             "Guardando isso com\ncarinho... 🤍",
                             "Mais uma memória\npara o futuro... 🚀",
                             "Seu momento foi salvo\ncom sucesso... ✅",
-
                             "O Dino aprovou esse\nmomento! 🦖✨",
                             "Uma memória digna\nde celebração! 🎉",
                             "Capturando esse instante\nmágico... 🌠",
                             "Isso merece ser lembrado\npra sempre... ♾️",
                             "Organizando seu passado\ncom cuidado... 🗂️",
                             "Esse momento agora é\neterno... ⌛",
-
                             "Protegido no cofre\ndo Dino 🛡️🦖",
                             "Guardado com estilo\njurássico 🕺🦖",
                             "Mais uma lembrança\nsalva no tempo... ⏱️",
@@ -286,7 +301,7 @@ fun WriteNoteScreen(
             )
         },
         bottomBar = {
-            if (!readOnly) {
+            if (!readOnly && !uiState.isLimitReached) {
                 Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
                     AnimatedVisibility(visible = showFormatMenu) { TextFormattingPanel(state = richTextState, isVisible = showFormatMenu) }
                     AnimatedVisibility(visible = showMarkerMenu) {
@@ -375,9 +390,9 @@ fun WriteNoteScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             androidx.compose.foundation.text.BasicTextField(
                                 value = uiState.title,
-                                onValueChange = { if(!readOnly) viewModel.updateTitle(it) },
-                                readOnly = readOnly,
-                                enabled = !readOnly,
+                                onValueChange = { if(!readOnly && !uiState.isLimitReached) viewModel.updateTitle(it) },
+                                readOnly = readOnly || uiState.isLimitReached,
+                                enabled = !readOnly && !uiState.isLimitReached,
                                 modifier = Modifier.fillMaxWidth(),
                                 textStyle = TextStyle(
                                     color = Color.White,
@@ -400,7 +415,7 @@ fun WriteNoteScreen(
 
                     RichTextEditor(
                         state = richTextState,
-                        readOnly = readOnly,
+                        readOnly = readOnly || uiState.isLimitReached,
                         modifier = Modifier.fillMaxWidth().wrapContentHeight().heightIn(min = 100.dp).bringIntoViewRequester(bringIntoViewRequester).padding(bottom = 80.dp),
                         colors = RichTextEditorDefaults.richTextEditorColors(
                             containerColor = Color.Transparent,

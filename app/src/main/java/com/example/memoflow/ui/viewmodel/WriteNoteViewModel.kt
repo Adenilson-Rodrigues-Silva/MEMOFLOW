@@ -65,7 +65,8 @@ data class WriteNoteUiState(
     val longitude: Double? = null,
     val locationName: String? = null,
     val isSaving: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isLimitReached: Boolean = false
 )
 
 class WriteNoteViewModel(
@@ -86,6 +87,17 @@ class WriteNoteViewModel(
     private var mediaRecorder: MediaRecorder? = null
     private var timerJob: Job? = null
     private var tempPath: String? = null
+
+    fun checkNoteLimit() {
+        viewModelScope.launch {
+            if (_uiStateFlow.value.id == 0L) {
+                val countToday = repository.getNoteCountForToday()
+                if (countToday >= 3) {
+                    _uiStateFlow.update { it.copy(isLimitReached = true) }
+                }
+            }
+        }
+    }
 
     fun loadNote(noteId: Long) {
         if (noteId <= 0) return
