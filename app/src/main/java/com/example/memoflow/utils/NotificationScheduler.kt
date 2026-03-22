@@ -11,6 +11,47 @@ class NotificationScheduler(private val context: Context) {
     private val workManager = WorkManager.getInstance(context)
     private val TAG = "NotificationScheduler"
 
+    /**
+     * Agenda o backup automático para rodar a cada 4 horas.
+     * O sistema só fará o backup real se o usuário for Premium.
+     */
+    fun scheduleAutoBackup() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val backupWorkRequest = PeriodicWorkRequestBuilder<AutoBackupWorker>(4, TimeUnit.HOURS)
+            .setConstraints(constraints)
+            .addTag("auto_backup")
+            .build()
+
+        workManager.enqueueUniquePeriodicWork(
+            "auto_backup_work",
+            ExistingPeriodicWorkPolicy.KEEP,
+            backupWorkRequest
+        )
+    }
+
+    /**
+     * Agenda um backup imediato (OneTime) para ser executado agora.
+     */
+    fun scheduleImmediateBackup() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val immediateBackupRequest = OneTimeWorkRequestBuilder<AutoBackupWorker>()
+            .setConstraints(constraints)
+            .addTag("auto_backup_immediate")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "auto_backup_immediate_work",
+            ExistingWorkPolicy.REPLACE,
+            immediateBackupRequest
+        )
+    }
+
     fun scheduleDailyReminder(hour: Int, minute: Int) {
         val workName = "daily_reminder_work"
         val delay = calculateDelay(hour, minute)
@@ -95,9 +136,6 @@ class NotificationScheduler(private val context: Context) {
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            
-            // Margem de erro: se faltar menos de 30 segundos para o horário, joga para amanhã
-            // Isso evita que o agendamento tente rodar um tempo que já passou por milissegundos
             if (timeInMillis <= System.currentTimeMillis() + 30000) {
                 add(Calendar.DAY_OF_MONTH, 1)
             }

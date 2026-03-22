@@ -50,7 +50,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.airbnb.lottie.compose.*
 import com.example.memoflow.R
 import com.example.memoflow.ui.components.EmojiSelector
@@ -72,7 +71,6 @@ import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -103,6 +101,13 @@ fun WriteNoteScreen(
         animationSpec = infiniteRepeatable(tween(15000, easing = LinearEasing), RepeatMode.Restart),
         label = "snow"
     )
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
 
     LaunchedEffect(richTextState.annotatedString.text.length) {
         if (!readOnly && richTextState.selection.end >= richTextState.annotatedString.text.length - 1) {
@@ -174,9 +179,43 @@ fun WriteNoteScreen(
                         modifier = Modifier.size(130.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val savingPhrases = remember {
+                        listOf(
+                            "Esse momento não vai se perder\nno tempo... ⏳",
+                            "O Dino está guardando\nsua memória... 🦖",
+                            "Eternizando mais um pedaço\nda sua história... ✨",
+                            "Sua jornada está sendo escrita\nnas estrelas... 🌌",
+                            "Arquivando um momento\nprecioso... 💾",
+                            "Deixando sua marca no\nfluxo do tempo... 🌊",
+
+                            "Salvando esse instante\nespecial... 💛",
+                            "Transformando agora em\nlembrança... 🧠",
+                            "Registrando um capítulo\nda sua vida... 📖",
+                            "Guardando isso com\ncarinho... 🤍",
+                            "Mais uma memória\npara o futuro... 🚀",
+                            "Seu momento foi salvo\ncom sucesso... ✅",
+
+                            "O Dino aprovou esse\nmomento! 🦖✨",
+                            "Uma memória digna\nde celebração! 🎉",
+                            "Capturando esse instante\nmágico... 🌠",
+                            "Isso merece ser lembrado\npra sempre... ♾️",
+                            "Organizando seu passado\ncom cuidado... 🗂️",
+                            "Esse momento agora é\neterno... ⌛",
+
+                            "Protegido no cofre\ndo Dino 🛡️🦖",
+                            "Guardado com estilo\njurássico 🕺🦖",
+                            "Mais uma lembrança\nsalva no tempo... ⏱️",
+                            "Seu momento agora vive\nna história... 📚",
+                            "Salvando com carinho\ne um passinho... 🕺💾"
+                        )
+                    }
+                    val randomPhrase = remember(uiState.isSaving) {
+                        if (uiState.isSaving) savingPhrases.random() else ""
+                    }
+
                     Text(
-                        "Esse momento não vai se perder \nno tempo...",
-                        //"O Dino está guardando\nsua memória...",
+                        text = randomPhrase,
                         color = Color.White,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
@@ -296,8 +335,7 @@ fun WriteNoteScreen(
                                     )
                                 )
                             } else {
-                                viewModel.saveNote()
-                                onBack()
+                                viewModel.captureLocationAndSave(context) { onBack() }
                             }
                         }
                     )
@@ -464,9 +502,7 @@ fun WriteNoteScreen(
                     val selectedDate = datePickerState.selectedDateMillis
                     if (selectedDate != null && selectedDate >= (System.currentTimeMillis() - 60000)) {
                         viewModel.setTimeCapsule(selectedDate)
-                        viewModel.saveNote()
-                        Toast.makeText(context, "Nota enviada para o futuro! ❄️", Toast.LENGTH_LONG).show()
-                        onBack()
+                        viewModel.captureLocationAndSave(context) { onBack() }
                     } else {
                         Toast.makeText(context, "Escolha uma data presente ou futura!", Toast.LENGTH_SHORT).show()
                     }
@@ -486,10 +522,9 @@ fun WriteNoteScreen(
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.toggleLock()
-                    viewModel.saveNote()
+                    viewModel.captureLocationAndSave(context) { onBack() }
                     showLockConfirmDialog = false
                     Toast.makeText(context, if (!uiState.isLocked) "Memória Trancada!" else "Memória Destrancada!", Toast.LENGTH_SHORT).show()
-                    onBack()
                 }) { Text("CONFIRMAR", color = neonGreen) }
             },
             dismissButton = { TextButton(onClick = { showLockConfirmDialog = false }) { Text("CANCELAR", color = Color.White) } }

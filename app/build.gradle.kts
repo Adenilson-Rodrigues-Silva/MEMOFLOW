@@ -46,6 +46,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
 }
 
 room {
@@ -101,6 +109,12 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.play.services.auth)
     
+    // Google Drive & Auth Libraries
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("com.google.api-client:google-api-client-android:2.9.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20240521-2.0.0")
+    implementation("com.google.http-client:google-http-client-gson:2.1.0")
+
     // New Google Credentials API
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")

@@ -3,6 +3,7 @@ package com.example.memoflow.ui.screens.profile
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -15,8 +16,10 @@ import com.example.memoflow.data.local.entity.NoteEntity
 import com.example.memoflow.data.local.entity.UserEntity
 import com.example.memoflow.data.repository.MemoRepository
 import com.example.memoflow.utils.BillingPrefs
+import com.example.memoflow.utils.GoogleDriveBackupManager
+import com.example.memoflow.utils.GoogleDriveService
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -55,78 +58,134 @@ class BackupViewModel(
     fun exportBackup(context: Context, onFileReady: (Uri) -> Unit) {
         viewModelScope.launch {
             _uiState.value = BackupUiState.Loading
-            
-            delay(3000)
-
+            delay(2000)
             try {
                 val notes = repository.allNotes.first()
                 val gratitudes = repository.allGratitudes.first()
                 val userSettings = repository.userSettings.first()
-
                 val backupData = BackupData(notes, gratitudes, userSettings)
-                val gson = GsonBuilder().serializeNulls().setPrettyPrinting().create()
+                val gson = com.google.gson.GsonBuilder().serializeNulls().setPrettyPrinting().create()
                 val jsonString = gson.toJson(backupData)
-
-                val backupDir = File(context.cacheDir, "backups")
-                if (!backupDir.exists()) backupDir.mkdirs()
-
-                val fileName = "memoflow_backup_${System.currentTimeMillis()}.json"
-                val file = File(backupDir, fileName)
-                
+                val backupDir = File(context.cacheDir, "backups").apply { if (!exists()) mkdirs() }
+                val file = File(backupDir, "memoflow_backup_${System.currentTimeMillis()}.json")
                 FileOutputStream(file).use { it.write(jsonString.toByteArray()) }
-
-                val contentUri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
-                )
-                
+                val contentUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                 onFileReady(contentUri)
-                _uiState.value = BackupUiState.Success("Backup preparado para exportação!")
+                _uiState.value = BackupUiState.Success("Backup manual pronto!")
             } catch (e: Exception) {
-                e.printStackTrace()
-                _uiState.value = BackupUiState.Error("Erro ao exportar: ${e.message}")
+                _uiState.value = BackupUiState.Error("Erro ao exportar.")
             }
         }
+    }
+
+    fun uploadToDriveManual(context: Context) {
+        viewModelScope.launch {
+            _uiState.value = BackupUiState.DriveLoading
+            val startTime = System.currentTimeMillis()
+            try {
+                val account = GoogleSignIn.getLastSignedInAccount(context) 
+                    ?: throw Exception("Conta Google não vinculada. Clique em 'Restaurar' primeiro.")
+                
+                val driveServiceHelper = GoogleDriveService(context)
+                val driveService = driveServiceHelper.getDriveService(account)
+                val backupManager = GoogleDriveBackupManager(context)
+
+                val notes = repository.allNotes.first()
+                val gratitudes = repository.allGratitudes.first()
+                val userSettings = repository.userSettings.first()
+                val backupData = BackupData(notes, gratitudes, userSettings)
+
+                val success = backupManager.uploadBackup(driveService, backupData)
+                
+                ensureMinDelay(startTime)
+                if (success) {
+                    _uiState.value = BackupUiState.Success("Sincronizado com sucesso! ✨")
+                } else {
+                    _uiState.value = BackupUiState.Error("O Google recusou o arquivo. Verifique o SHA-1 no console.")
+                }
+            } catch (e: com.google.api.client.googleapis.json.GoogleJsonResponseException) {
+                ensureMinDelay(startTime)
+                _uiState.value = BackupUiState.Error("Erro Google (${e.statusCode}): ${e.details?.message ?: "Acesso Negado"}")
+            } catch (e: Exception) {
+                ensureMinDelay(startTime)
+                _uiState.value = BackupUiState.Error(e.message ?: "Erro desconhecido")
+                Log.e("DriveBackup", "Erro no upload", e)
+            }
+        }
+    }
+
+    fun restoreFromDrive(context: Context) {
+        viewModelScope.launch {
+            _uiState.value = BackupUiState.DriveLoading
+            val startTime = System.currentTimeMillis()
+
+            try {
+                val account = GoogleSignIn.getLastSignedInAccount(context)
+                if (account == null) {
+                    ensureMinDelay(startTime)
+                    _uiState.value = BackupUiState.Error("Login Google não detectado.")
+                    return@launch
+                }
+
+                val driveServiceHelper = GoogleDriveService(context)
+                val driveService = driveServiceHelper.getDriveService(account)
+                val backupManager = GoogleDriveBackupManager(context)
+
+                val backupData = backupManager.downloadBackup(driveService)
+
+                ensureMinDelay(startTime)
+
+                if (backupData != null) {
+                    applyBackup(backupData)
+                    _uiState.value = BackupUiState.Success("Flow restaurado da nuvem!")
+                } else {
+                    _uiState.value = BackupUiState.Error("Nenhum backup automático encontrado.")
+                }
+            } catch (e: com.google.api.client.googleapis.json.GoogleJsonResponseException) {
+                ensureMinDelay(startTime)
+                _uiState.value = BackupUiState.Error("Erro Google (${e.statusCode}): Verifique as permissões.")
+            } catch (e: Exception) {
+                ensureMinDelay(startTime)
+                _uiState.value = BackupUiState.Error("Erro na nuvem: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun ensureMinDelay(startTime: Long) {
+        val elapsed = System.currentTimeMillis() - startTime
+        if (elapsed < 5300) delay(5300 - elapsed)
+    }
+
+    private suspend fun applyBackup(data: BackupData) {
+        repository.deleteAllNotes()
+        repository.deleteAllGratitudes()
+        data.notes.forEach { repository.insertNote(it) }
+        data.gratitudes.forEach { repository.insertGratitude(it) }
+        data.userSettings?.let { repository.saveUserSettings(it) }
     }
 
     fun importBackup(context: Context, uri: Uri) {
         viewModelScope.launch {
             _uiState.value = BackupUiState.Loading
-            
-            delay(3000)
-
+            delay(2000)
             try {
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val reader = InputStreamReader(inputStream)
-                    val backupData = Gson().fromJson(reader, BackupData::class.java)
-
-                    if (backupData != null) {
-                        repository.deleteAllNotes()
-                        repository.deleteAllGratitudes()
-
-                        backupData.notes.forEach { repository.insertNote(it) }
-                        backupData.gratitudes.forEach { repository.insertGratitude(it) }
-                        backupData.userSettings?.let { repository.saveUserSettings(it) }
-
-                        _uiState.value = BackupUiState.Success("Restauração concluída!")
-                    } else {
-                        _uiState.value = BackupUiState.Error("Arquivo inválido.")
-                    }
+                    val backupData = Gson().fromJson(InputStreamReader(inputStream), BackupData::class.java)
+                    applyBackup(backupData)
+                    _uiState.value = BackupUiState.Success("Restauração local concluída!")
                 }
             } catch (e: Exception) {
-                _uiState.value = BackupUiState.Error("Erro na importação: ${e.message}")
+                _uiState.value = BackupUiState.Error("Arquivo inválido.")
             }
         }
     }
 
-    fun resetState() {
-        _uiState.value = BackupUiState.Idle
-    }
+    fun resetState() { _uiState.value = BackupUiState.Idle }
 
     sealed class BackupUiState {
         object Idle : BackupUiState()
         object Loading : BackupUiState()
+        object DriveLoading : BackupUiState()
         data class Success(val message: String) : BackupUiState()
         data class Error(val message: String) : BackupUiState()
     }

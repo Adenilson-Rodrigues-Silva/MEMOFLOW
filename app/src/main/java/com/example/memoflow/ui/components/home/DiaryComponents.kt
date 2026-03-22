@@ -108,7 +108,6 @@ fun DiaryNoteCard(
         animationSpec = infiniteRepeatable(tween(2500, easing = LinearOutSlowInEasing), RepeatMode.Reverse), label = "scanner"
     )
     
-    // Noise Toggle mais rápido para o efeito de "Neve" (Static Noise)
     val noiseToggle by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(50, easing = LinearEasing), RepeatMode.Restart), label = "noise"
@@ -135,21 +134,19 @@ fun DiaryNoteCard(
         ), label = "flicker"
     )
 
-    // --- Animações para Cápsula (Shake Ajustado) ---
-    // Usamos keyframes para alternar entre vibrar e ficar parado, com menos intensidade
     val shakeAnim by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 1f, // Valor de controle
+        targetValue = 1f, 
         animationSpec = infiniteRepeatable(
             animation = keyframes {
                 durationMillis = 3000
-                0f at 0 // Parado
-                0f at 1500 // Continua parado por 1.5s
-                -0.8f at 1600 // Pequena vibração
+                0f at 0 
+                0f at 1500 
+                -0.8f at 1600 
                 0.8f at 1700
                 -0.8f at 1800
                 0.8f at 1900
-                0f at 2000 // Para novamente
+                0f at 2000 
                 0f at 3000
             },
             repeatMode = RepeatMode.Restart
@@ -161,7 +158,6 @@ fun DiaryNoteCard(
         animationSpec = infiniteRepeatable(tween(600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "sparkle"
     )
 
-    // --- Shimmer Geral ---
     val shimmerValue by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 1000f,
         animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart), label = "shimmer"
@@ -199,7 +195,7 @@ fun DiaryNoteCard(
             .graphicsLayer {
                 if (isReadyToMelt) {
                     rotationZ = shakeAnim
-                    translationX = shakeAnim * 1f // Intensidade reduzida
+                    translationX = shakeAnim * 1f 
                 }
             }
             .clip(RoundedCornerShape(24.dp))
@@ -231,13 +227,9 @@ fun DiaryNoteCard(
             )
             .background(if (isLocked) Color(0xFF080808) else Color(0xFF161616).copy(alpha = 0.85f))
     ) {
-        // --- Efeitos Visuais para Memória Trancada ---
         if (isLocked) {
-            // Efeito de Estática de TV (Snow) + Glitch
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val random = Random(noiseToggle.toBits())
-                
-                // 1. Ruído de "Neve" (Pontos brancos e cinzas aleatórios e rápidos)
                 repeat(400) {
                     val grey = random.nextFloat()
                     val alpha = random.nextFloat() * 0.25f
@@ -247,8 +239,6 @@ fun DiaryNoteCard(
                         size = Size(1.5.dp.toPx(), 1.5.dp.toPx())
                     )
                 }
-
-                // 2. Linhas de Scan Verticais/Horizontais de TV Analógica
                 val lineSpacing = 4.dp.toPx()
                 for (y in 0 until size.height.toInt() step lineSpacing.toInt()) {
                     drawLine(
@@ -258,8 +248,6 @@ fun DiaryNoteCard(
                         strokeWidth = 1.dp.toPx()
                     )
                 }
-
-                // 3. Glitch Horizontal (Faixas de interferência que aparecem do nada)
                 if (random.nextFloat() > 0.65f) {
                     val glitchY = random.nextFloat() * size.height
                     val glitchHeight = (random.nextFloat() * 6.dp.toPx()) + 2.dp.toPx()
@@ -269,8 +257,6 @@ fun DiaryNoteCard(
                         size = Size(size.width, glitchHeight)
                     )
                 }
-                
-                // 4. "Distorsão" de cor ocasional (Roxo/Vermelho no chiado)
                 if (random.nextFloat() > 0.90f) {
                     repeat(10) {
                         drawCircle(
@@ -281,8 +267,6 @@ fun DiaryNoteCard(
                     }
                 }
             }
-
-            // Animação de Scanner de Segurança (Luz laser)
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val scanY = size.height * scannerPosition
                 val scannerBrush = Brush.verticalGradient(
@@ -295,7 +279,6 @@ fun DiaryNoteCard(
             }
         }
 
-        // --- Efeitos Visuais para Cápsula ---
         if (isTimeCapsule && isReadyToMelt) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val random = Random(42)
@@ -319,14 +302,13 @@ fun DiaryNoteCard(
             }
         }
 
-        // --- Conteúdo Principal (Ícone e Textos) ---
         Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
                 .graphicsLayer { 
                     if (isLocked) {
-                        alpha = flickerAlpha // Aplica o efeito de "instabilidade" da TV
+                        alpha = flickerAlpha 
                     }
                 },
             verticalAlignment = Alignment.CenterVertically
@@ -396,7 +378,6 @@ fun HomeHeader(
     val gold = Color(0xFFFFD700)
     val neonGreen = Color(0xFF00FFC2)
     
-    // Animação do brilho que "passa" (shimmer sweep)
     val shineOffset by infiniteTransition.animateFloat(
         initialValue = -100f,
         targetValue = 300f,
@@ -419,7 +400,6 @@ fun HomeHeader(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // BOTÃO DE STATUS / LIMITES (NOVO LOCAL)
             IconButton(
                 onClick = onStatusClick,
                 modifier = Modifier
@@ -451,7 +431,6 @@ fun HomeHeader(
                         modifier = Modifier.size(22.dp)
                     )
                     
-                    // Camada de Brilho Extra (Sweep)
                     Canvas(modifier = Modifier.size(22.dp).clip(CircleShape)) {
                         drawRect(
                             brush = Brush.linearGradient(
