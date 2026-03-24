@@ -34,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.memoflow.MemoApplication
+import com.example.memoflow.utils.BillingManager
 import com.example.memoflow.ui.components.home.PurpleAI
 import kotlinx.coroutines.launch
 
@@ -81,6 +81,27 @@ fun StoreScreen(
         ), label = "star_scale"
     )
 
+    // Escuta eventos de compra
+    LaunchedEffect(Unit) {
+        viewModel.purchaseEvents.collect { event ->
+            when (event) {
+                is BillingManager.PurchaseEvent.Success -> {
+                    if (event.productId == "premium_lifetime") {
+                        Toast.makeText(context, "Parabéns! Você agora é PREMIUM ✨", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Obrigado pelo seu apoio! ❤️", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                is BillingManager.PurchaseEvent.Error -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
+                is BillingManager.PurchaseEvent.Cancelled -> {
+                    // Opcional: Toast.makeText(context, "Compra cancelada", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,7 +112,7 @@ fun StoreScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.buyPremium(activity ?: return@IconButton) /* Aqui chamaria o Restore se fosse outra função, mas vamos usar queryPurchases no VM */ }) {
+                    IconButton(onClick = { viewModel.restorePurchases() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Restaurar", tint = Color.White)
                     }
                 },

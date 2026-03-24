@@ -9,9 +9,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.memoflow.MemoApplication
 import com.example.memoflow.utils.BillingManager
 import com.example.memoflow.utils.BillingPrefs
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as MemoApplication
@@ -25,9 +28,24 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     val products = billingManager.products
+    
+    private val _purchaseEvents = MutableSharedFlow<BillingManager.PurchaseEvent>()
+    val purchaseEvents = _purchaseEvents.asSharedFlow()
+
+    init {
+        viewModelScope.launch {
+            billingManager.purchaseEvents.collect { event ->
+                _purchaseEvents.emit(event)
+            }
+        }
+    }
 
     fun buyPremium(activity: Activity) {
         billingManager.launchBillingFlow(activity, "premium_lifetime")
+    }
+
+    fun restorePurchases() {
+        billingManager.queryPurchases()
     }
 
     fun donate(activity: Activity, type: String) {

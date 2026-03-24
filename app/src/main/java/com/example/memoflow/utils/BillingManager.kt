@@ -6,7 +6,9 @@ import android.util.Log
 import com.android.billingclient.api.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -15,11 +17,26 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
     private val scope = CoroutineScope(Dispatchers.IO)
     private val TAG = "BillingManager"
 
+    sealed class PurchaseEvent {
+        data class Success(val productId: String) : PurchaseEvent()
+        data class Error(val message: String) : PurchaseEvent()
+        object Cancelled : PurchaseEvent()
+    }
+
+    private val _purchaseEvents = MutableSharedFlow<PurchaseEvent>()
+    val purchaseEvents = _purchaseEvents.asSharedFlow()
+
     private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
         Log.d(TAG, "Purchases updated: ${billingResult.responseCode}")
-        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
-            for (purchase in purchases) {
-                handlePurchase(purchase)
+        when (billingResult.responseCode) {
+            BillingClient.BillingResponseCode.OK -> {
+                purchases?.forEach { handlePurchase(it) }
+            }
+            BillingClient.BillingResponseCode.USER_CANCELED -> {
+                scope.launch { _purchaseEvents.emit(PurchaseEvent.Cancelled) }
+            }
+            else -> {
+                scope.launch { _purchaseEvents.emit(PurchaseEvent.Error("Erro no Google Play: ${billingResult.debugMessage}")) }
             }
         }
     }
@@ -106,7 +123,6 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
 
         billingClient.queryPurchasesAsync(params) { billingResult, purchases ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                // Se a lista vier vazia e o usuário era premium, talvez a compra tenha sido reembolsada ou expirada
                 var hasPremium = false
                 for (purchase in purchases) {
                     if (purchase.products.contains("premium_lifetime") && purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
@@ -117,8 +133,7 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
                     }
                 }
                 
-                // Se não encontrou premium na consulta atual, e não estamos em modo de teste local
-                // Opcional: resetar premium se não encontrar na Play Store
+                // Opcional: Se não encontrar premium na consulta, podemos resetar (cuidado com modo offline)
                 // scope.launch { if (!hasPremium) billingPrefs.setPremium(false) }
             }
         }
@@ -126,6 +141,8 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
 
     private fun handlePurchase(purchase: Purchase) {
         if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
+            val productId = purchase.products.firstOrNull() ?: ""
+            
             if (!purchase.isAcknowledged) {
                 val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
                     .setPurchaseToken(purchase.purchaseToken)
@@ -133,17 +150,19 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
                 billingClient.acknowledgePurchase(acknowledgePurchaseParams) { billingResult ->
                     if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                         scope.launch {
-                            if (purchase.products.contains("premium_lifetime")) {
+                            if (productId == "premium_lifetime") {
                                 billingPrefs.setPremium(true)
                             }
+                            _purchaseEvents.emit(PurchaseEvent.Success(productId))
                         }
                     }
                 }
             } else {
                 scope.launch {
-                    if (purchase.products.contains("premium_lifetime")) {
+                    if (productId == "premium_lifetime") {
                         billingPrefs.setPremium(true)
                     }
+                    _purchaseEvents.emit(PurchaseEvent.Success(productId))
                 }
             }
 

@@ -35,6 +35,12 @@ import com.example.memoflow.R
 import com.example.memoflow.ui.components.home.rememberAnimatedAiGradient
 import com.example.memoflow.utils.GoogleDriveService
 
+/**
+ * PONTO DE RETORNO (INÍCIO DO MÊS):
+ * - Esta tela depende do estado 'isPremium' para liberar o Google Drive.
+ * - Atualmente funciona com o modo de teste (clique longo no ícone da estrela na Loja).
+ * - Quando a conta de desenvolvedor estiver ativa, o 'isPremium' virá automaticamente do BillingManager.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackupScreen(
