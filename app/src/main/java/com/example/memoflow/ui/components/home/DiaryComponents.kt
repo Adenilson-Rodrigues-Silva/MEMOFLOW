@@ -272,12 +272,12 @@ fun DiaryNoteCard(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val scanY = size.height * scannerPosition
                 val scannerBrush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, AlertRed.copy(alpha = 0.45f), AlertRed.copy(alpha = 0.1f), Color.Transparent),
+                    colors = listOf(Color.Transparent, AlertRed.copy(alpha = 0.15f), AlertRed.copy(alpha = 0.05f), Color.Transparent),
                     startY = scanY - 18.dp.toPx(),
                     endY = scanY + 18.dp.toPx()
                 )
                 drawRect(brush = scannerBrush, topLeft = Offset(0f, scanY - 18.dp.toPx()), size = Size(size.width, 36.dp.toPx()))
-                drawLine(color = AlertRed.copy(alpha = 0.85f), start = Offset(0f, scanY), end = Offset(size.width, scanY), strokeWidth = 1.5.dp.toPx())
+                drawLine(color = AlertRed.copy(alpha = 0.25f), start = Offset(0f, scanY), end = Offset(size.width, scanY), strokeWidth = 1.5.dp.toPx())
             }
         }
 
