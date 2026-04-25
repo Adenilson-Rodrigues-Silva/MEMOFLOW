@@ -25,8 +25,19 @@ class MemoRepository(
     suspend fun getNoteById(id: Long) = noteDao.getNoteById(id)
     suspend fun unlockAllNotes() = noteDao.unlockAllNotes()
 
-    fun getNotesInDateRange(startDate: Long, endDate: Long): Flow<List<NoteEntity>> {
+    fun getNotesByDateRange(startDate: Long, endDate: Long): Flow<List<NoteEntity>> {
         return noteDao.getNotesInDateRange(startDate, endDate)
+    }
+
+    fun getGratitudesByDateRange(startDate: Long, endDate: Long): Flow<List<GratitudeEntity>> {
+        return gratitudeDao.getGratitudesInDateRange(startDate, endDate)
+    }
+
+    suspend fun getTotalGratitudeCountSync(): Int = gratitudeDao.getTotalCount()
+
+    suspend fun getCurrentStreakSync(): Int {
+        // Implementação simplificada para o ViewModel não quebrar
+        return 0
     }
 
     fun getRecallableNotes(): Flow<List<NoteEntity>> = noteDao.getRecallableNotes()

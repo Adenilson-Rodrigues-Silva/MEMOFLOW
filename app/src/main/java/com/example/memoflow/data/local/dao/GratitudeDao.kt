@@ -15,6 +15,12 @@ interface GratitudeDao {
     @Query("SELECT COUNT(*) FROM gratitudes WHERE date >= :startOfDay AND date <= :endOfDay")
     suspend fun getCountForDay(startOfDay: Long, endOfDay: Long): Int
 
+    @Query("SELECT * FROM gratitudes WHERE date BETWEEN :startDate AND :endDate")
+    fun getGratitudesInDateRange(startDate: Long, endDate: Long): kotlinx.coroutines.flow.Flow<List<GratitudeEntity>>
+
+    @Query("SELECT COUNT(*) FROM gratitudes")
+    suspend fun getTotalCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGratitude(gratitude: GratitudeEntity)
 

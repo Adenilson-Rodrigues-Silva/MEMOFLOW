@@ -1,27 +1,57 @@
 package com.example.memoflow.ui.screens.stats
 
+import android.util.Log
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
-import com.example.memoflow.data.local.entity.NoteEntity
+import com.example.memoflow.MemoApplication
 import com.example.memoflow.data.local.entity.GratitudeEntity
+import com.example.memoflow.data.local.entity.NoteEntity
 import com.example.memoflow.data.repository.MemoRepository
+import com.example.memoflow.utils.BillingPrefs
+import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.Instant
 import java.time.format.TextStyle
-import java.util.*
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
-data class MoodStat(val emoji: String, val label: String, val percentage: Int, val color: androidx.compose.ui.graphics.Color, val count: Int = 0)
+data class MoodStat(
+    val emoji: String,
+    val label: String,
+    val percentage: Int,
+    val color: Color,
+    val count: Int
+)
 
-data class CityHumorStat(val cityName: String, val averageScore: Float, val count: Int, val insight: String = "")
+data class CityHumorStat(
+    val cityName: String,
+    val averageScore: Float,
+    val count: Int,
+    val insight: String
+)
+
+data class AiInsightData(
+    val summary: String = "",
+    val sentimentScores: List<Float> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
 
 data class StatsData(
     val moodPoints: List<Float> = emptyList(),
@@ -40,29 +70,140 @@ data class StatsData(
     val monthName: String = "",
     val happiestCity: CityHumorStat? = null,
     val totalCitiesVisited: Int = 0,
-    val topCreationPlace: String? = null
+    val topCreationPlace: String? = null,
+    val aiInsight: AiInsightData = AiInsightData()
 )
 
-class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() {
+class StatisticsViewModel(
+    private val repository: MemoRepository,
+    private val billingPrefs: BillingPrefs
+) : ViewModel() {
 
     private val _statsData = MutableStateFlow(StatsData())
     val statsData: StateFlow<StatsData> = _statsData.asStateFlow()
 
-    private var isMonthly: Boolean = false
-    private var currentReferenceDate: LocalDate = LocalDate.now()
+    val isPremium: StateFlow<Boolean> = billingPrefs.isPremium
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    private var isMonthly = true
+    private var currentReferenceDate = LocalDate.now()
+    private var currentNotesForAi: List<NoteEntity> = emptyList()
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    private val gson = Gson()
 
     init {
         loadStats()
     }
 
-    fun setPeriod(tabIndex: Int) {
-        isMonthly = tabIndex == 1
+    fun setPeriod(monthly: Boolean) {
+        isMonthly = monthly
+        loadStats()
+    }
+
+    fun setPeriodInt(index: Int) {
+        isMonthly = index == 1
         loadStats()
     }
 
     fun setReferenceDate(date: LocalDate) {
         currentReferenceDate = date
         loadStats()
+    }
+
+    fun generateAiInsights() {
+        viewModelScope.launch {
+            val key = com.example.memoflow.BuildConfig.GROQ_API_KEY
+            
+            if (key.isBlank() || key == "COLE_SUA_CHAVE_DO_GROQ_AQUI") {
+                _statsData.value = _statsData.value.copy(
+                    aiInsight = AiInsightData(error = "Chave do Groq não configurada no local.properties")
+                )
+                return@launch
+            }
+
+            _statsData.value = _statsData.value.copy(
+                aiInsight = _statsData.value.aiInsight.copy(isLoading = true, error = null)
+            )
+
+            try {
+                val cleanNotes = currentNotesForAi.map { note ->
+                    val plainText = note.contentHtml.replace(Regex("<[^>]*>"), " ").trim()
+                    "Data: ${Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()}\nNota: $plainText"
+                }.joinToString("\n---\n")
+
+                if (cleanNotes.isBlank()) {
+                    _statsData.value = _statsData.value.copy(
+                        aiInsight = AiInsightData(isLoading = false, error = "Escreva algumas notas primeiro!")
+                    )
+                    return@launch
+                }
+
+                val prompt = """
+                    Analise estas notas de diário e responda estritamente neste formato:
+                    RESUMO: [Resumo motivador de 3 frases em Português]
+                    SENTIMENTOS: [Lista de 7 números entre 0.0 e 1.0]
+                    
+                    Notas:
+                    $cleanNotes
+                """.trimIndent()
+
+                val requestBody = mapOf(
+                    "model" to "llama-3.1-8b-instant",
+                    "messages" to listOf(
+                        mapOf("role" to "user", "content" to prompt)
+                    ),
+                    "temperature" to 0.7
+                )
+
+                val mediaType = "application/json; charset=utf-8".toMediaType()
+                val body = gson.toJson(requestBody).toRequestBody(mediaType)
+
+                val request = Request.Builder()
+                    .url("https://api.groq.com/openai/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer $key")
+                    .post(body)
+                    .build()
+
+                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val responseBody = response.body?.string() ?: ""
+
+                if (!response.isSuccessful) {
+                    throw Exception("Erro Groq: ${response.code} - $responseBody")
+                }
+
+                val jsonResponse = gson.fromJson(responseBody, Map::class.java)
+                val choices = jsonResponse["choices"] as List<*>
+                val firstChoice = choices[0] as Map<*, *>
+                val message = firstChoice["message"] as Map<*, *>
+                val content = message["content"] as String
+
+                val summary = content.substringAfter("RESUMO:").substringBefore("SENTIMENTOS:").trim()
+                val sentimentString = content.substringAfter("SENTIMENTOS:").trim()
+                    .replace("[", "").replace("]", "")
+                
+                val sentimentScores = sentimentString.split(",")
+                    .mapNotNull { it.trim().toFloatOrNull() }
+
+                _statsData.value = _statsData.value.copy(
+                    aiInsight = AiInsightData(
+                        summary = summary,
+                        sentimentScores = sentimentScores,
+                        isLoading = false
+                    )
+                )
+
+            } catch (e: Exception) {
+                Log.e("StatisticsViewModel", "Erro Groq", e)
+                _statsData.value = _statsData.value.copy(
+                    aiInsight = AiInsightData(isLoading = false, error = "Falha na conexão com a IA. Verifique sua chave e internet.")
+                )
+            }
+        }
     }
 
     private fun loadStats() {
@@ -78,131 +219,132 @@ class StatisticsViewModel(private val repository: MemoRepository) : ViewModel() 
                 start to end
             }
 
-            val startTimestamp = startDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
-            val endTimestamp = endDate.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli()
-            
-            val monthLabel = currentReferenceDate.month.getDisplayName(TextStyle.FULL, Locale("pt", "BR"))
-                .replaceFirstChar { it.uppercase() }
+            val startMillis = startDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
+            val endMillis = endDate.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli()
 
-            combine(
-                repository.getNotesInDateRange(startTimestamp, endTimestamp),
-                repository.allGratitudes
-            ) { notes, gratitudes ->
-                val filteredGratitudes = gratitudes.filter { it.date in startTimestamp..endTimestamp }
-                processAllStats(notes, filteredGratitudes, gratitudes.size, startDate, endDate, monthLabel)
-            }.collectLatest { 
-                _statsData.value = it
+            repository.getNotesByDateRange(startMillis, endMillis).collect { notes ->
+                currentNotesForAi = notes
+                repository.getGratitudesByDateRange(startMillis, endMillis).collect { gratitudes ->
+                    val totalGratitudes = repository.getTotalGratitudeCountSync()
+                    val streak = repository.getCurrentStreakSync()
+                    
+                    _statsData.value = processAllStats(
+                        notes, 
+                        gratitudes, 
+                        streak, 
+                        startDate, 
+                        endDate,
+                        currentReferenceDate.month.getDisplayName(TextStyle.FULL, Locale("pt", "BR"))
+                            .replaceFirstChar { it.uppercase() },
+                        totalGratitudes
+                    )
+                }
             }
         }
     }
 
     private fun processAllStats(
-        notes: List<NoteEntity>, 
-        gratitudesInRange: List<GratitudeEntity>,
-        totalGratitudes: Int,
-        startDate: LocalDate, 
+        notes: List<NoteEntity>,
+        gratitudes: List<GratitudeEntity>,
+        streak: Int,
+        startDate: LocalDate,
         endDate: LocalDate,
-        monthLabel: String
+        monthName: String,
+        totalGratitudesInPote: Int
     ): StatsData {
-        val zoneId = ZoneId.systemDefault()
-        val notesByDay = notes.groupBy { 
-            Instant.ofEpochMilli(it.date).atZone(zoneId).toLocalDate()
-        }
-
-        val moodPoints = mutableListOf<Float>()
-        val entries = mutableListOf<Int>()
-        val labels = mutableListOf<String>()
-        val lockedDays = mutableSetOf<LocalDate>()
-        val capsuleDays = mutableSetOf<LocalDate>()
-        
-        var tempDate = startDate
-        while (!tempDate.isAfter(endDate)) {
-            val dayNotes = notesByDay[tempDate] ?: emptyList()
-            entries.add(dayNotes.size)
-            labels.add(tempDate.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("pt", "BR")).uppercase().take(3))
-            
-            if (dayNotes.isNotEmpty()) {
-                moodPoints.add(dayNotes.map { mapEmojiToScore(it.emoji) }.average().toFloat())
-                if (dayNotes.any { it.isLocked }) lockedDays.add(tempDate)
-                if (dayNotes.any { it.isTimeCapsule }) capsuleDays.add(tempDate)
-            } else {
-                moodPoints.add(3f) 
-            }
-            tempDate = tempDate.plusDays(1)
-        }
-
-        val humorCounts = notes.groupingBy { it.emoji }.eachCount()
+        val moodPoints = notes.sortedBy { it.date }.map { mapEmojiToScore(it.emoji) }
+        val moodCounts = notes.groupBy { it.emoji }.mapValues { it.value.size }
         val totalNotes = notes.size.coerceAtLeast(1)
-        val topMoods = humorCounts.toList()
-            .sortedByDescending { it.second }
-            .map { (emoji, count) ->
-                MoodStat(
-                    emoji = emoji, 
-                    label = mapEmojiToLabel(emoji), 
-                    percentage = (count * 100) / totalNotes, 
-                    color = mapEmojiToColor(emoji),
-                    count = count
-                )
-            }
-
-        // --- Lógica Geográfica Avançada ---
-        val citiesGrouped = notes.filter { it.locationName != null }.groupBy { it.locationName!! }
         
-        val happiestCity = citiesGrouped.map { (city, cityNotes) ->
-            val avg = cityNotes.map { mapEmojiToScore(it.emoji) }.average().toFloat()
-            CityHumorStat(
-                cityName = city,
-                averageScore = avg,
-                count = cityNotes.size,
-                insight = when {
-                    avg >= 4.5 -> "Sua vibração aqui é radiante ✨"
-                    avg >= 3.5 -> "Você se sente em equilíbrio aqui."
-                    else -> "Um lugar de superação e reflexão."
-                }
+        val topMoods = moodCounts.map { (emoji, count) ->
+            MoodStat(
+                emoji = emoji,
+                label = mapEmojiToLabel(emoji),
+                count = count,
+                percentage = (count * 100) / totalNotes,
+                color = mapEmojiToColor(emoji)
             )
+        }.sortedByDescending { it.count }.take(4)
+
+        val daysInRange = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate).toInt() + 1
+        val entriesPerDay = MutableList(daysInRange) { 0 }
+        val labels = MutableList(daysInRange) { "" }
+        
+        for (i in 0 until daysInRange) {
+            val date = startDate.plusDays(i.toLong())
+            labels[i] = date.dayOfMonth.toString()
+            entriesPerDay[i] = notes.count { 
+                Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate() == date 
+            }
+        }
+
+        val cities = notes.mapNotNull { it.locationName }.groupBy { it }
+        val happiestCity = cities.map { (name, _) ->
+            val cityNotes = notes.filter { it.locationName == name }
+            val avg = cityNotes.map { mapEmojiToScore(it.emoji) }.average().toFloat()
+            CityHumorStat(name, avg, cityNotes.size, "Cidade com boas vibrações!")
         }.maxByOrNull { it.averageScore }
 
-        val topCreationPlace = citiesGrouped.maxByOrNull { it.value.size }?.key
-        val totalCitiesVisited = citiesGrouped.keys.size
+        val lockedDays = notes.filter { it.isLocked }.map { 
+            Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate() 
+        }
+        val capsuleDays = notes.filter { it.isTimeCapsule }.map { 
+            Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate() 
+        }
 
         return StatsData(
             moodPoints = moodPoints,
             topMoods = topMoods,
-            entriesPerDay = entries,
+            streak = streak,
+            entriesPerDay = entriesPerDay,
             dayLabels = labels,
             audioCount = notes.count { it.audioPath != null },
-            imageCount = notes.sumOf { it.images.size },
+            imageCount = notes.count { it.images.isNotEmpty() },
             lockedCount = notes.count { it.isLocked },
             capsuleCount = notes.count { it.isTimeCapsule },
-            lockedDays = lockedDays.toList().sorted(),
-            capsuleDays = capsuleDays.toList().sorted(),
-            gratitudeCount = gratitudesInRange.size,
-            totalGratitudesInPote = totalGratitudes,
-            monthName = monthLabel,
+            lockedDays = lockedDays,
+            capsuleDays = capsuleDays,
+            gratitudeCount = gratitudes.size,
+            totalGratitudesInPote = totalGratitudesInPote,
+            monthName = monthName,
             happiestCity = happiestCity,
-            totalCitiesVisited = totalCitiesVisited,
-            topCreationPlace = topCreationPlace
+            totalCitiesVisited = cities.size,
+            aiInsight = _statsData.value.aiInsight
         )
     }
 
-    private fun mapEmojiToScore(emoji: String) = when(emoji) {
-        "🤩" -> 5f; "😊" -> 4f; "😐" -> 3f; "😢" -> 2f; "😭" -> 1f; "😡" -> 1f; "😫" -> 1f; else -> 3f
+    private fun mapEmojiToScore(emoji: String): Float = when(emoji) {
+        "😊", "😄", "🥰" -> 1.0f
+        "🙂", "😐" -> 0.6f
+        "😔", "😢", "😠" -> 0.2f
+        else -> 0.5f
     }
-    private fun mapEmojiToLabel(emoji: String) = when(emoji) {
-        "🤩" -> "Incrível"; "😊" -> "Feliz"; "😐" -> "Neutro"; "😢" -> "Triste"; "😭" -> "Mal"; "😡" -> "Bravo"; "😫" -> "Exausto"; else -> "Neutro"
+
+    private fun mapEmojiToLabel(emoji: String): String = when(emoji) {
+        "😊" -> "Feliz"
+        "😄" -> "Radiante"
+        "🥰" -> "Amado"
+        "🙂" -> "Bem"
+        "😐" -> "Neutro"
+        "😔" -> "Triste"
+        "😢" -> "Mal"
+        "😠" -> "Bravo"
+        else -> "Outro"
     }
-    private fun mapEmojiToColor(emoji: String) = when(emoji) {
-        "🤩", "😊" -> androidx.compose.ui.graphics.Color(0xFF00FFC2)
-        "😐" -> androidx.compose.ui.graphics.Color(0xFFBB86FC)
-        else -> androidx.compose.ui.graphics.Color(0xFFCF6679)
+
+    private fun mapEmojiToColor(emoji: String): Color = when(emoji) {
+        "😊", "😄", "🥰" -> Color(0xFF00FFC2)
+        "🙂", "😐" -> Color(0xFFFFD700)
+        "😔", "😢", "😠" -> Color(0xFFFF4D4D)
+        else -> Color.Gray
     }
 
     companion object {
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-                val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as com.example.memoflow.MemoApplication
-                return StatisticsViewModel(application.repository) as T
+                val application = extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as MemoApplication
+                return StatisticsViewModel(application.repository, application.billingPrefs) as T
             }
         }
     }

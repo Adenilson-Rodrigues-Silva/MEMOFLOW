@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -22,6 +24,17 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Carrega a chave do local.properties
+        val properties = Properties()
+        val localPropertiesFile = project.rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { properties.load(it) }
+        }
+        val geminiKey = properties.getProperty("GEMINI_API_KEY") ?: ""
+        val groqKey = properties.getProperty("GROQ_API_KEY") ?: ""
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
+        buildConfigField("String", "GROQ_API_KEY", "\"$groqKey\"")
     }
 
     buildTypes {
@@ -45,6 +58,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -122,6 +136,14 @@ dependencies {
 
     // Billing
     implementation("com.android.billingclient:billing-ktx:7.1.1")
+
+    // Gemini AI - Versão mais recente
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
+    // Retrofit & OkHttp para Groq
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

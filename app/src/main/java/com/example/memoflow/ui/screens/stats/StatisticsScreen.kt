@@ -28,6 +28,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.airbnb.lottie.RenderMode
+import com.airbnb.lottie.compose.*
+import com.example.memoflow.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.memoflow.ui.components.home.rememberAnimatedAiGradient
 import java.time.LocalDate
@@ -106,13 +111,31 @@ fun StatisticsScreen(
                     Row(modifier = Modifier.fillMaxSize()) {
                         PeriodTab(Modifier.weight(1f), "Semanal", selectedTab == 0, dataGradient) { 
                             selectedTab = 0
-                            viewModel.setPeriod(0)
+                            viewModel.setPeriodInt(0)
                         }
                         PeriodTab(Modifier.weight(1f), "Mensal", selectedTab == 1, dataGradient) { 
                             selectedTab = 1
-                            viewModel.setPeriod(1)
+                            viewModel.setPeriodInt(1)
                         }
                     }
+                }
+            }
+
+            // --- AI INSIGHTS CARD ---
+            item {
+                val isPremium by viewModel.isPremium.collectAsState()
+                SectionHeader("Inteligência Artificial", isAi = true)
+                AiInsightCard(
+                    insight = statsData.aiInsight,
+                    isPremium = isPremium,
+                    onGenerate = { viewModel.generateAiInsights() },
+                    borderBrush = dataGradient
+                )
+            }
+
+            if (statsData.aiInsight.isLoading) {
+                item {
+                    AiLoadingDialog()
                 }
             }
 
@@ -458,14 +481,188 @@ fun PeriodTab(modifier: Modifier, text: String, isSelected: Boolean, activeGradi
 }
 
 @Composable
-fun SectionHeader(title: String) {
-    Text(
-        text = title.uppercase(),
-        color = Color.Gray,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
-    )
+fun SectionHeader(title: String, isAi: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = title.uppercase(),
+            color = if (isAi) DataGreen else Color.Gray,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+        )
+        if (isAi) {
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Default.AutoAwesome, null, tint = DataGreen, modifier = Modifier.size(14.dp))
+        }
+    }
+}
+
+@Composable
+fun AiInsightCard(
+    insight: AiInsightData,
+    isPremium: Boolean,
+    onGenerate: () -> Unit,
+    borderBrush: Brush
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Análise de Sentimento IA", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                if (!isPremium) {
+                    Icon(Icons.Default.Lock, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (!isPremium) {
+                Text(
+                    "Assine o Premium para desbloquear resumos semanais e análises de humor geradas por Inteligência Artificial.",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { /* Navegar para Loja */ },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("VER PLANOS PREMIUM", color = Color.Black, fontWeight = FontWeight.ExtraBold)
+                }
+            } else {
+                if (insight.summary.isEmpty() && !insight.isLoading) {
+                    Text(
+                        "Descubra padrões no seu humor e receba um resumo personalizado da sua jornada.",
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Button(
+                        onClick = onGenerate,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(borderBrush, RoundedCornerShape(12.dp)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (insight.error != null) {
+                            Text("TENTAR NOVAMENTE", color = Color.Black, fontWeight = FontWeight.Bold)
+                        } else {
+                            Text("GERAR INSIGHTS COM GEMINI", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    insight.error?.let {
+                        Text(it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    }
+                } else if (insight.isLoading) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(color = DataGreen)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Gemini está analisando suas notas...", color = Color.Gray, fontSize = 14.sp)
+                    }
+                } else {
+                    Text(
+                        insight.summary,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp
+                    )
+                    
+                    if (insight.sentimentScores.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Evolução Emocional (IA)", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AiSentimentEvolutionChart(insight.sentimentScores)
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+                    TextButton(
+                        onClick = onGenerate,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("ATUALIZAR", color = DataGreen, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AiLoadingDialog() {
+    Dialog(
+        onDismissRequest = { },
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(300.dp)
+                .background(Color(0xFF121212), RoundedCornerShape(32.dp))
+                .border(1.5.dp, rememberDataAiGradient(), RoundedCornerShape(32.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(24.dp)
+            ) {
+                val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.animation_gemini))
+                LottieAnimation(
+                    composition = composition,
+                    iterations = LottieConstants.IterateForever,
+                    modifier = Modifier.size(180.dp),
+                    renderMode = RenderMode.SOFTWARE
+                )
+                
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Gemini está analisando sua jornada...",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    "Isso leva apenas alguns segundos.",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AiSentimentEvolutionChart(scores: List<Float>) {
+    Canvas(modifier = Modifier.fillMaxWidth().height(60.dp)) {
+        val width = size.width
+        val height = size.height
+        val spaceX = width / (scores.size - 1).coerceAtLeast(1)
+        
+        val path = Path()
+        scores.forEachIndexed { i, score ->
+            val x = i * spaceX
+            val y = height - (score * height)
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            drawCircle(DataGreen, radius = 3.dp.toPx(), center = Offset(x, y))
+        }
+        drawPath(path, DataGreen, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+    }
 }
 
 @Composable
