@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -605,30 +607,66 @@ fun MoodChartCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
+                    .height(150.dp)
                     .background(Color(0xFF0F0F0F), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 if (points.isEmpty()) {
                     Text("Sem dados para esta semana", color = Color.DarkGray, fontSize = 12.sp)
                 } else {
-                    Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp)) {
+                    Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 20.dp)) {
                         val width = size.width
                         val height = size.height
                         
-                        if (points.size > 1) {
-                            val spaceX = width / (points.size - 1)
+                        // Pegamos apenas os últimos 7 pontos (ou menos se não houver)
+                        val last7Points = points.takeLast(7)
+                        val numCols = 7f
+                        val numRows = 7f
+                        val colWidth = width / (numCols - 1)
+                        val rowHeight = height / (numRows - 1)
+
+                        // Desenha Grade Vertical (Dias) e Horizontal (Humor)
+                        for (i in 0 until 7) {
+                            // Linhas horizontais
+                            val yGuide = i * rowHeight
+                            drawLine(
+                                color = if (i == 3) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
+                                start = Offset(0f, yGuide),
+                                end = Offset(width, yGuide),
+                                strokeWidth = if (i == 3) 1.5.dp.toPx() else 1.dp.toPx()
+                            )
+                            
+                            // Marcas verticais
+                            val xGuide = i * colWidth
+                            drawLine(
+                                color = Color.White.copy(alpha = 0.05f),
+                                start = Offset(xGuide, 0f),
+                                end = Offset(xGuide, height),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                        }
+
+                        // Desenha a linha de humor
+                        if (last7Points.isNotEmpty()) {
                             val path = Path()
-                            points.forEachIndexed { i, point ->
-                                val x = i * spaceX
-                                val y = height - (point * height / 5f)
+                            last7Points.forEachIndexed { i, score ->
+                                val x = i * colWidth
+                                // Mapeia score 0.0 (triste) -> fundo, 1.0 (feliz) -> topo
+                                // Invertemos para o Canvas (0 é topo)
+                                val y = height - (score * height)
+                                
                                 if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                                
+                                // Brilho no ponto
+                                drawCircle(CyanAI.copy(alpha = 0.3f), radius = 6.dp.toPx(), center = Offset(x, y))
                                 drawCircle(CyanAI, radius = 3.dp.toPx(), center = Offset(x, y))
                             }
-                            drawPath(path, CyanAI, style = Stroke(width = 2.dp.toPx()))
-                        } else if (points.size == 1) {
-                            val y = height - (points[0] * height / 5f)
-                            drawCircle(CyanAI, radius = 4.dp.toPx(), center = Offset(width / 2, y))
+                            
+                            drawPath(
+                                path = path,
+                                color = CyanAI,
+                                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                            )
                         }
                     }
                 }

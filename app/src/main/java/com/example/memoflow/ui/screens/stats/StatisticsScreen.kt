@@ -20,10 +20,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -135,7 +137,7 @@ fun StatisticsScreen(
 
             if (statsData.aiInsight.isLoading) {
                 item {
-                    AiLoadingDialog()
+                    MemoFlowAiLoadingDialog()
                 }
             }
 
@@ -504,26 +506,63 @@ fun AiInsightCard(
     onGenerate: () -> Unit,
     borderBrush: Brush
 ) {
+    val aiGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(Color(0xFF00FFC2), Color(0xFF00E5FF), Color(0xFF7C4DFF))
+        )
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "ai_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(24.dp),
+                spotColor = Color(0xFF00FFC2).copy(alpha = glowAlpha)
+            )
+            .border(2.dp, aiGradient, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A))
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(24.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Análise de Sentimento IA", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = Color(0xFF00FFC2),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "MemoFlow AI Insight",
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        letterSpacing = 0.5.sp
+                    )
+                }
                 if (!isPremium) {
                     Icon(Icons.Default.Lock, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             if (!isPremium) {
                 Text(
@@ -531,70 +570,92 @@ fun AiInsightCard(
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 Button(
                     onClick = { /* Navegar para Loja */ },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("VER PLANOS PREMIUM", color = Color.Black, fontWeight = FontWeight.ExtraBold)
+                    Text("VER PLANOS PREMIUM", color = Color.Black, fontWeight = FontWeight.Black)
                 }
             } else {
                 if (insight.summary.isEmpty() && !insight.isLoading) {
                     Text(
-                        "Descubra padrões no seu humor e receba um resumo personalizado da sua jornada.",
-                        color = Color.Gray,
-                        fontSize = 14.sp
+                        "Sua jornada merece ser compreendida. A IA analisará suas notas para encontrar padrões e motivação.",
+                        color = Color.LightGray,
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp
                     )
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = onGenerate,
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(borderBrush, RoundedCornerShape(12.dp)),
-                        shape = RoundedCornerShape(12.dp)
+                            .height(56.dp)
+                            .background(aiGradient, RoundedCornerShape(16.dp)),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        if (insight.error != null) {
-                            Text("TENTAR NOVAMENTE", color = Color.Black, fontWeight = FontWeight.Bold)
-                        } else {
-                            Text("GERAR INSIGHTS COM GEMINI", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Psychology, null, tint = Color.Black)
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                if (insight.error != null) "TENTAR NOVAMENTE" else "REVELAR INSIGHTS AGORA",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp
+                            )
                         }
                     }
                     insight.error?.let {
-                        Text(it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                        Text(it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp), textAlign = TextAlign.Center)
                     }
                 } else if (insight.isLoading) {
+                    // O diálogo já cuida do loading principal, mas deixamos um feedback visual aqui também
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        CircularProgressIndicator(color = DataGreen)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("Gemini está analisando suas notas...", color = Color.Gray, fontSize = 14.sp)
+                        CircularProgressIndicator(color = Color(0xFF00FFC2), strokeWidth = 3.dp)
                     }
                 } else {
-                    Text(
-                        insight.summary,
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        lineHeight = 22.sp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            insight.summary,
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            lineHeight = 24.sp,
+                            fontStyle = FontStyle.Italic
+                        )
+                    }
                     
                     if (insight.sentimentScores.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(24.dp))
-                        Text("Evolução Emocional (IA)", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "MAPA DA ALMA (EVOLUÇÃO IA)",
+                            color = Color(0xFF00FFC2),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                         AiSentimentEvolutionChart(insight.sentimentScores)
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
-                    TextButton(
+                    Spacer(modifier = Modifier.height(24.dp))
+                    OutlinedButton(
                         onClick = onGenerate,
-                        modifier = Modifier.align(Alignment.End)
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, Color(0xFF00FFC2).copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("ATUALIZAR", color = DataGreen, fontWeight = FontWeight.Bold)
+                        Text("RECALIBRAR ANÁLISE", color = Color(0xFF00FFC2), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -603,7 +664,18 @@ fun AiInsightCard(
 }
 
 @Composable
-fun AiLoadingDialog() {
+fun MemoFlowAiLoadingDialog() {
+    val loadingMessages = remember {
+        listOf(
+            "MemoFlow AI está conectando os pontos...",
+            "Acelerando com a tecnologia Groq ⚡",
+            "Refletindo sobre suas memórias...",
+            "Llama 3.1 processando em velocidade máxima!",
+            "Sua jornada está sendo resumida agora..."
+        )
+    }
+    val currentMessage = remember { loadingMessages.random() }
+
     Dialog(
         onDismissRequest = { },
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
@@ -619,7 +691,7 @@ fun AiLoadingDialog() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(24.dp)
             ) {
-                val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.animation_gemini))
+                val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.animation_groq))
                 LottieAnimation(
                     composition = composition,
                     iterations = LottieConstants.IterateForever,
@@ -629,15 +701,15 @@ fun AiLoadingDialog() {
                 
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "Gemini está analisando sua jornada...",
+                    currentMessage,
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    "Isso leva apenas alguns segundos.",
-                    color = Color.Gray,
+                    "Quase pronto! A IA é veloz.",
+                    color = DataGreen,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 4.dp)
@@ -649,51 +721,187 @@ fun AiLoadingDialog() {
 
 @Composable
 fun AiSentimentEvolutionChart(scores: List<Float>) {
-    Canvas(modifier = Modifier.fillMaxWidth().height(60.dp)) {
-        val width = size.width
-        val height = size.height
-        val spaceX = width / (scores.size - 1).coerceAtLeast(1)
-        
-        val path = Path()
-        scores.forEachIndexed { i, score ->
-            val x = i * spaceX
-            val y = height - (score * height)
-            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-            drawCircle(DataGreen, radius = 3.dp.toPx(), center = Offset(x, y))
+    val moods = listOf("😊", "😄", "🙂", "😐", "😕", "😔", "😢")
+    val days = listOf("S", "T", "Q", "Q", "S", "S", "D")
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().height(180.dp)) {
+            // Eixo Vertical (Humores) - 7 níveis
+            Column(
+                modifier = Modifier.fillMaxHeight().width(24.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                moods.forEach { Text(it, fontSize = 14.sp) }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            // Área do Gráfico (A Grade Invisível 7x7)
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val width = size.width
+                    val height = size.height
+                    val colWidth = width / 7f
+                    val rowHeight = height / 7f
+
+                    // Desenha linhas horizontais sutis de guia
+                    for (i in 0..6) {
+                        val y = i * rowHeight + (rowHeight / 2f)
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.05f),
+                            start = Offset(0f, y),
+                            end = Offset(width, y),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+
+                    // Linha Neutra (😐) - Destaque no meio (index 3)
+                    val neutralY = 3 * rowHeight + (rowHeight / 2f)
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.2f),
+                        start = Offset(0f, neutralY),
+                        end = Offset(width, neutralY),
+                        strokeWidth = 1.dp.toPx()
+                    )
+
+                    if (scores.isNotEmpty()) {
+                        val path = Path()
+                        val points = scores.take(7) // Garante que pegamos no máximo 7 dias
+                        
+                        points.forEachIndexed { i, score ->
+                            // Posiciona o X no centro de cada uma das 7 colunas
+                            val x = (i * colWidth) + (colWidth / 2f)
+                            
+                            // Mapeia o score (0.0 a 1.0) para o Y
+                            // 1.0 (Muito Feliz) -> Topo (0)
+                            // 0.0 (Muito Triste) -> Fundo (height)
+                            val y = height - (score * height)
+                            
+                            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                            
+                            // Desenha o ponto com um pequeno brilho
+                            drawCircle(DataGreen, radius = 4.dp.toPx(), center = Offset(x, y))
+                            drawCircle(DataGreen.copy(alpha = 0.3f), radius = 8.dp.toPx(), center = Offset(x, y))
+                        }
+                        
+                        // Desenha a linha conectora suave
+                        drawPath(
+                            path = path,
+                            color = DataGreen,
+                            style = Stroke(
+                                width = 3.dp.toPx(), 
+                                cap = StrokeCap.Round, 
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
+                }
+            }
         }
-        drawPath(path, DataGreen, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+        
+        Spacer(Modifier.height(8.dp))
+        
+        // Eixo Horizontal (Dias da Semana)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 36.dp), 
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            days.forEach { day ->
+                Text(
+                    text = day,
+                    color = Color.Gray,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 
 @Composable
 fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Color, borderBrush: Brush) {
+    val verticalLabels = listOf("Incrível", "", "", "Neutro", "", "", "Muito Triste")
+    
     Card(
-        modifier = Modifier.fillMaxWidth().height(200.dp).border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
+        modifier = Modifier.fillMaxWidth().height(250.dp).border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Canvas(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                if (points.size < 2) return@Canvas
-                val width = size.width
-                val height = size.height
-                val spaceX = width / (points.size - 1)
-                
-                val path = Path()
-                points.forEachIndexed { i, pt ->
-                    val x = i * spaceX
-                    val y = height - (pt * height / 5f)
-                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                    drawCircle(DataGreen, radius = 4.dp.toPx(), center = Offset(x, y))
-                }
-                drawPath(path, DataGreen, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                val step = if (labels.size > 7) 5 else 1
-                labels.forEachIndexed { index, label ->
-                    if (index % step == 0 || index == labels.lastIndex) {
+        Row(modifier = Modifier.padding(16.dp)) {
+            // Eixo Vertical (Texto)
+            Column(
+                modifier = Modifier.fillMaxHeight().width(60.dp).padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.Start
+            ) {
+                verticalLabels.forEach { label ->
+                    if (label.isNotEmpty()) {
                         Text(label, color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    } else {
+                        Spacer(modifier = Modifier.height(1.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val width = size.width
+                        val height = size.height
+                        val rowHeight = height / 6f // 7 pontos criam 6 espaços
+                        
+                        // Desenha as 7 linhas horizontais da grade
+                        for (i in 0..6) {
+                            val y = i * rowHeight
+                            drawLine(
+                                color = if (i == 3) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.05f),
+                                start = Offset(0f, y),
+                                end = Offset(width, y),
+                                strokeWidth = if (i == 3) 1.5.dp.toPx() else 1.dp.toPx()
+                            )
+                        }
+
+                        if (points.isNotEmpty()) {
+                            val spaceX = if (points.size > 1) width / (points.size - 1) else width
+                            val path = Path()
+                            
+                            points.forEachIndexed { i, pt ->
+                                val x = if (points.size > 1) i * spaceX else width / 2f
+                                
+                                // Mapeia pt (0.0 a 1.0) para y. 
+                                // 1.0 (Incrível) -> y = 0
+                                // 0.0 (Triste) -> y = height
+                                val y = height - (pt * height)
+                                
+                                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                                
+                                drawCircle(DataGreen.copy(alpha = 0.3f), radius = 6.dp.toPx(), center = Offset(x, y))
+                                drawCircle(DataGreen, radius = 3.dp.toPx(), center = Offset(x, y))
+                            }
+                            
+                            if (points.size > 1) {
+                                drawPath(
+                                    path = path, 
+                                    color = DataGreen, 
+                                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(14.dp))
+                
+                // Eixo Horizontal (Labels/Dias)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    val step = if (labels.size > 7) (labels.size / 7).coerceAtLeast(1) else 1
+                    labels.forEachIndexed { index, label ->
+                        if (index % step == 0 || index == labels.lastIndex) {
+                            Text(label, color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

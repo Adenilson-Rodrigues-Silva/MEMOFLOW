@@ -133,7 +133,8 @@ class StatisticsViewModel(
             try {
                 val cleanNotes = currentNotesForAi.map { note ->
                     val plainText = note.contentHtml.replace(Regex("<[^>]*>"), " ").trim()
-                    "Data: ${Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()}\nNota: $plainText"
+                    val date = Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()
+                    "Data: $date | Humor Selecionado: ${note.emoji}\nNota: $plainText"
                 }.joinToString("\n---\n")
 
                 if (cleanNotes.isBlank()) {
@@ -144,9 +145,9 @@ class StatisticsViewModel(
                 }
 
                 val prompt = """
-                    Analise estas notas de diário e responda estritamente neste formato:
-                    RESUMO: [Resumo motivador de 3 frases em Português]
-                    SENTIMENTOS: [Lista de 7 números entre 0.0 e 1.0]
+                    Analise emocionalmente estas notas de diário e responda estritamente neste formato:
+                    RESUMO: [Resumo motivador e empático de 3 frases em Português]
+                    SENTIMENTOS: [Lista de 7 números decimais entre 0.0 e 1.0, representando a evolução do humor nos últimos 7 dias. Use 1.0 para muito feliz, 0.5 para neutro e 0.0 para muito triste. Seja preciso na variação.]
                     
                     Notas:
                     $cleanNotes
@@ -252,7 +253,37 @@ class StatisticsViewModel(
         monthName: String,
         totalGratitudesInPote: Int
     ): StatsData {
-        val moodPoints = notes.sortedBy { it.date }.map { mapEmojiToScore(it.emoji) }
+        val daysInRange = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate).toInt() + 1
+        val moodPoints = mutableListOf<Float>()
+        val labels = MutableList(daysInRange) { "" }
+        val entriesPerDay = MutableList(daysInRange) { 0 }
+        
+        val notesByDate = notes.groupBy { 
+            Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate() 
+        }
+
+        var lastValidScore = 0.5f
+        for (i in 0 until daysInRange) {
+            val date = startDate.plusDays(i.toLong())
+            labels[i] = if (daysInRange <= 7) {
+                date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale("pt", "BR"))
+                    .replace(".", "").uppercase()
+            } else {
+                date.dayOfMonth.toString()
+            }
+            
+            val dayNotes = notesByDate[date] ?: emptyList()
+            entriesPerDay[i] = dayNotes.size
+            
+            if (dayNotes.isNotEmpty()) {
+                val avgScore = dayNotes.map { mapEmojiToScore(it.emoji) }.average().toFloat()
+                moodPoints.add(avgScore)
+                lastValidScore = avgScore
+            } else {
+                moodPoints.add(lastValidScore)
+            }
+        }
+
         val moodCounts = notes.groupBy { it.emoji }.mapValues { it.value.size }
         val totalNotes = notes.size.coerceAtLeast(1)
         
@@ -265,18 +296,6 @@ class StatisticsViewModel(
                 color = mapEmojiToColor(emoji)
             )
         }.sortedByDescending { it.count }.take(4)
-
-        val daysInRange = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate).toInt() + 1
-        val entriesPerDay = MutableList(daysInRange) { 0 }
-        val labels = MutableList(daysInRange) { "" }
-        
-        for (i in 0 until daysInRange) {
-            val date = startDate.plusDays(i.toLong())
-            labels[i] = date.dayOfMonth.toString()
-            entriesPerDay[i] = notes.count { 
-                Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate() == date 
-            }
-        }
 
         val cities = notes.mapNotNull { it.locationName }.groupBy { it }
         val happiestCity = cities.map { (name, _) ->
@@ -314,28 +333,32 @@ class StatisticsViewModel(
     }
 
     private fun mapEmojiToScore(emoji: String): Float = when(emoji) {
-        "😊", "😄", "🥰" -> 1.0f
-        "🙂", "😐" -> 0.6f
-        "😔", "😢", "😠" -> 0.2f
-        else -> 0.5f
+        "😊", "🥰", "🤩", "🥳", "💗" -> 0.93f
+        "😄", "😆", "😁", "✨" -> 0.79f
+        "🙂", "☺️", "😋" -> 0.64f
+        "😐", "😶", "🫠", "🧐" -> 0.50f
+        "😕", "😟", "🙁", "🥱" -> 0.36f
+        "😔", "😞", "😣", "😴" -> 0.21f
+        "😢", "😭", "😠", "😡", "💔" -> 0.07f
+        else -> 0.50f
     }
 
     private fun mapEmojiToLabel(emoji: String): String = when(emoji) {
-        "😊" -> "Feliz"
-        "😄" -> "Radiante"
-        "🥰" -> "Amado"
-        "🙂" -> "Bem"
-        "😐" -> "Neutro"
-        "😔" -> "Triste"
-        "😢" -> "Mal"
-        "😠" -> "Bravo"
+        "😊", "🥰", "🤩", "🥳" -> "Incrível"
+        "😄", "😆", "😁" -> "Radiante"
+        "🙂", "☺️" -> "Bem"
+        "😐", "😶" -> "Neutro"
+        "😕", "😟" -> "Inquieto"
+        "😔", "😞" -> "Triste"
+        "😢", "😭" -> "Mal"
+        "😠", "😡" -> "Bravo"
         else -> "Outro"
     }
 
     private fun mapEmojiToColor(emoji: String): Color = when(emoji) {
-        "😊", "😄", "🥰" -> Color(0xFF00FFC2)
-        "🙂", "😐" -> Color(0xFFFFD700)
-        "😔", "😢", "😠" -> Color(0xFFFF4D4D)
+        "😊", "🥰", "🤩", "🥳", "💗", "😄", "😆", "😁", "✨" -> Color(0xFF00FFC2)
+        "🙂", "☺️", "😋", "😐", "😶", "🫠", "🧐" -> Color(0xFFFFD700)
+        "😕", "😟", "🙁", "🥱", "😔", "😞", "😣", "😴", "😢", "😭", "😠", "😡", "💔" -> Color(0xFFFF4D4D)
         else -> Color.Gray
     }
 
