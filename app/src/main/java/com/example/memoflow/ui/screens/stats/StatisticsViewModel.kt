@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -182,16 +183,21 @@ class StatisticsViewModel(
             )
 
             try {
-                // Filtra as notas baseadas no escopo (Hoje, Semanal ou Mensal)
-                val targetNotes = when (finalScope) {
-                    "today" -> {
-                        val today = LocalDate.now()
-                        currentNotesForAi.filter { 
-                            Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate() == today 
-                        }
-                    }
-                    else -> currentNotesForAi
+                // Determina o intervalo de datas real para o escopo solicitado
+                val zoneId = ZoneId.systemDefault()
+                val nowTime = LocalDate.now()
+                val (startRange, endRange) = when (finalScope) {
+                    "today" -> nowTime to nowTime
+                    "weekly" -> nowTime.with(java.time.DayOfWeek.MONDAY) to nowTime.with(java.time.DayOfWeek.SUNDAY)
+                    "monthly" -> nowTime.withDayOfMonth(1) to nowTime.withDayOfMonth(nowTime.lengthOfMonth())
+                    else -> nowTime to nowTime
                 }
+
+                val startMillis = startRange.atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val endMillis = endRange.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli()
+
+                // Busca as notas específicas para este escopo direto do repositório
+                val targetNotes = repository.getNotesByDateRange(startMillis, endMillis).first()
 
                 val cleanNotes = targetNotes.map { note ->
                     val plainText = note.contentHtml.replace(Regex("<[^>]*>"), " ").trim()
@@ -200,7 +206,12 @@ class StatisticsViewModel(
                 }.joinToString("\n---\n")
 
                 if (cleanNotes.isBlank()) {
-                    val msg = if (finalScope == "today") "Você ainda não escreveu nada hoje!" else "Escreva algumas notas primeiro!"
+                    val msg = when(finalScope) {
+                        "today" -> "Você ainda não escreveu nada hoje!"
+                        "weekly" -> "Nenhuma nota encontrada nesta semana!"
+                        "monthly" -> "Nenhuma nota encontrada este mês!"
+                        else -> "Escreva algumas notas primeiro!"
+                    }
                     _statsData.value = _statsData.value.copy(
                         aiInsight = AiInsightData(isLoading = false, error = msg)
                     )
@@ -214,23 +225,29 @@ class StatisticsViewModel(
                     else -> "Analise meu período atual. Quais os principais sentimentos e padrões observados?"
                 }
 
+                val specificInstruction = when (finalScope) {
+                    "today" -> "O RESUMO deve ter EXATAMENTE 3 frases curtas e diretas sobre o dia de hoje."
+                    "weekly" -> "O RESUMO deve ter de 3 a 4 frases detalhando a experiência da semana."
+                    "monthly" -> "O RESUMO deve ser um parágrafo denso e detalhado (5 a 8 frases), conectando os fatos do mês e oferecendo um insight profundo."
+                    else -> "O RESUMO deve ser conciso e acolhedor."
+                }
+
                 val prompt = """
-                    Você é o MemoFlow AI, um analista emocional empático, mestre em psicologia positiva e análise de dados comportamentais.
-                    TAREFA: $promptTask
+                    Você é o MemoFlow AI, um analista emocional empático e perspicaz.
                     
-                    INSTRUÇÕES:
-                    1. Responda estritamente no formato JSON-like abaixo (RESUMO e SENTIMENTOS).
-                    2. O RESUMO deve ser em Português, acolhedor e perspicaz. 
-                       - Para 'today': Exatamente 3 frases curtas.
-                       - Para 'weekly': 3 a 4 frases detalhando a semana.
-                       - Para 'monthly': Um parágrafo denso e detalhado de 5 a 8 frases, conectando os pontos e oferecendo um insight profundo.
-                    3. No campo SENTIMENTOS, forneça uma lista de EXATAMENTE 7 números (0.0 a 1.0) que representem a curva emocional do período (mesmo que seja o mês, condense a tendência em 7 pontos para o gráfico).
+                    SUA TAREFA:
+                    $promptTask
                     
-                    FORMATO DE RESPOSTA:
+                    REGRAS OBRIGATÓRIAS:
+                    1. Responda em Português do Brasil.
+                    2. $specificInstruction
+                    3. No campo SENTIMENTOS, forneça uma lista de EXATAMENTE 7 números (0.0 a 1.0) representando a evolução do humor no período.
+                    
+                    FORMATO DE RESPOSTA (ESTRITAMENTE NESTE PADRÃO):
                     RESUMO: [Seu texto aqui]
                     SENTIMENTOS: [num1, num2, num3, num4, num5, num6, num7]
                     
-                    NOTAS DO USUÁRIO (CONTEXTO):
+                    NOTAS DO USUÁRIO PARA ANÁLISE:
                     $cleanNotes
                 """.trimIndent()
 

@@ -187,7 +187,8 @@ fun StoreScreen(
                     "3 notas por dia",
                     "3 cápsulas do tempo ao total",
                     "Relembrar 2x ao dia",
-                    "Backup manual JSON"
+                    "Backup manual JSON",
+                    "IA: Apenas Insight Diário"
                 ),
                 isPremium = false,
                 isSelected = !isPremium
@@ -196,7 +197,7 @@ fun StoreScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             val premiumProduct = products.find { it.productId == "premium_lifetime" }
-            val premiumPrice = premiumProduct?.oneTimePurchaseOfferDetails?.formattedPrice ?: "R$ 9,90"
+            val premiumPrice = premiumProduct?.oneTimePurchaseOfferDetails?.formattedPrice ?: "R$ 49,90"
 
             PlanCard(
                 title = "Compra Única",
@@ -207,7 +208,7 @@ fun StoreScreen(
                     "Relembrar 6x dia",
                     "Backup automático Google Drive",
                     "Selo Premium no Perfil",
-                    "Sem anúncios (futuro)"
+                    "IA: 12 usos/dia por período (D/S/M)"
                 ),
                 isPremium = true,
                 brush = premiumBrush,
