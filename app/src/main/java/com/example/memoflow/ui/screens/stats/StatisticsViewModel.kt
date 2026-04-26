@@ -197,7 +197,16 @@ class StatisticsViewModel(
                 val endMillis = endRange.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli()
 
                 // Busca as notas específicas para este escopo direto do repositório
-                val targetNotes = repository.getNotesByDateRange(startMillis, endMillis).first()
+                val allNotesInRange = repository.getNotesByDateRange(startMillis, endMillis).first()
+                
+                // Filtra notas por privacidade (Cadeado e Cápsula)
+                val targetNotes = allNotesInRange.filter { note ->
+                    val now = System.currentTimeMillis()
+                    val isHiddenByLock = note.isLocked
+                    val isHiddenByCapsule = note.isTimeCapsule && (note.unlockDate ?: 0L) > now
+                    
+                    !isHiddenByLock && !isHiddenByCapsule
+                }
 
                 val cleanNotes = targetNotes.map { note ->
                     val plainText = note.contentHtml.replace(Regex("<[^>]*>"), " ").trim()
@@ -206,10 +215,13 @@ class StatisticsViewModel(
                 }.joinToString("\n---\n")
 
                 if (cleanNotes.isBlank()) {
-                    val msg = when(finalScope) {
-                        "today" -> "Você ainda não escreveu nada hoje!"
-                        "weekly" -> "Nenhuma nota encontrada nesta semana!"
-                        "monthly" -> "Nenhuma nota encontrada este mês!"
+                    val msg = when {
+                        allNotesInRange.isNotEmpty() && targetNotes.isEmpty() -> {
+                            "Suas notas deste período estão protegidas (trancadas ou em cápsulas) e a IA não tem permissão para lê-las."
+                        }
+                        finalScope == "today" -> "Você ainda não escreveu nada hoje!"
+                        finalScope == "weekly" -> "Nenhuma nota encontrada nesta semana!"
+                        finalScope == "monthly" -> "Nenhuma nota encontrada este mês!"
                         else -> "Escreva algumas notas primeiro!"
                     }
                     _statsData.value = _statsData.value.copy(
