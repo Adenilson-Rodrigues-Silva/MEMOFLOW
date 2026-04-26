@@ -31,9 +31,7 @@ android {
         if (localPropertiesFile.exists()) {
             localPropertiesFile.inputStream().use { properties.load(it) }
         }
-        val geminiKey = properties.getProperty("GEMINI_API_KEY") ?: ""
         val groqKey = properties.getProperty("GROQ_API_KEY") ?: ""
-        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
         buildConfigField("String", "GROQ_API_KEY", "\"$groqKey\"")
     }
 
@@ -136,9 +134,6 @@ dependencies {
 
     // Billing
     implementation("com.android.billingclient:billing-ktx:7.1.1")
-
-    // Gemini AI - Versão mais recente
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
     // Retrofit & OkHttp para Groq
     implementation("com.squareup.retrofit2:retrofit:2.11.0")

@@ -130,7 +130,9 @@ fun StatisticsScreen(
                 AiInsightCard(
                     insight = statsData.aiInsight,
                     isPremium = isPremium,
-                    onGenerate = { viewModel.generateAiInsights() },
+                    onGenerateWeekly = { viewModel.generateAiInsights("weekly") },
+                    onGenerateMonthly = { viewModel.generateAiInsights("monthly") },
+                    onTodayGenerate = { viewModel.generateAiInsights("today") },
                     borderBrush = dataGradient
                 )
             }
@@ -503,7 +505,9 @@ fun SectionHeader(title: String, isAi: Boolean = false) {
 fun AiInsightCard(
     insight: AiInsightData,
     isPremium: Boolean,
-    onGenerate: () -> Unit,
+    onGenerateWeekly: () -> Unit,
+    onGenerateMonthly: () -> Unit,
+    onTodayGenerate: () -> Unit,
     borderBrush: Brush
 ) {
     val aiGradient = remember {
@@ -511,6 +515,8 @@ fun AiInsightCard(
             colors = listOf(Color(0xFF00FFC2), Color(0xFF00E5FF), Color(0xFF7C4DFF))
         )
     }
+
+    val timerColor = Color(0xFF7C4DFF)
 
     val infiniteTransition = rememberInfiniteTransition(label = "ai_glow")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -557,7 +563,27 @@ fun AiInsightCard(
                         letterSpacing = 0.5.sp
                     )
                 }
-                if (!isPremium) {
+                
+                if (insight.summary.isNotEmpty()) {
+                    Surface(
+                        color = Color(0xFF00FFC2).copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFF00FFC2).copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            when(insight.currentScope) {
+                                "today" -> "HOJE"
+                                "weekly" -> "SEMANAL"
+                                "monthly" -> "MENSAL"
+                                else -> "INSIGHT"
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = Color(0xFF00FFC2),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else if (!isPremium) {
                     Icon(Icons.Default.Lock, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
                 }
             }
@@ -582,37 +608,57 @@ fun AiInsightCard(
             } else {
                 if (insight.summary.isEmpty() && !insight.isLoading) {
                     Text(
-                        "Sua jornada merece ser compreendida. A IA analisará suas notas para encontrar padrões e motivação.",
+                        "Sua jornada merece ser compreendida. A IA analisará suas notas para encontrar padrões, motivação e insights sobre o seu bem-estar.",
                         color = Color.LightGray,
                         fontSize = 15.sp,
                         lineHeight = 22.sp
                     )
                     Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = onGenerate,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .background(aiGradient, RoundedCornerShape(16.dp)),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Psychology, null, tint = Color.Black)
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                if (insight.error != null) "TENTAR NOVAMENTE" else "REVELAR INSIGHTS AGORA",
-                                color = Color.Black,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 16.sp
-                            )
+                    
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        listOf(
+                            Triple("HOJE", "today", onTodayGenerate),
+                            Triple("SEMANA", "weekly", onGenerateWeekly),
+                            Triple("MÊS", "monthly", onGenerateMonthly)
+                        ).forEach { (label, scope, action) ->
+                            val nextTime = insight.nextAvailableTime[scope] ?: 0L
+                            val isCooldown = System.currentTimeMillis() < nextTime
+
+                            Button(
+                                onClick = action,
+                                enabled = !isCooldown,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent,
+                                    disabledContainerColor = Color.White.copy(alpha = 0.05f)
+                                ),
+                                modifier = Modifier.fillMaxWidth().height(50.dp),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            if (isCooldown) Brush.linearGradient(listOf(Color.Gray.copy(alpha = 0.1f), Color.Gray.copy(alpha = 0.1f)))
+                                            else aiGradient, 
+                                            RoundedCornerShape(16.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isCooldown) {
+                                        val remaining = (nextTime - System.currentTimeMillis()) / 1000
+                                        Text("${remaining / 60}m ${remaining % 60}s", color = timerColor, fontWeight = FontWeight.Bold)
+                                    } else {
+                                        Text("REVELAR INSIGHT $label", color = Color.Black, fontWeight = FontWeight.Black)
+                                    }
+                                }
+                            }
                         }
                     }
+
                     insight.error?.let {
                         Text(it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp), textAlign = TextAlign.Center)
                     }
                 } else if (insight.isLoading) {
-                    // O diálogo já cuida do loading principal, mas deixamos um feedback visual aqui também
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -649,13 +695,47 @@ fun AiInsightCard(
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    OutlinedButton(
-                        onClick = onGenerate,
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, Color(0xFF00FFC2).copy(alpha = 0.5f)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("RECALIBRAR ANÁLISE", color = Color(0xFF00FFC2), fontWeight = FontWeight.Bold)
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            Triple("HOJE", "today", onTodayGenerate),
+                            Triple("SEMANA", "weekly", onGenerateWeekly),
+                            Triple("MÊS", "monthly", onGenerateMonthly)
+                        ).forEach { (label, scope, action) ->
+                            val nextTime = insight.nextAvailableTime[scope] ?: 0L
+                            val isCooldown = System.currentTimeMillis() < nextTime
+
+                            Button(
+                                onClick = action,
+                                enabled = !isCooldown,
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent,
+                                    disabledContainerColor = Color.White.copy(alpha = 0.05f)
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            if (isCooldown) Brush.linearGradient(listOf(Color.Gray.copy(alpha = 0.1f), Color.Gray.copy(alpha = 0.1f)))
+                                            else if (insight.currentScope == scope) Brush.linearGradient(listOf(Color.White.copy(alpha = 0.1f), Color.White.copy(alpha = 0.1f)))
+                                            else aiGradient, 
+                                            RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isCooldown) {
+                                        val remaining = (nextTime - System.currentTimeMillis()) / 1000
+                                        Text("${remaining / 60}m ${remaining % 60}s", color = timerColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    } else {
+                                        Text(label, color = if(insight.currentScope == scope) Color.White else Color.Black, fontWeight = FontWeight.Black, fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -10,6 +10,7 @@ import com.example.memoflow.MemoApplication
 import com.example.memoflow.data.local.entity.GratitudeEntity
 import com.example.memoflow.data.local.entity.NoteEntity
 import com.example.memoflow.data.repository.MemoRepository
+import com.example.memoflow.utils.AiPrefs
 import com.example.memoflow.utils.BillingPrefs
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -50,10 +51,14 @@ data class AiInsightData(
     val summary: String = "",
     val sentimentScores: List<Float> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val currentScope: String = "", // "", "today", "weekly", "monthly"
+    val dailyCounts: Map<String, Int> = mapOf("today" to 0, "weekly" to 0, "monthly" to 0),
+    val nextAvailableTime: Map<String, Long> = emptyMap() // Timestamp em ms
 )
 
 data class StatsData(
+    val isWeekly: Boolean = true,
     val moodPoints: List<Float> = emptyList(),
     val topMoods: List<MoodStat> = emptyList(),
     val streak: Int = 0,
@@ -76,7 +81,8 @@ data class StatsData(
 
 class StatisticsViewModel(
     private val repository: MemoRepository,
-    private val billingPrefs: BillingPrefs
+    private val billingPrefs: BillingPrefs,
+    private val aiPrefs: AiPrefs
 ) : ViewModel() {
 
     private val _statsData = MutableStateFlow(StatsData())
@@ -98,6 +104,20 @@ class StatisticsViewModel(
 
     init {
         loadStats()
+        loadAiPersistence()
+    }
+
+    private fun loadAiPersistence() {
+        viewModelScope.launch {
+            val counts = aiPrefs.getDailyCounts()
+            val times = aiPrefs.getNextAvailableTimes()
+            _statsData.value = _statsData.value.copy(
+                aiInsight = _statsData.value.aiInsight.copy(
+                    dailyCounts = counts,
+                    nextAvailableTime = times
+                )
+            )
+        }
     }
 
     fun setPeriod(monthly: Boolean) {
@@ -115,7 +135,38 @@ class StatisticsViewModel(
         loadStats()
     }
 
-    fun generateAiInsights() {
+    private var isWeeklyView = true
+
+    fun toggleView() {
+        isWeeklyView = !isWeeklyView
+        loadStats()
+    }
+
+    fun generateAiInsights(scope: String = "auto") {
+        val finalScope = if (scope == "auto") {
+            if (isMonthly) "monthly" else "weekly"
+        } else scope
+        
+        val now = System.currentTimeMillis()
+        val currentInsight = _statsData.value.aiInsight
+        val nextTime = currentInsight.nextAvailableTime[finalScope] ?: 0L
+        val count = currentInsight.dailyCounts[finalScope] ?: 0
+
+        if (count >= 12) {
+            _statsData.value = _statsData.value.copy(
+                aiInsight = currentInsight.copy(error = "Limite diário de 12 gerações atingido para este modo. Libera à meia-noite.")
+            )
+            return
+        }
+
+        if (now < nextTime) {
+            val remainingSec = (nextTime - now) / 1000
+            _statsData.value = _statsData.value.copy(
+                aiInsight = currentInsight.copy(error = "Aguarde ${remainingSec / 60}min ${remainingSec % 60}s para gerar novamente.")
+            )
+            return
+        }
+
         viewModelScope.launch {
             val key = com.example.memoflow.BuildConfig.GROQ_API_KEY
             
@@ -131,25 +182,55 @@ class StatisticsViewModel(
             )
 
             try {
-                val cleanNotes = currentNotesForAi.map { note ->
+                // Filtra as notas baseadas no escopo (Hoje, Semanal ou Mensal)
+                val targetNotes = when (finalScope) {
+                    "today" -> {
+                        val today = LocalDate.now()
+                        currentNotesForAi.filter { 
+                            Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate() == today 
+                        }
+                    }
+                    else -> currentNotesForAi
+                }
+
+                val cleanNotes = targetNotes.map { note ->
                     val plainText = note.contentHtml.replace(Regex("<[^>]*>"), " ").trim()
                     val date = Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()
-                    "Data: $date | Humor Selecionado: ${note.emoji}\nNota: $plainText"
+                    "Data: $date | Humor: ${note.emoji}\nNota: $plainText"
                 }.joinToString("\n---\n")
 
                 if (cleanNotes.isBlank()) {
+                    val msg = if (finalScope == "today") "Você ainda não escreveu nada hoje!" else "Escreva algumas notas primeiro!"
                     _statsData.value = _statsData.value.copy(
-                        aiInsight = AiInsightData(isLoading = false, error = "Escreva algumas notas primeiro!")
+                        aiInsight = AiInsightData(isLoading = false, error = msg)
                     )
                     return@launch
                 }
 
+                val promptTask = when (finalScope) {
+                    "today" -> "Analise meu dia de hoje de forma ultra-focada. Como eu me senti, qual foi o ponto alto e o que posso fazer para que amanhã seja ainda melhor?"
+                    "weekly" -> "Analise minha SEMANA. Identifique a evolução emocional, os principais gatilhos (positivos ou negativos) e como meu humor oscilou entre os dias."
+                    "monthly" -> "Realize uma retrospectiva profunda e analítica do meu MÊS. Identifique padrões comportamentais recorrentes, flutuações de humor significativas e como meus sentimentos evoluíram da primeira para a última semana. Procure conexões entre os eventos relatados e forneça uma visão macro sobre meu crescimento e estado mental neste período."
+                    else -> "Analise meu período atual. Quais os principais sentimentos e padrões observados?"
+                }
+
                 val prompt = """
-                    Analise emocionalmente estas notas de diário e responda estritamente neste formato:
-                    RESUMO: [Resumo motivador e empático de 3 frases em Português]
-                    SENTIMENTOS: [Lista de 7 números decimais entre 0.0 e 1.0, representando a evolução do humor nos últimos 7 dias. Use 1.0 para muito feliz, 0.5 para neutro e 0.0 para muito triste. Seja preciso na variação.]
+                    Você é o MemoFlow AI, um analista emocional empático, mestre em psicologia positiva e análise de dados comportamentais.
+                    TAREFA: $promptTask
                     
-                    Notas:
+                    INSTRUÇÕES:
+                    1. Responda estritamente no formato JSON-like abaixo (RESUMO e SENTIMENTOS).
+                    2. O RESUMO deve ser em Português, acolhedor e perspicaz. 
+                       - Para 'today': Exatamente 3 frases curtas.
+                       - Para 'weekly': 3 a 4 frases detalhando a semana.
+                       - Para 'monthly': Um parágrafo denso e detalhado de 5 a 8 frases, conectando os pontos e oferecendo um insight profundo.
+                    3. No campo SENTIMENTOS, forneça uma lista de EXATAMENTE 7 números (0.0 a 1.0) que representem a curva emocional do período (mesmo que seja o mês, condense a tendência em 7 pontos para o gráfico).
+                    
+                    FORMATO DE RESPOSTA:
+                    RESUMO: [Seu texto aqui]
+                    SENTIMENTOS: [num1, num2, num3, num4, num5, num6, num7]
+                    
+                    NOTAS DO USUÁRIO (CONTEXTO):
                     $cleanNotes
                 """.trimIndent()
 
@@ -190,11 +271,23 @@ class StatisticsViewModel(
                 val sentimentScores = sentimentString.split(",")
                     .mapNotNull { it.trim().toFloatOrNull() }
 
+                val newCounts = currentInsight.dailyCounts.toMutableMap()
+                newCounts[finalScope] = (newCounts[finalScope] ?: 0) + 1
+                
+                val newNextTimes = currentInsight.nextAvailableTime.toMutableMap()
+                newNextTimes[finalScope] = System.currentTimeMillis() + (10 * 60 * 1000) // 10 minutos
+
+                aiPrefs.saveDailyCounts(newCounts)
+                aiPrefs.saveNextAvailableTimes(newNextTimes)
+
                 _statsData.value = _statsData.value.copy(
                     aiInsight = AiInsightData(
                         summary = summary,
                         sentimentScores = sentimentScores,
-                        isLoading = false
+                        isLoading = false,
+                        currentScope = finalScope,
+                        dailyCounts = newCounts,
+                        nextAvailableTime = newNextTimes
                     )
                 )
 
@@ -209,6 +302,7 @@ class StatisticsViewModel(
 
     private fun loadStats() {
         viewModelScope.launch {
+            _statsData.value = _statsData.value.copy(isWeekly = !isMonthly)
             val zoneId = ZoneId.systemDefault()
             val (startDate, endDate) = if (!isMonthly) {
                 val start = currentReferenceDate.with(java.time.DayOfWeek.MONDAY)
@@ -367,7 +461,7 @@ class StatisticsViewModel(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val application = extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as MemoApplication
-                return StatisticsViewModel(application.repository, application.billingPrefs) as T
+                return StatisticsViewModel(application.repository, application.billingPrefs, application.aiPrefs) as T
             }
         }
     }
