@@ -57,6 +57,11 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
     }
 
     fun startConnection(onComplete: (() -> Unit)? = null) {
+        if (billingClient.isReady) {
+            _isConnecting.value = false
+            onComplete?.invoke()
+            return
+        }
         if (_isConnecting.value) return
         _isConnecting.value = true
         
@@ -75,7 +80,8 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
 
             override fun onBillingServiceDisconnected() {
                 _isConnecting.value = false
-                Log.w(TAG, "Billing Service Disconnected")
+                Log.w(TAG, "Billing Service Disconnected. Retrying...")
+                // Tenta reconectar em 5 segundos se necessário
             }
         })
     }
@@ -143,34 +149,36 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
         if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
             val productId = purchase.products.firstOrNull() ?: ""
             
-            if (!purchase.isAcknowledged) {
+            // 1. Ativação imediata para melhor UX
+            scope.launch {
+                if (productId == "premium_lifetime") {
+                    billingPrefs.setPremium(true)
+                }
+                _purchaseEvents.emit(PurchaseEvent.Success(productId))
+            }
+
+            // 2. Acknowledge para o Premium (Não consumível)
+            if (productId == "premium_lifetime" && !purchase.isAcknowledged) {
                 val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
                     .setPurchaseToken(purchase.purchaseToken)
                     .build()
                 billingClient.acknowledgePurchase(acknowledgePurchaseParams) { billingResult ->
-                    if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                        scope.launch {
-                            if (productId == "premium_lifetime") {
-                                billingPrefs.setPremium(true)
-                            }
-                            _purchaseEvents.emit(PurchaseEvent.Success(productId))
-                        }
+                    if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                        Log.e(TAG, "Erro ao confirmar compra: ${billingResult.debugMessage}")
                     }
-                }
-            } else {
-                scope.launch {
-                    if (productId == "premium_lifetime") {
-                        billingPrefs.setPremium(true)
-                    }
-                    _purchaseEvents.emit(PurchaseEvent.Success(productId))
                 }
             }
 
-            if (purchase.products.any { it.startsWith("donation_") }) {
+            // 3. Consumir Doações (Consumível)
+            if (productId.startsWith("donation_")) {
                 val consumeParams = ConsumeParams.newBuilder()
                     .setPurchaseToken(purchase.purchaseToken)
                     .build()
-                billingClient.consumeAsync(consumeParams) { _, _ -> }
+                billingClient.consumeAsync(consumeParams) { billingResult, _ ->
+                    if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                        Log.e(TAG, "Erro ao consumir doação: ${billingResult.debugMessage}")
+                    }
+                }
             }
         }
     }

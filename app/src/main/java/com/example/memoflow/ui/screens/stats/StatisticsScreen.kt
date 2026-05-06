@@ -683,19 +683,6 @@ fun AiInsightCard(
                             )
                         }
                     }
-                    
-                    if (insight.sentimentScores.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                            "MAPA DA ALMA (EVOLUÇÃO IA)",
-                            color = Color(0xFF00FFC2),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        AiSentimentEvolutionChart(insight.sentimentScores)
-                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
                     

@@ -231,21 +231,21 @@ class StatisticsViewModel(
                 }
 
                 val promptTask = when (finalScope) {
-                    "today" -> "Analise meu dia de hoje de forma ultra-focada. Como eu me senti, qual foi o ponto alto e o que posso fazer para que amanhã seja ainda melhor?"
-                    "weekly" -> "Analise minha SEMANA. Identifique a evolução emocional, os principais gatilhos (positivos ou negativos) e como meu humor oscilou entre os dias."
-                    "monthly" -> "Realize uma retrospectiva profunda e analítica do meu MÊS. Identifique padrões comportamentais recorrentes, flutuações de humor significativas e como meus sentimentos evoluíram da primeira para a última semana. Procure conexões entre os eventos relatados e forneça uma visão macro sobre meu crescimento e estado mental neste período."
-                    else -> "Analise meu período atual. Quais os principais sentimentos e padrões observados?"
+                    "today" -> "Analise meu dia de hoje. Como eu me senti, qual foi o ponto alto e o que posso fazer para que amanhã seja ainda melhor? Use emojis para ilustrar os sentimentos."
+                    "weekly" -> "Analise minha SEMANA. Identifique a evolução emocional, os principais gatilhos (positivos ou negativos) e como meu humor oscilou entre os dias. Enriqueça o texto com emojis pertinentes."
+                    "monthly" -> "Realize uma retrospectiva profunda e analítica do meu MÊS. Identifique padrões comportamentais recorrentes, flutuações de humor significativas e como meus sentimentos evoluíram. Procure conexões entre os eventos e forneça uma visão macro sobre meu crescimento e estado mental. Use emojis para tornar a leitura mais dinâmica e expressiva."
+                    else -> "Analise meu período atual. Quais os principais sentimentos e padrões observados? Use emojis."
                 }
 
                 val specificInstruction = when (finalScope) {
-                    "today" -> "O RESUMO deve ter EXATAMENTE 3 frases curtas e diretas sobre o dia de hoje."
-                    "weekly" -> "O RESUMO deve ter de 3 a 4 frases detalhando a experiência da semana."
-                    "monthly" -> "O RESUMO deve ser um parágrafo denso e detalhado (5 a 8 frases), conectando os fatos do mês e oferecendo um insight profundo."
-                    else -> "O RESUMO deve ser conciso e acolhedor."
+                    "today" -> "O RESUMO deve ter de 3 a 5 frases curtas e diretas sobre o dia de hoje, incluindo emojis."
+                    "weekly" -> "O RESUMO deve ter de 4 a 6 frases detalhando a experiência da semana, com emojis."
+                    "monthly" -> "O RESUMO deve ser um texto profundo e detalhado (2 a 3 parágrafos curtos), conectando os fatos do mês, oferecendo insights psicológicos e usando emojis para enfatizar as emoções."
+                    else -> "O RESUMO deve ser conciso, acolhedor e conter emojis."
                 }
 
                 val prompt = """
-                    Você é o MemoFlow AI, um analista emocional empático e perspicaz.
+                    Você é o MemoFlow AI, um mentor emocional empático e perspicaz.
                     
                     SUA TAREFA:
                     $promptTask
@@ -253,11 +253,10 @@ class StatisticsViewModel(
                     REGRAS OBRIGATÓRIAS:
                     1. Responda em Português do Brasil.
                     2. $specificInstruction
-                    3. No campo SENTIMENTOS, forneça uma lista de EXATAMENTE 7 números (0.0 a 1.0) representando a evolução do humor no período.
+                    3. Integre EMOJIS naturalmente no texto para refletir o estado emocional.
                     
                     FORMATO DE RESPOSTA (ESTRITAMENTE NESTE PADRÃO):
-                    RESUMO: [Seu texto aqui]
-                    SENTIMENTOS: [num1, num2, num3, num4, num5, num6, num7]
+                    RESUMO: [Seu texto com emojis aqui]
                     
                     NOTAS DO USUÁRIO PARA ANÁLISE:
                     $cleanNotes
@@ -293,12 +292,8 @@ class StatisticsViewModel(
                 val message = firstChoice["message"] as Map<*, *>
                 val content = message["content"] as String
 
-                val summary = content.substringAfter("RESUMO:").substringBefore("SENTIMENTOS:").trim()
-                val sentimentString = content.substringAfter("SENTIMENTOS:").trim()
-                    .replace("[", "").replace("]", "")
-                
-                val sentimentScores = sentimentString.split(",")
-                    .mapNotNull { it.trim().toFloatOrNull() }
+                val summary = content.substringAfter("RESUMO:").trim()
+                val sentimentScores = emptyList<Float>()
 
                 val newCounts = currentInsight.dailyCounts.toMutableMap()
                 newCounts[finalScope] = (newCounts[finalScope] ?: 0) + 1
