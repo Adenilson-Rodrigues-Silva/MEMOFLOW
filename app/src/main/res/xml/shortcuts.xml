@@ -7,8 +7,8 @@
         android:shortcutShortLabel="@string/shortcut_new_note">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.example.memoflow"
-            android:targetClass="com.example.memoflow.MainActivity"
+            android:targetPackage="com.arsdevstudio.memoflow"
+            android:targetClass="com.arsdevstudio.memoflow.MainActivity"
             android:data="memoflow://write_note" />
     </shortcut>
     <shortcut
@@ -18,8 +18,8 @@
         android:shortcutShortLabel="@string/shortcut_recall">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.example.memoflow"
-            android:targetClass="com.example.memoflow.MainActivity"
+            android:targetPackage="com.arsdevstudio.memoflow"
+            android:targetClass="com.arsdevstudio.memoflow.MainActivity"
             android:data="memoflow://recall" />
     </shortcut>
     <shortcut
@@ -29,8 +29,8 @@
         android:shortcutShortLabel="@string/shortcut_gratitude">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.example.memoflow"
-            android:targetClass="com.example.memoflow.MainActivity"
+            android:targetPackage="com.arsdevstudio.memoflow"
+            android:targetClass="com.arsdevstudio.memoflow.MainActivity"
             android:data="memoflow://gratitude" />
     </shortcut>
     <shortcut
@@ -40,8 +40,8 @@
         android:shortcutShortLabel="@string/shortcut_map">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.example.memoflow"
-            android:targetClass="com.example.memoflow.MainActivity"
+            android:targetPackage="com.arsdevstudio.memoflow"
+            android:targetClass="com.arsdevstudio.memoflow.MainActivity"
             android:data="memoflow://map" />
     </shortcut>
 </shortcuts>

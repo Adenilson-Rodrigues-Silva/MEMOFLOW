@@ -1,4 +1,4 @@
-package com.example.memoflow
+package com.arsdevstudio.memoflow
 
 import org.junit.Test
 

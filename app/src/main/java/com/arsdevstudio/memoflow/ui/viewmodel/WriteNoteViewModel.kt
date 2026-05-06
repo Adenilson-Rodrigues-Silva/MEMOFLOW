@@ -1,0 +1,422 @@
+package com.arsdevstudio.memoflow.ui.viewmodel
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.location.Geocoder
+import android.media.MediaPlayer
+import android.media.MediaRecorder
+import android.net.Uri
+import android.os.Build
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
+import com.arsdevstudio.memoflow.MemoApplication
+import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
+import com.arsdevstudio.memoflow.data.repository.MemoRepository
+import com.arsdevstudio.memoflow.utils.BillingPrefs
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.mohamedrejeb.richeditor.model.RichTextState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
+import java.io.FileOutputStream
+import java.util.*
+
+data class WriteNoteUiState(
+    val id: Long = 0,
+    val diaryEmojis: List<Pair<String, String>> = listOf(
+        "😭" to "Muito Triste",
+        "😢" to "Triste",
+        "😐" to "Neutro",
+        "😊" to "Feliz",
+        "🤩" to "Muito Feliz",
+        "😫" to "Estressado",
+        "😡" to "Bravo"
+    ),
+    val title: String = "Hoje",
+    val contentHtml: String = "",
+    val selectedEmoji: String = "😊",
+    val selectedHumor: String = "Feliz",
+    val images: List<Uri> = emptyList(),
+    val isRecording: Boolean = false,
+    val recordingTime: Int = 0,
+    val audioPath: String? = null,
+    val isLocked: Boolean = false,
+    val isTimeCapsule: Boolean = false,
+    val unlockDate: Long? = null,
+    val date: Long = System.currentTimeMillis(),
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val locationName: String? = null,
+    val isSaving: Boolean = false,
+    val error: String? = null,
+    val isLimitReached: Boolean = false
+)
+
+class WriteNoteViewModel(
+    private val repository: MemoRepository,
+    private val billingPrefs: BillingPrefs
+) : ViewModel() {
+
+    private val _uiStateFlow = MutableStateFlow(WriteNoteUiState())
+    val uiStateFlow = _uiStateFlow.asStateFlow()
+
+    val richTextState = RichTextState()
+
+    private var progressJob: Job? = null
+    var isPlaying by mutableStateOf(false)
+        private set
+
+    private var mediaPlayer: MediaPlayer? = null
+    private var mediaRecorder: MediaRecorder? = null
+    private var timerJob: Job? = null
+    private var tempPath: String? = null
+
+    fun checkNoteLimit() {
+        viewModelScope.launch {
+            if (_uiStateFlow.value.id == 0L) {
+                val countToday = repository.getNoteCountForToday()
+                if (countToday >= 3) {
+                    _uiStateFlow.update { it.copy(isLimitReached = true) }
+                }
+            }
+        }
+    }
+
+    fun loadNote(noteId: Long) {
+        if (noteId <= 0) return
+        viewModelScope.launch {
+            val note = repository.getNoteById(noteId)
+            note?.let {
+                _uiStateFlow.update { currentState ->
+                    currentState.copy(
+                        id = it.id,
+                        title = it.title,
+                        selectedEmoji = it.emoji,
+                        selectedHumor = it.humor,
+                        images = it.images.map { uriString -> Uri.parse(uriString) },
+                        audioPath = it.audioPath,
+                        isLocked = it.isLocked,
+                        isTimeCapsule = it.isTimeCapsule,
+                        unlockDate = it.unlockDate,
+                        date = it.date,
+                        latitude = it.latitude,
+                        longitude = it.longitude,
+                        locationName = it.locationName
+                    )
+                }
+                richTextState.setHtml(it.contentHtml)
+            }
+        }
+    }
+
+    fun meltPermanently(noteId: Long) {
+        viewModelScope.launch {
+            val note = repository.getNoteById(noteId)
+            note?.let {
+                val updatedNote = it.copy(isTimeCapsule = false, unlockDate = null)
+                repository.insertNote(updatedNote)
+                _uiStateFlow.update { state -> state.copy(isTimeCapsule = false, unlockDate = null) }
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun captureLocationAndSave(context: Context, onComplete: () -> Unit) {
+        if (_uiStateFlow.value.isSaving) return
+        
+        viewModelScope.launch {
+            // Verifica limites apenas para notas NOVAS
+            if (_uiStateFlow.value.id == 0L) {
+                // Limite de 3 notas por dia (IGUAL PARA AMBOS conforme pedido)
+                val countToday = repository.getNoteCountForToday()
+                if (countToday >= 3) {
+                    _uiStateFlow.update { it.copy(error = "Limite de 3 notas diárias atingido.") }
+                    return@launch
+                }
+            }
+
+            // Limite de cápsulas do tempo
+            if (_uiStateFlow.value.isTimeCapsule && _uiStateFlow.value.id == 0L) {
+                val isPremium = billingPrefs.isPremium.first()
+                val capsuleCount = repository.getTimeCapsuleCount()
+                if (!isPremium && capsuleCount >= 3) {
+                    _uiStateFlow.update { it.copy(error = "Limite de 3 cápsulas do tempo atingido. Evolua para o Premium!") }
+                    return@launch
+                }
+            }
+
+            _uiStateFlow.update { it.copy(isSaving = true) }
+            val startTime = System.currentTimeMillis()
+            
+            try {
+                val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+                var location = withTimeoutOrNull(2000) {
+                    fusedLocationClient.lastLocation.await()
+                }
+                
+                if (location == null) {
+                    location = withTimeoutOrNull(6000) {
+                        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
+                    }
+                }
+                
+                if (location != null) {
+                    val lat = location.latitude
+                    val lon = location.longitude
+                    
+                    val cityName = withTimeoutOrNull(4000) {
+                        getCityName(context, lat, lon)
+                    }
+                    
+                    _uiStateFlow.update { it.copy(
+                        latitude = lat, 
+                        longitude = lon,
+                        locationName = cityName
+                    ) }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                val elapsedTime = System.currentTimeMillis() - startTime
+                if (elapsedTime < 2000) {
+                    delay(2000 - elapsedTime)
+                }
+                
+                saveNote()
+                _uiStateFlow.update { it.copy(isSaving = false) }
+                onComplete()
+            }
+        }
+    }
+
+    private suspend fun getCityName(context: Context, lat: Double, lon: Double): String? = withContext(Dispatchers.IO) {
+        try {
+            val geocoder = Geocoder(context, Locale.getDefault())
+            val addresses = geocoder.getFromLocation(lat, lon, 1)
+            addresses?.firstOrNull()?.let { 
+                it.locality ?: it.subAdminArea ?: it.adminArea
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun onImageSelected(context: Context, uri: Uri?) {
+        uri?.let { selectedUri ->
+            viewModelScope.launch {
+                try {
+                    val fileName = "note_img_${System.currentTimeMillis()}_${_uiStateFlow.value.images.size}.jpg"
+                    val file = File(context.filesDir, fileName)
+                    context.contentResolver.openInputStream(selectedUri)?.use { input ->
+                        FileOutputStream(file).use { output -> input.copyTo(output) }
+                    }
+                    val internalUri = Uri.fromFile(file)
+                    _uiStateFlow.update { currentState ->
+                        if (currentState.images.size < 3) {
+                            currentState.copy(images = currentState.images + internalUri)
+                        } else currentState
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+        }
+    }
+
+    fun updateTitle(newTitle: String) {
+        _uiStateFlow.update { it.copy(title = newTitle) }
+    }
+
+    fun updateEmoji(emoji: String, humor: String) {
+        _uiStateFlow.update { it.copy(selectedEmoji = emoji, selectedHumor = humor) }
+    }
+
+    fun toggleLock() {
+        _uiStateFlow.update { it.copy(isLocked = !it.isLocked) }
+    }
+
+    fun setTimeCapsule(unlockDate: Long) {
+        _uiStateFlow.update { it.copy(isTimeCapsule = true, unlockDate = unlockDate) }
+    }
+
+    fun updateTextColor(color: Color) {
+        richTextState.toggleSpanStyle(SpanStyle(color = color))
+    }
+
+    fun applyMarker(color: Color) {
+        richTextState.toggleSpanStyle(SpanStyle(background = color.copy(alpha = 0.3f)))
+    }
+
+    fun saveNote() {
+        viewModelScope.launch {
+            val state = _uiStateFlow.value
+            val note = NoteEntity(
+                id = state.id,
+                title = state.title,
+                contentHtml = richTextState.toHtml(),
+                emoji = state.selectedEmoji,
+                humor = state.selectedHumor,
+                date = state.date,
+                images = state.images.map { it.toString() },
+                audioPath = state.audioPath,
+                isLocked = state.isLocked,
+                isTimeCapsule = state.isTimeCapsule,
+                unlockDate = state.unlockDate,
+                latitude = state.latitude,
+                longitude = state.longitude,
+                locationName = state.locationName
+            )
+            repository.insertNote(note)
+        }
+    }
+
+    fun clearError() {
+        _uiStateFlow.update { it.copy(error = null) }
+    }
+
+    fun onVoiceClick(cacheDir: File) {
+        if (_uiStateFlow.value.isRecording) {
+            stopRecording()
+        } else {
+            startRecording(cacheDir)
+        }
+    }
+
+    private fun startRecording(cacheDir: File) {
+        val audioFile = File(cacheDir, "audio_${System.currentTimeMillis()}.mp3")
+        tempPath = audioFile.absolutePath
+
+        mediaRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setOutputFile(tempPath)
+
+            try {
+                prepare()
+                start()
+                _uiStateFlow.update { it.copy(isRecording = true, recordingTime = 0) }
+                startTimer()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun stopRecording() {
+        try {
+            mediaRecorder?.stop()
+            mediaRecorder?.release()
+            _uiStateFlow.update { it.copy(isRecording = false, audioPath = tempPath) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            _uiStateFlow.update { it.copy(isRecording = false) }
+        } finally {
+            mediaRecorder = null
+            timerJob?.cancel()
+        }
+    }
+
+    fun playAudio() {
+        val path = _uiStateFlow.value.audioPath
+        if (path == null || _uiStateFlow.value.isRecording) return
+
+        if (mediaPlayer?.isPlaying == true) {
+            mediaPlayer?.pause()
+            this@WriteNoteViewModel.isPlaying = false
+            progressJob?.cancel()
+            return
+        }
+
+        try {
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(path)
+                setOnPreparedListener {
+                    this@WriteNoteViewModel.isPlaying = true
+                    start()
+                    startProgressUpdate()
+                }
+                setOnCompletionListener {
+                    this@WriteNoteViewModel.isPlaying = false
+                    progressJob?.cancel()
+                    _uiStateFlow.update { state -> state.copy(recordingTime = 0) }
+                }
+                prepareAsync()
+            }
+        } catch (e: Exception) {
+            this@WriteNoteViewModel.isPlaying = false
+        }
+    }
+
+    private fun startProgressUpdate() {
+        progressJob?.cancel()
+        progressJob = viewModelScope.launch {
+            while (this@WriteNoteViewModel.isPlaying) {
+                mediaPlayer?.let {
+                    val currentSec = it.currentPosition / 1000
+                    _uiStateFlow.update { state -> state.copy(recordingTime = currentSec) }
+                }
+                delay(500)
+            }
+        }
+    }
+
+    fun deleteAudio() {
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+        _uiStateFlow.value.audioPath?.let { path ->
+            val file = File(path)
+            if (file.exists()) file.delete()
+        }
+        _uiStateFlow.update { it.copy(audioPath = null, recordingTime = 0) }
+    }
+
+    private fun startTimer() {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            while (_uiStateFlow.value.recordingTime < 30 && _uiStateFlow.value.isRecording) {
+                delay(1000)
+                _uiStateFlow.update { it.copy(recordingTime = it.recordingTime + 1) }
+            }
+            if (_uiStateFlow.value.recordingTime >= 30) {
+                stopRecording()
+            }
+        }
+    }
+
+    fun removeImage(uri: Uri) {
+        _uiStateFlow.update { currentState ->
+            val currentList = currentState.images.toMutableList()
+            currentList.remove(uri)
+            currentState.copy(images = currentList)
+        }
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as MemoApplication
+                return WriteNoteViewModel(application.repository, application.billingPrefs) as T
+            }
+        }
+    }
+}
+

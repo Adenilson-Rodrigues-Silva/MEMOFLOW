@@ -7,6 +7,59 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:376900869050:android:d0c5b0425b4356c5f6db83",
+        "android_client_info": {
+          "package_name": "com.arsdevstudio.memoflow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "376900869050-41hpdagbgdbeme6jdg3u9p52iuq67mvs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.arsdevstudio.memoflow",
+            "certificate_hash": "bfae7c8f1fa0ac9a008c589d7a0ac8b624a5fda1"
+          }
+        },
+        {
+          "client_id": "376900869050-8j7gnbmjc1st0vrjqr4ffljh7c3f6vou.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.arsdevstudio.memoflow",
+            "certificate_hash": "22aea6c2010d0c70680857c26a9f1dfb0983174a"
+          }
+        },
+        {
+          "client_id": "376900869050-fs6t0sm3egu6lucg9vj46m3j5fm1ut4m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.arsdevstudio.memoflow",
+            "certificate_hash": "a5e7bc291d0def3286f47b2f5a571f337615ac1f"
+          }
+        },
+        {
+          "client_id": "376900869050-17pdo2u3nuoq5f9ojvd22qni221emhu1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBk6cHem3heDdZaN309fOm4CoYAG9SLp8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "376900869050-17pdo2u3nuoq5f9ojvd22qni221emhu1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:376900869050:android:3f4929c6f0f5a467f6db83",
         "android_client_info": {
           "package_name": "com.example.memoflow"
