@@ -8,15 +8,19 @@ import com.arsdevstudio.memoflow.utils.AiPrefs
 import com.arsdevstudio.memoflow.utils.BillingManager
 import com.arsdevstudio.memoflow.utils.BillingPrefs
 import com.arsdevstudio.memoflow.utils.NotificationHelper
+import com.arsdevstudio.memoflow.utils.SecurityUtils
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 class MemoApplication : Application() {
     
     val database by lazy { 
+        val factory = SupportOpenHelperFactory(SecurityUtils.getDatabasePassphrase(this))
         Room.databaseBuilder(
             this,
             MemoDatabase::class.java,
             "memo_flow_db"
         )
+        .openHelperFactory(factory)
         .addMigrations(MemoDatabase.MIGRATION_11_12)
         .fallbackToDestructiveMigration()
         .build() 

@@ -26,6 +26,7 @@ mapsUtils = "5.0.0"
 kotlinxCoroutinesPlayServices = "1.9.0"
 firebaseBom = "33.7.0"
 playServicesAuth = "21.3.0"
+sqlcipher = "4.5.4"
 
 [libraries]
 # Core e Lifecycle
@@ -80,6 +81,7 @@ kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "ko
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version = "33.7.0" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+sqlcipher = { group = "net.zetetic", name = "android-database-sqlcipher", version.ref = "sqlcipher" }
 
 # Testes e Debug
 junit = { group = "junit", name = "junit", version.ref = "junit" }
