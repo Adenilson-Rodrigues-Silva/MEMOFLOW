@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import com.arsdevstudio.memoflow.navigation.Screen
+import com.arsdevstudio.memoflow.ui.screens.auth.OnboardingScreen
 import com.arsdevstudio.memoflow.ui.screens.home.HomeScreen
 import com.arsdevstudio.memoflow.ui.screens.profile.ProfileScreen
 import com.arsdevstudio.memoflow.ui.screens.profile.NotificationCenterScreen
@@ -99,9 +100,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Screen.Onboarding.route) {
-                        // Implementação da OnboardingScreen virá a seguir
                         OnboardingScreen(
                             onFinished = {
+                                authViewModel.updateHasSeenWelcome(true)
                                 navController.navigate(Screen.WelcomeAuth.route) {
                                     popUpTo(Screen.Onboarding.route) { inclusive = true }
                                 }

@@ -56,6 +56,13 @@ class AuthViewModel(
 
     fun getUserSettings(): Flow<UserEntity?> = repository.userSettings
 
+    fun updateHasSeenWelcome(hasSeen: Boolean) {
+        viewModelScope.launch {
+            val currentUser = repository.userSettings.first() ?: UserEntity()
+            repository.saveUserSettings(currentUser.copy(hasSeenWelcome = hasSeen))
+        }
+    }
+
     fun signInWithGoogle(context: Context) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }

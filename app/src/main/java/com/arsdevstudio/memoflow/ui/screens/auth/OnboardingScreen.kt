@@ -1,6 +1,7 @@
 package com.arsdevstudio.memoflow.ui.screens.auth
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -36,19 +37,19 @@ fun OnboardingScreen(
         OnboardingPage(
             title = "Bem-vindo ao MemoFlow",
             description = "Suas memórias organizadas geograficamente. Siga seus rastros e eternize cada momento no mapa da sua vida.",
-            lottieRes = R.raw.animation_login,
+            lottieRes = R.raw.animation_login_dois,
             accentColor = Color(0xFF00FFC2)
         ),
         OnboardingPage(
             title = "Inteligência que te Entende",
             description = "Receba insights emocionais baseados nas suas notas e descubra padrões no seu fluxo de humor com nossa IA.",
-            lottieRes = R.raw.animation_groq,
+            lottieRes = R.raw.animation_groq_dois,
             accentColor = Color(0xFF80DEEA)
         ),
         OnboardingPage(
             title = "Segurança e Nuvem",
             description = "Seus dados protegidos pela segurança do Google. Sincronize tudo e nunca perca uma lembrança preciosa.",
-            lottieRes = R.raw.animation_backup,
+            lottieRes = R.raw.animation_backup_dois,
             accentColor = Color(0xFF4285F4)
         )
     )
@@ -56,15 +57,45 @@ fun OnboardingScreen(
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
     
-    val bgGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF0F172A), Color.Black)
+    val currentAccentColor = pages[pagerState.currentPage].accentColor
+    val animatedAccentColor by animateColorAsState(
+        targetValue = currentAccentColor.copy(alpha = 0.35f),
+        animationSpec = tween(1000),
+        label = "accent_glow"
     )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgGradient)
+            .background(Color.Black)
     ) {
+        // Camada 1: Degradê de profundidade (Azul escuro para Preto)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF1E293B), // Slate 800 (Mais claro no topo)
+                            Color(0xFF0F172A), // Slate 900 (Meio)
+                            Color.Black        // Preto (Base)
+                        )
+                    )
+                )
+        )
+
+        // Camada 2: Brilho dinâmico que segue a cor da página
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(animatedAccentColor, Color.Transparent),
+                        endY = 1400f // Faz o brilho dissipar antes de chegar no rodapé
+                    )
+                )
+        )
+
         Column(modifier = Modifier.fillMaxSize()) {
             HorizontalPager(
                 state = pagerState,
@@ -142,7 +173,7 @@ fun OnboardingPageContent(page: OnboardingPage) {
         LottieAnimation(
             composition = composition,
             progress = { progress },
-            modifier = Modifier.size(280.dp)
+            modifier = Modifier.size(360.dp)
         )
 
         Spacer(modifier = Modifier.height(48.dp))
