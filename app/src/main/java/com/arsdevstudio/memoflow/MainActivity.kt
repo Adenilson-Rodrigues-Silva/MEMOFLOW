@@ -77,17 +77,36 @@ class MainActivity : ComponentActivity() {
                     }
                 ) {
                     composable(Screen.Splash.route) {
-                        SplashScreen(onFinished = { isLogged ->
-                            if (isLogged) {
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(Screen.Splash.route) { inclusive = true }
+                        SplashScreen(onFinished = { isLogged, hasSeenWelcome ->
+                            when {
+                                isLogged -> {
+                                    navController.navigate(Screen.Home.route) {
+                                        popUpTo(Screen.Splash.route) { inclusive = true }
+                                    }
                                 }
-                            } else {
-                                navController.navigate(Screen.WelcomeAuth.route) {
-                                    popUpTo(Screen.Splash.route) { inclusive = true }
+                                !hasSeenWelcome -> {
+                                    navController.navigate(Screen.Onboarding.route) {
+                                        popUpTo(Screen.Splash.route) { inclusive = true }
+                                    }
+                                }
+                                else -> {
+                                    navController.navigate(Screen.WelcomeAuth.route) {
+                                        popUpTo(Screen.Splash.route) { inclusive = true }
+                                    }
                                 }
                             }
                         })
+                    }
+
+                    composable(Screen.Onboarding.route) {
+                        // Implementação da OnboardingScreen virá a seguir
+                        OnboardingScreen(
+                            onFinished = {
+                                navController.navigate(Screen.WelcomeAuth.route) {
+                                    popUpTo(Screen.Onboarding.route) { inclusive = true }
+                                }
+                            }
+                        )
                     }
 
                     composable(Screen.WelcomeAuth.route) {
