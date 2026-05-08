@@ -18,7 +18,9 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -33,10 +35,22 @@ data class AuthUiState(
     val isSuccess: Boolean = false
 )
 
-class AuthViewModel(private val repository: MemoRepository) : ViewModel() {
+sealed class AuthEvent {
+    object LogoutSuccess : AuthEvent()
+    object LoginSuccess : AuthEvent()
+}
+
+class AuthViewModel(
+    private val repository: MemoRepository,
+    private val billingPrefs: com.arsdevstudio.memoflow.utils.BillingPrefs,
+    private val billingManager: com.arsdevstudio.memoflow.utils.BillingManager
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<AuthEvent>()
+    val events = _events.asSharedFlow()
 
     private val auth = FirebaseAuth.getInstance()
 
@@ -104,7 +118,9 @@ class AuthViewModel(private val repository: MemoRepository) : ViewModel() {
                     )
                     
                     repository.saveUserSettings(updatedUser)
+                    billingManager.queryPurchases() // Atualiza o status premium para a nova conta
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+                    _events.emit(AuthEvent.LoginSuccess)
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = "Erro no Firebase") }
@@ -119,20 +135,19 @@ class AuthViewModel(private val repository: MemoRepository) : ViewModel() {
             repository.saveUserSettings(currentUser.copy(
                 isGoogleLogged = false,
                 email = null,
-                firebaseUid = null
+                firebaseUid = null,
+                userName = "",
+                bio = "",
+                profilePhotoUri = null,
+                pin = null, // Limpa o PIN por segurança
+                isBiometricEnabled = false, // Desativa biometria para o novo usuário
+                recallCount = 0,
+                gratitudeRecallCount = 0,
+                hasSeenWelcome = false // Força a volta para a tela de Boas-Vindas no próximo boot
             ))
+            billingPrefs.setPremium(false) // Resetar para forçar re-validação pelo BillingManager
             _uiState.update { it.copy(isSuccess = false, error = null) }
-        }
-    }
-
-    fun skipSignIn() {
-        viewModelScope.launch {
-            val currentUser = repository.userSettings.first() ?: UserEntity()
-            repository.saveUserSettings(currentUser.copy(
-                isGoogleLogged = false,
-                hasSeenWelcome = true
-            ))
-            _uiState.update { it.copy(isSuccess = true) }
+            _events.emit(AuthEvent.LogoutSuccess)
         }
     }
 
@@ -141,7 +156,7 @@ class AuthViewModel(private val repository: MemoRepository) : ViewModel() {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as com.arsdevstudio.memoflow.MemoApplication
-                return AuthViewModel(application.repository) as T
+                return AuthViewModel(application.repository, application.billingPrefs, application.billingManager) as T
             }
         }
     }

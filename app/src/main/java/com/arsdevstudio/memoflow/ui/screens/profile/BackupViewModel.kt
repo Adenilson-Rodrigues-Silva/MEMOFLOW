@@ -60,9 +60,17 @@ class BackupViewModel(
             _uiState.value = BackupUiState.Loading
             delay(2000)
             try {
-                val notes = repository.allNotes.first()
-                val gratitudes = repository.allGratitudes.first()
-                val userSettings = repository.userSettings.first()
+                val user = repository.userSettings.first()
+                val userId = user?.firebaseUid ?: ""
+                
+                if (userId.isEmpty()) {
+                    _uiState.value = BackupUiState.Error("Usuário não autenticado.")
+                    return@launch
+                }
+                
+                val notes = repository.getAllNotes(userId).first()
+                val gratitudes = repository.getAllGratitudes(userId).first()
+                val userSettings = user
                 val backupData = BackupData(notes, gratitudes, userSettings)
                 val gson = com.google.gson.GsonBuilder().serializeNulls().setPrettyPrinting().create()
                 val jsonString = gson.toJson(backupData)
@@ -80,6 +88,12 @@ class BackupViewModel(
 
     fun uploadToDriveManual(context: Context) {
         viewModelScope.launch {
+            // TRAVA PREMIUM PARA BACKUP NA NUVEM
+            if (!isPremium.value) {
+                _uiState.value = BackupUiState.Error("O Backup na Nuvem é um recurso PREMIUM. ✨")
+                return@launch
+            }
+
             _uiState.value = BackupUiState.DriveLoading
             val startTime = System.currentTimeMillis()
             try {
@@ -90,9 +104,17 @@ class BackupViewModel(
                 val driveService = driveServiceHelper.getDriveService(account)
                 val backupManager = GoogleDriveBackupManager(context)
 
-                val notes = repository.allNotes.first()
-                val gratitudes = repository.allGratitudes.first()
-                val userSettings = repository.userSettings.first()
+                val user = repository.userSettings.first()
+                val userId = user?.firebaseUid ?: ""
+                
+                if (userId.isEmpty()) {
+                    _uiState.value = BackupUiState.Error("Usuário não autenticado.")
+                    return@launch
+                }
+
+                val notes = repository.getAllNotes(userId).first()
+                val gratitudes = repository.getAllGratitudes(userId).first()
+                val userSettings = user
                 val backupData = BackupData(notes, gratitudes, userSettings)
 
                 val success = backupManager.uploadBackup(driveService, backupData)
@@ -157,11 +179,28 @@ class BackupViewModel(
     }
 
     private suspend fun applyBackup(data: BackupData) {
-        repository.deleteAllNotes()
-        repository.deleteAllGratitudes()
-        data.notes.forEach { repository.insertNote(it) }
-        data.gratitudes.forEach { repository.insertGratitude(it) }
-        data.userSettings?.let { repository.saveUserSettings(it) }
+        val user = repository.userSettings.first()
+        val userId = user?.firebaseUid ?: ""
+
+        if (userId.isEmpty()) return
+
+        repository.deleteAllNotes(userId)
+        repository.deleteAllGratitudes(userId)
+
+        // Força o userId atual em todos os registros restaurados para garantir isolamento
+        data.notes.forEach { repository.insertNote(it.copy(userId = userId)) }
+        data.gratitudes.forEach { repository.insertGratitude(it.copy(userId = userId)) }
+        
+        // Opcional: Restaurar apenas dados não sensíveis do perfil
+        data.userSettings?.let { backupUser ->
+            user?.let { currentUser ->
+                repository.saveUserSettings(currentUser.copy(
+                    userName = backupUser.userName.ifBlank { currentUser.userName },
+                    bio = backupUser.bio.ifBlank { currentUser.bio },
+                    profilePhotoUri = backupUser.profilePhotoUri ?: currentUser.profilePhotoUri
+                ))
+            }
+        }
     }
 
     fun importBackup(context: Context, uri: Uri) {

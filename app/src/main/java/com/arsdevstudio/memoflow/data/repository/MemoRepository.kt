@@ -16,49 +16,44 @@ class MemoRepository(
     private val gratitudeDao: GratitudeDao
 ) {
     // Notes
-    val allNotes: Flow<List<NoteEntity>> = noteDao.getAllNotes()
+    fun getAllNotes(userId: String): Flow<List<NoteEntity>> = noteDao.getAllNotes(userId)
 
     suspend fun insertNote(note: NoteEntity) = noteDao.insertNote(note)
     suspend fun updateNote(note: NoteEntity) = noteDao.updateNote(note)
     suspend fun deleteNote(note: NoteEntity) = noteDao.deleteNote(note)
-    suspend fun deleteAllNotes() = noteDao.deleteAllNotes()
+    suspend fun deleteAllNotes(userId: String) = noteDao.deleteAllNotes(userId)
     suspend fun getNoteById(id: Long) = noteDao.getNoteById(id)
-    suspend fun unlockAllNotes() = noteDao.unlockAllNotes()
+    suspend fun unlockAllNotes(userId: String) = noteDao.unlockAllNotes(userId)
 
-    fun getNotesByDateRange(startDate: Long, endDate: Long): Flow<List<NoteEntity>> {
-        return noteDao.getNotesInDateRange(startDate, endDate)
+    fun getNotesByDateRange(userId: String, startDate: Long, endDate: Long): Flow<List<NoteEntity>> {
+        return noteDao.getNotesInDateRange(userId, startDate, endDate)
     }
 
-    fun getGratitudesByDateRange(startDate: Long, endDate: Long): Flow<List<GratitudeEntity>> {
-        return gratitudeDao.getGratitudesInDateRange(startDate, endDate)
+    fun getGratitudesByDateRange(userId: String, startDate: Long, endDate: Long): Flow<List<GratitudeEntity>> {
+        return gratitudeDao.getGratitudesInDateRange(userId, startDate, endDate)
     }
 
-    suspend fun getTotalGratitudeCountSync(): Int = gratitudeDao.getTotalCount()
+    suspend fun getTotalGratitudeCountSync(userId: String): Int = gratitudeDao.getTotalCount(userId)
 
-    suspend fun getCurrentStreakSync(): Int {
-        // Implementação simplificada para o ViewModel não quebrar
-        return 0
+    fun getRecallableNotes(userId: String): Flow<List<NoteEntity>> = noteDao.getRecallableNotes(userId)
+
+    fun getNotesWithLocation(userId: String): Flow<List<NoteEntity>> = noteDao.getNotesWithLocation(userId)
+
+    fun getNotesWithLocationSince(userId: String, sinceDate: Long): Flow<List<NoteEntity>> = 
+        noteDao.getNotesWithLocationSince(userId, sinceDate)
+
+    fun getNotesByLocationAreaFiltered(userId: String, minLat: Double, maxLat: Double, minLon: Double, maxLon: Double, sinceDate: Long): Flow<List<NoteEntity>> {
+        return noteDao.getNotesByLocationAreaFiltered(userId, minLat, maxLat, minLon, maxLon, sinceDate)
     }
 
-    fun getRecallableNotes(): Flow<List<NoteEntity>> = noteDao.getRecallableNotes()
-
-    fun getNotesWithLocation(): Flow<List<NoteEntity>> = noteDao.getNotesWithLocation()
-
-    fun getNotesWithLocationSince(sinceDate: Long): Flow<List<NoteEntity>> = 
-        noteDao.getNotesWithLocationSince(sinceDate)
-
-    fun getNotesByLocationAreaFiltered(minLat: Double, maxLat: Double, minLon: Double, maxLon: Double, sinceDate: Long): Flow<List<NoteEntity>> {
-        return noteDao.getNotesByLocationAreaFiltered(minLat, maxLat, minLon, maxLon, sinceDate)
-    }
-
-    suspend fun getNoteCountForToday(): Int {
+    suspend fun getNoteCountForToday(userId: String): Int {
         val today = LocalDate.now()
         val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val endOfDay = today.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        return noteDao.getCountForDay(startOfDay, endOfDay)
+        return noteDao.getCountForDay(userId, startOfDay, endOfDay)
     }
 
-    suspend fun getTimeCapsuleCount(): Int = noteDao.getTimeCapsuleCount()
+    suspend fun getTimeCapsuleCount(userId: String): Int = noteDao.getTimeCapsuleCount(userId)
 
     // User Settings
     val userSettings: Flow<UserEntity?> = userDao.getUserSettings()
@@ -66,21 +61,19 @@ class MemoRepository(
     suspend fun getUserPin() = userDao.getUserPin()
 
     // Gratitude
-    val allGratitudes: Flow<List<GratitudeEntity>> = gratitudeDao.getAllGratitudes()
+    fun getAllGratitudes(userId: String): Flow<List<GratitudeEntity>> = gratitudeDao.getAllGratitudes(userId)
     
-    fun getGratitudesByYear(year: Int) = gratitudeDao.getGratitudesByYear(year)
+    fun getGratitudesByYear(userId: String, year: Int) = gratitudeDao.getGratitudesByYear(userId, year)
 
     suspend fun insertGratitude(gratitude: GratitudeEntity) = gratitudeDao.insertGratitude(gratitude)
     
     suspend fun deleteGratitude(gratitude: GratitudeEntity) = gratitudeDao.deleteGratitude(gratitude)
+    suspend fun deleteAllGratitudes(userId: String) = gratitudeDao.deleteAllGratitudes(userId)
 
-    suspend fun deleteAllGratitudes() = gratitudeDao.deleteAllGratitudes()
-
-    suspend fun getGratitudeCountForToday(): Int {
+    suspend fun getGratitudeCountForToday(userId: String): Int {
         val today = LocalDate.now()
         val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val endOfDay = today.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        return gratitudeDao.getCountForDay(startOfDay, endOfDay)
+        return gratitudeDao.getCountForDay(userId, startOfDay, endOfDay)
     }
 }
-

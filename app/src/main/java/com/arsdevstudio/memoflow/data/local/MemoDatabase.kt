@@ -12,7 +12,7 @@ import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 
 @Database(
     entities = [NoteEntity::class, UserEntity::class, GratitudeEntity::class],
-    version = 11, // Atualizado para incluir hasSeenWelcome
+    version = 12, // Incrementado de 11 para 12 para adicionar userId
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -20,5 +20,16 @@ abstract class MemoDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun userDao(): UserDao
     abstract fun gratitudeDao(): GratitudeDao
+
+    companion object {
+        val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Adiciona a coluna userId na tabela notes
+                db.execSQL("ALTER TABLE notes ADD COLUMN userId TEXT NOT NULL DEFAULT 'local_user'")
+                // Adiciona a coluna userId na tabela gratitudes
+                db.execSQL("ALTER TABLE gratitudes ADD COLUMN userId TEXT NOT NULL DEFAULT 'local_user'")
+            }
+        }
+    }
 }
 

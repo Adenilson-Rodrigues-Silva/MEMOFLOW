@@ -25,6 +25,8 @@ class GratitudeViewModel(
     private val _allGratitudes = MutableStateFlow<List<GratitudeEntity>>(emptyList())
     val allGratitudes: StateFlow<List<GratitudeEntity>> = _allGratitudes.asStateFlow()
 
+    private var currentUserId: String? = null
+
     val todaysGratitudes: StateFlow<List<GratitudeEntity>> = _allGratitudes.map { list ->
         val today = LocalDate.now()
         list.filter {
@@ -43,16 +45,31 @@ class GratitudeViewModel(
     val maxFlashbacks: StateFlow<Int> = _maxFlashbacks.asStateFlow()
 
     init {
-        observeGratitudes()
-        updateDailyCount()
-        checkFlashbackLimit()
+        observeUserAndGratitudes()
         observePremiumStatus()
     }
 
-    private fun observeGratitudes() {
+    private fun observeUserAndGratitudes() {
         viewModelScope.launch {
-            repository.allGratitudes.collectLatest { 
-                _allGratitudes.value = it
+            repository.userSettings.collectLatest { user ->
+                val userEntity = user ?: UserEntity()
+                val userId = if (userEntity.isGoogleLogged) userEntity.firebaseUid ?: "" else ""
+                
+                if (userId.isNotEmpty()) {
+                    if (currentUserId != userId) {
+                        currentUserId = userId
+                        updateDailyCount(userId)
+                        checkFlashbackLimit(userEntity)
+                    }
+
+                    repository.getAllGratitudes(userId).collectLatest { 
+                        _allGratitudes.value = it
+                    }
+                } else {
+                    currentUserId = null
+                    _allGratitudes.value = emptyList()
+                    _dailyCount.value = 0
+                }
             }
         }
     }
@@ -65,15 +82,14 @@ class GratitudeViewModel(
         }
     }
 
-    fun updateDailyCount() {
+    fun updateDailyCount(userId: String) {
         viewModelScope.launch {
-            _dailyCount.value = repository.getGratitudeCountForToday()
+            _dailyCount.value = repository.getGratitudeCountForToday(userId)
         }
     }
 
-    private fun checkFlashbackLimit() {
+    private fun checkFlashbackLimit(user: UserEntity) {
         viewModelScope.launch {
-            val user = repository.userSettings.first() ?: UserEntity()
             val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             
             if (user.lastGratitudeRecallDate < today) {
@@ -91,14 +107,18 @@ class GratitudeViewModel(
 
     fun addGratitude(text: String, colorHex: String) {
         viewModelScope.launch {
+            val userId = currentUserId ?: return@launch
+            if (userId.isEmpty()) return@launch
+
             val now = LocalDate.now()
             val gratitude = GratitudeEntity(
+                userId = userId,
                 text = text,
                 colorHex = colorHex,
                 year = now.year
             )
             repository.insertGratitude(gratitude)
-            updateDailyCount()
+            updateDailyCount(userId)
         }
     }
 
@@ -111,7 +131,7 @@ class GratitudeViewModel(
     fun deleteGratitude(gratitude: GratitudeEntity) {
         viewModelScope.launch {
             repository.deleteGratitude(gratitude)
-            updateDailyCount()
+            currentUserId?.let { updateDailyCount(it) }
         }
     }
 

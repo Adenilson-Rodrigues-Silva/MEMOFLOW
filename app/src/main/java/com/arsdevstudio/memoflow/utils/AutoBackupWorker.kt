@@ -35,9 +35,13 @@ class AutoBackupWorker(
             val backupManager = GoogleDriveBackupManager(applicationContext)
 
             // 3. Coleta os dados atuais
-            val notes = app.repository.allNotes.first()
-            val gratitudes = app.repository.allGratitudes.first()
-            val userSettings = app.repository.userSettings.first()
+            val user = app.repository.userSettings.first()
+            val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+            if (userId.isEmpty()) return Result.failure()
+            
+            val notes = app.repository.getAllNotes(userId).first()
+            val gratitudes = app.repository.getAllGratitudes(userId).first()
+            val userSettings = user
             
             val backupData = BackupData(notes, gratitudes, userSettings)
 

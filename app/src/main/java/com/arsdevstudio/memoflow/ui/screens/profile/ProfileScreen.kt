@@ -40,6 +40,7 @@ import coil.compose.AsyncImage
 import com.arsdevstudio.memoflow.R
 import com.arsdevstudio.memoflow.ui.components.home.PurpleAI
 import com.arsdevstudio.memoflow.ui.components.home.rememberAnimatedAiGradient
+import com.arsdevstudio.memoflow.ui.viewmodel.AuthEvent
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +51,7 @@ fun ProfileScreen(
     onNotificationsClick: () -> Unit,
     onBackupClick: () -> Unit,
     onStoreClick: () -> Unit,
+    onLogoutSuccess: () -> Unit,
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory),
     authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory)
 ) {
@@ -58,6 +60,13 @@ fun ProfileScreen(
     val isPremium by viewModel.isPremium.collectAsState()
     val animatedGradient = rememberAnimatedAiGradient()
     
+    LaunchedEffect(Unit) {
+        authViewModel.events.collect { event ->
+            if (event is AuthEvent.LogoutSuccess) {
+                onLogoutSuccess()
+            }
+        }
+    }
     val googleGradient = Brush.linearGradient(
         colors = listOf(
             Color(0xFF4285F4), 
@@ -118,7 +127,7 @@ fun ProfileScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.5.dp, if (isPremium) premiumBrush else if (userSettings.isGoogleLogged) animatedGradient else silverShimmer, RoundedCornerShape(32.dp)),
+                            .border(1.5.dp, if (isPremium) premiumBrush else animatedGradient, RoundedCornerShape(32.dp)),
                         shape = RoundedCornerShape(32.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
                     ) {
@@ -131,13 +140,13 @@ fun ProfileScreen(
                                     modifier = Modifier.size(140.dp).clip(CircleShape).clickable { galleryLauncher.launch("image/*") },
                                     shape = CircleShape,
                                     color = Color(0xFF1A1A1A),
-                                    border = BorderStroke(2.5.dp, if (isPremium) premiumBrush else if (userSettings.isGoogleLogged) animatedGradient else silverShimmer)
+                                    border = BorderStroke(2.5.dp, if (isPremium) premiumBrush else animatedGradient)
                                 ) {
-                                    if (userSettings.profilePhotoUri == null) {
+                                    if (userSettings?.profilePhotoUri == null) {
                                         Icon(Icons.Default.Person, null, modifier = Modifier.padding(35.dp), tint = Color.DarkGray)
                                     } else {
                                         AsyncImage(
-                                            model = userSettings.profilePhotoUri, 
+                                            model = userSettings!!.profilePhotoUri, 
                                             contentDescription = null, 
                                             modifier = Modifier.fillMaxSize().clip(CircleShape), 
                                             contentScale = ContentScale.Crop
@@ -154,7 +163,7 @@ fun ProfileScreen(
                             
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = if (userSettings.userName.isEmpty()) "Dono do Flow" else userSettings.userName, 
+                                    text = if (userSettings?.userName.isNullOrEmpty()) "Dono do Flow" else userSettings!!.userName, 
                                     color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
                                     modifier = Modifier.clickable { showEditNameDialog = true },
                                     textAlign = TextAlign.Center
@@ -162,37 +171,37 @@ fun ProfileScreen(
                                 if (isPremium) {
                                     Spacer(Modifier.width(8.dp))
                                     Icon(Icons.Default.Star, "Premium", tint = Color(0xFFFFD700), modifier = Modifier.size(22.dp))
-                                } else if (userSettings.isGoogleLogged) {
+                                } else {
                                     Spacer(Modifier.width(8.dp))
                                     Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4285F4), modifier = Modifier.size(20.dp))
                                 }
                             }
                             
-                            if (userSettings.isGoogleLogged && userSettings.email != null) {
-                                Text(userSettings.email!!, color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                            if (userSettings?.email != null) {
+                                Text(userSettings!!.email!!, color = Color.Gray, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                             }
 
                             Text(
-                                text = if (userSettings.bio.isEmpty()) "Escreva algo sobre sua jornada..." else userSettings.bio, 
+                                text = if (userSettings?.bio.isNullOrEmpty()) "Escreva algo sobre sua jornada..." else userSettings!!.bio, 
                                 color = Color.Gray, fontSize = 15.sp, textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(top = 10.dp, bottom = 20.dp).clickable { showEditBioDialog = true }
                             )
                             
                             Surface(
-                                color = if (isPremium) PurpleAI.copy(alpha = 0.2f) else if (userSettings.isGoogleLogged) Color(0xFF6A00FF).copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f),
+                                color = if (isPremium) PurpleAI.copy(alpha = 0.2f) else Color(0xFF6A00FF).copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                                     Icon(
-                                        if (isPremium) Icons.Default.Verified else if (userSettings.isGoogleLogged) Icons.Default.CloudDone else Icons.Default.AutoAwesome, 
+                                        if (isPremium) Icons.Default.Verified else Icons.Default.CloudDone, 
                                         null, 
-                                        tint = if (isPremium) PurpleAI else if (userSettings.isGoogleLogged) Color(0xFFBB86FC) else neonGreen, 
+                                        tint = if (isPremium) PurpleAI else Color(0xFFBB86FC), 
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        text = if (isPremium) "MEMBRO PREMIUM" else if (userSettings.isGoogleLogged) "Conta Sincronizada" else "Membro Flow desde fev 2026", 
-                                        color = if (isPremium) PurpleAI else if (userSettings.isGoogleLogged) Color(0xFFBB86FC) else neonGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold
+                                        text = if (isPremium) "MEMBRO PREMIUM" else "Conta Sincronizada", 
+                                        color = if (isPremium) PurpleAI else Color(0xFFBB86FC), fontSize = 11.sp, fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
@@ -200,35 +209,7 @@ fun ProfileScreen(
                     }
                 }
 
-                // BOTÃO DE LOGIN GOOGLE
-                if (!userSettings.isGoogleLogged) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth().border(1.dp, animatedGradient, RoundedCornerShape(24.dp)),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
-                        ) {
-                            Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Suas memórias ainda estão locais.", color = Color.White, fontWeight = FontWeight.Bold)
-                                Text("Conecte ao Google para ativar o backup na nuvem.", color = Color.Gray, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
-                                Spacer(Modifier.height(16.dp))
-                                
-                                Surface(
-                                    onClick = { authViewModel.signInWithGoogle(context) },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color.White,
-                                    modifier = Modifier.fillMaxWidth().height(48.dp).border(2.5.dp, googleGradient, RoundedCornerShape(12.dp))
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxSize()) {
-                                        Image(painterResource(R.drawable.ic_google_logo), null, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(text = "Logar com Google", color = Color(0xFF1F1F1F), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+    // REMOVIDO: BOTÃO DE LOGIN GOOGLE (Agora o login é obrigatório para chegar aqui)
 
                 // DASHBOARD DE AÇÕES
                 item {
@@ -246,19 +227,17 @@ fun ProfileScreen(
                     }
                 }
 
-                // BOTÃO DE LOGOUT (VISÍVEL APENAS SE LOGADO)
-                if (userSettings.isGoogleLogged) {
-                    item {
-                        OutlinedButton(
-                            onClick = { authViewModel.signOut() },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.4f))
-                        ) {
-                            Icon(Icons.Default.Logout, null, tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("SAIR DA CONTA GOOGLE", color = Color.Red.copy(alpha = 0.6f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
+                // BOTÃO DE LOGOUT
+                item {
+                    OutlinedButton(
+                        onClick = { authViewModel.signOut() },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.4f))
+                    ) {
+                        Icon(Icons.Default.Logout, null, tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("SAIR DA CONTA GOOGLE", color = Color.Red.copy(alpha = 0.6f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
 
@@ -275,7 +254,7 @@ fun ProfileScreen(
 
         // --- DIALOGS PRESERVADOS ---
         if (showEditNameDialog) {
-            var nameText by remember { mutableStateOf(userSettings.userName) }
+            var nameText by remember { mutableStateOf(userSettings?.userName ?: "") }
             AlertDialog(onDismissRequest = { showEditNameDialog = false }, containerColor = Color(0xFF1A1A1A), title = { Text("Como quer ser chamado?", color = Color.White) },
                 text = { OutlinedTextField(value = nameText, onValueChange = { nameText = it }, shape = RoundedCornerShape(16.dp), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = neonGreen, focusedBorderColor = neonGreen, unfocusedBorderColor = Color.DarkGray)) },
                 confirmButton = { TextButton(onClick = { viewModel.updateUserName(nameText); showEditNameDialog = false }) { Text("SALVAR", color = neonGreen) } }
@@ -283,7 +262,7 @@ fun ProfileScreen(
         }
 
         if (showEditBioDialog) {
-            var bioText by remember { mutableStateOf(userSettings.bio) }
+            var bioText by remember { mutableStateOf(userSettings?.bio ?: "") }
             AlertDialog(onDismissRequest = { showEditBioDialog = false }, title = { Text("Sua Biografia", color = Color.White) },
                 text = { OutlinedTextField(value = bioText, onValueChange = { bioText = it }, shape = RoundedCornerShape(16.dp), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = neonGreen, focusedBorderColor = neonGreen, unfocusedBorderColor = Color.DarkGray)) },
                 confirmButton = { TextButton(onClick = { viewModel.updateUserBio(bioText); showEditBioDialog = false }) { Text("SALVAR", color = neonGreen) } },

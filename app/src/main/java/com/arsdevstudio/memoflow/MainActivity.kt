@@ -34,6 +34,7 @@ import com.arsdevstudio.memoflow.ui.screens.map.PlacesMapScreen
 import com.arsdevstudio.memoflow.ui.screens.auth.WelcomeAuthScreen
 import com.arsdevstudio.memoflow.ui.theme.MemoFlowTheme
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthViewModel
+import com.arsdevstudio.memoflow.ui.viewmodel.AuthEvent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,11 +77,8 @@ class MainActivity : ComponentActivity() {
                     }
                 ) {
                     composable(Screen.Splash.route) {
-                        SplashScreen(onFinished = { hasSeenWelcome ->
-                            if (hasSeenWelcome) {
-                                // Se houver um deep link, ele será processado pelo NavController.
-                                // Se não houver, vamos para a Home.
-                                // Nota: O NavController gerencia deep links automaticamente se não consumirmos.
+                        SplashScreen(onFinished = { isLogged ->
+                            if (isLogged) {
                                 navController.navigate(Screen.Home.route) {
                                     popUpTo(Screen.Splash.route) { inclusive = true }
                                 }
@@ -93,20 +91,19 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Screen.WelcomeAuth.route) {
-                        val authState = authViewModel.uiState.collectAsState().value
-                        
-                        WelcomeAuthScreen(
-                            onSkip = { authViewModel.skipSignIn() },
-                            viewModel = authViewModel
-                        )
-                        
-                        LaunchedEffect(authState.isSuccess) {
-                            if (authState.isSuccess) {
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(Screen.WelcomeAuth.route) { inclusive = true }
+                        LaunchedEffect(Unit) {
+                            authViewModel.events.collect { event ->
+                                if (event is AuthEvent.LoginSuccess) {
+                                    navController.navigate(Screen.Home.route) {
+                                        popUpTo(Screen.WelcomeAuth.route) { inclusive = true }
+                                    }
                                 }
                             }
                         }
+
+                        WelcomeAuthScreen(
+                            viewModel = authViewModel
+                        )
                     }
 
                     composable(Screen.Home.route) {
@@ -119,7 +116,12 @@ class MainActivity : ComponentActivity() {
                             onSecurityClick = { navController.navigate("security") },
                             onNotificationsClick = { navController.navigate(Screen.Notifications.route) },
                             onBackupClick = { navController.navigate(Screen.Backup.route) },
-                            onStoreClick = { navController.navigate(Screen.Store.route) }
+                            onStoreClick = { navController.navigate(Screen.Store.route) },
+                            onLogoutSuccess = {
+                                navController.navigate(Screen.WelcomeAuth.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
                         )
                     }
 

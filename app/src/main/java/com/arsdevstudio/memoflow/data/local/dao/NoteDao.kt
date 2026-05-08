@@ -15,53 +15,55 @@ interface NoteDao {
     @Delete
     suspend fun deleteNote(note: NoteEntity)
 
-    @Query("DELETE FROM notes")
-    suspend fun deleteAllNotes()
+    @Query("DELETE FROM notes WHERE userId = :userId")
+    suspend fun deleteAllNotes(userId: String)
 
-    @Query("SELECT * FROM notes ORDER BY date DESC")
-    fun getAllNotes(): Flow<List<NoteEntity>>
+    @Query("SELECT * FROM notes WHERE userId = :userId ORDER BY date DESC")
+    fun getAllNotes(userId: String): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun getNoteById(id: Long): NoteEntity?
 
-    @Query("SELECT * FROM notes WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC")
-    fun getNotesInDateRange(startDate: Long, endDate: Long): Flow<List<NoteEntity>>
+    @Query("SELECT * FROM notes WHERE userId = :userId AND date BETWEEN :startDate AND :endDate ORDER BY date ASC")
+    fun getNotesInDateRange(userId: String, startDate: Long, endDate: Long): Flow<List<NoteEntity>>
 
-    @Query("UPDATE notes SET isLocked = 0")
-    suspend fun unlockAllNotes()
+    @Query("UPDATE notes SET isLocked = 0 WHERE userId = :userId")
+    suspend fun unlockAllNotes(userId: String)
 
-    @Query("SELECT COUNT(*) FROM notes WHERE isLocked = 1")
-    suspend fun getLockedNotesCount(): Int
+    @Query("SELECT COUNT(*) FROM notes WHERE userId = :userId AND isLocked = 1")
+    suspend fun getLockedNotesCount(userId: String): Int
 
-    @Query("SELECT * FROM notes WHERE isLocked = 0 AND isTimeCapsule = 0 ORDER BY date ASC")
-    fun getRecallableNotes(): Flow<List<NoteEntity>>
+    @Query("SELECT * FROM notes WHERE userId = :userId AND isLocked = 0 AND isTimeCapsule = 0 ORDER BY date ASC")
+    fun getRecallableNotes(userId: String): Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM notes WHERE latitude IS NOT NULL AND longitude IS NOT NULL")
-    fun getNotesWithLocation(): Flow<List<NoteEntity>>
+    @Query("SELECT * FROM notes WHERE userId = :userId AND latitude IS NOT NULL AND longitude IS NOT NULL")
+    fun getNotesWithLocation(userId: String): Flow<List<NoteEntity>>
 
     // ✅ Nova query filtrada por data para o Mapa
     @Query("""
         SELECT * FROM notes 
-        WHERE latitude IS NOT NULL 
+        WHERE userId = :userId
+        AND latitude IS NOT NULL 
         AND longitude IS NOT NULL 
         AND date >= :sinceDate
         ORDER BY date DESC
     """)
-    fun getNotesWithLocationSince(sinceDate: Long): Flow<List<NoteEntity>>
+    fun getNotesWithLocationSince(userId: String, sinceDate: Long): Flow<List<NoteEntity>>
 
     @Query("""
         SELECT * FROM notes 
-        WHERE latitude BETWEEN :minLat AND :maxLat 
+        WHERE userId = :userId
+        AND latitude BETWEEN :minLat AND :maxLat 
         AND longitude BETWEEN :minLon AND :maxLon
         AND date >= :sinceDate
         ORDER BY date DESC
     """)
-    fun getNotesByLocationAreaFiltered(minLat: Double, maxLat: Double, minLon: Double, maxLon: Double, sinceDate: Long): Flow<List<NoteEntity>>
+    fun getNotesByLocationAreaFiltered(userId: String, minLat: Double, maxLat: Double, minLon: Double, maxLon: Double, sinceDate: Long): Flow<List<NoteEntity>>
 
-    @Query("SELECT COUNT(*) FROM notes WHERE date BETWEEN :startOfDay AND :endOfDay")
-    suspend fun getCountForDay(startOfDay: Long, endOfDay: Long): Int
+    @Query("SELECT COUNT(*) FROM notes WHERE userId = :userId AND date BETWEEN :startOfDay AND :endOfDay")
+    suspend fun getCountForDay(userId: String, startOfDay: Long, endOfDay: Long): Int
 
-    @Query("SELECT COUNT(*) FROM notes WHERE isTimeCapsule = 1")
-    suspend fun getTimeCapsuleCount(): Int
+    @Query("SELECT COUNT(*) FROM notes WHERE userId = :userId AND isTimeCapsule = 1")
+    suspend fun getTimeCapsuleCount(userId: String): Int
 }
 

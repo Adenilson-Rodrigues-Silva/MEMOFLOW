@@ -17,6 +17,7 @@ class MemoApplication : Application() {
             MemoDatabase::class.java,
             "memo_flow_db"
         )
+        .addMigrations(MemoDatabase.MIGRATION_11_12)
         .fallbackToDestructiveMigration()
         .build() 
     }

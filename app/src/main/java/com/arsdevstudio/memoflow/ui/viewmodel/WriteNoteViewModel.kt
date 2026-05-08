@@ -91,7 +91,11 @@ class WriteNoteViewModel(
     fun checkNoteLimit() {
         viewModelScope.launch {
             if (_uiStateFlow.value.id == 0L) {
-                val countToday = repository.getNoteCountForToday()
+                val user = repository.userSettings.first()
+                val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+                if (userId.isEmpty()) return@launch
+                
+                val countToday = repository.getNoteCountForToday(userId)
                 if (countToday >= 3) {
                     _uiStateFlow.update { it.copy(isLimitReached = true) }
                 }
@@ -128,9 +132,13 @@ class WriteNoteViewModel(
 
     fun meltPermanently(noteId: Long) {
         viewModelScope.launch {
+            val user = repository.userSettings.first()
+            val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+            if (userId.isEmpty()) return@launch
+            
             val note = repository.getNoteById(noteId)
-            note?.let {
-                val updatedNote = it.copy(isTimeCapsule = false, unlockDate = null)
+            if (note != null && note.userId == userId) {
+                val updatedNote = note.copy(isTimeCapsule = false, unlockDate = null)
                 repository.insertNote(updatedNote)
                 _uiStateFlow.update { state -> state.copy(isTimeCapsule = false, unlockDate = null) }
             }
@@ -142,10 +150,17 @@ class WriteNoteViewModel(
         if (_uiStateFlow.value.isSaving) return
         
         viewModelScope.launch {
+            val user = repository.userSettings.first()
+            val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+            if (userId.isEmpty()) {
+                _uiStateFlow.update { it.copy(error = "Você precisa estar logado para salvar notas.") }
+                return@launch
+            }
+
             // Verifica limites apenas para notas NOVAS
             if (_uiStateFlow.value.id == 0L) {
                 // Limite de 3 notas por dia (IGUAL PARA AMBOS conforme pedido)
-                val countToday = repository.getNoteCountForToday()
+                val countToday = repository.getNoteCountForToday(userId)
                 if (countToday >= 3) {
                     _uiStateFlow.update { it.copy(error = "Limite de 3 notas diárias atingido.") }
                     return@launch
@@ -155,7 +170,7 @@ class WriteNoteViewModel(
             // Limite de cápsulas do tempo
             if (_uiStateFlow.value.isTimeCapsule && _uiStateFlow.value.id == 0L) {
                 val isPremium = billingPrefs.isPremium.first()
-                val capsuleCount = repository.getTimeCapsuleCount()
+                val capsuleCount = repository.getTimeCapsuleCount(userId)
                 if (!isPremium && capsuleCount >= 3) {
                     _uiStateFlow.update { it.copy(error = "Limite de 3 cápsulas do tempo atingido. Evolua para o Premium!") }
                     return@launch
@@ -264,9 +279,14 @@ class WriteNoteViewModel(
 
     fun saveNote() {
         viewModelScope.launch {
+            val user = repository.userSettings.first()
+            val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+            if (userId.isEmpty()) return@launch
+            
             val state = _uiStateFlow.value
             val note = NoteEntity(
                 id = state.id,
+                userId = userId,
                 title = state.title,
                 contentHtml = richTextState.toHtml(),
                 emoji = state.selectedEmoji,

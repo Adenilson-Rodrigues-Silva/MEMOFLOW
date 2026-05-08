@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class NoteEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val userId: String, // Vincula a nota ao usuário (UID)
     val title: String,
     val contentHtml: String,
     val emoji: String,

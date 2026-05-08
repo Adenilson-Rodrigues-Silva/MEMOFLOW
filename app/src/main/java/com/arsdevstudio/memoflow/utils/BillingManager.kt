@@ -139,8 +139,8 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
                     }
                 }
                 
-                // Opcional: Se não encontrar premium na consulta, podemos resetar (cuidado com modo offline)
-                // scope.launch { if (!hasPremium) billingPrefs.setPremium(false) }
+                // Opcional: Se não encontrar premium na consulta, resetamos o estado local
+                scope.launch { billingPrefs.setPremium(hasPremium) }
             }
         }
     }

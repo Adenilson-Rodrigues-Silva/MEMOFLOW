@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.arsdevstudio.memoflow.MemoApplication
 import com.arsdevstudio.memoflow.data.local.entity.GratitudeEntity
 import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
+import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 import com.arsdevstudio.memoflow.data.repository.MemoRepository
 import com.arsdevstudio.memoflow.utils.AiPrefs
 import com.arsdevstudio.memoflow.utils.BillingPrefs
@@ -18,6 +19,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -147,15 +150,31 @@ class StatisticsViewModel(
         val finalScope = if (scope == "auto") {
             if (isMonthly) "monthly" else "weekly"
         } else scope
+
+        val currentInsight = _statsData.value.aiInsight
+        
+        // REGRA DE PREMIUM: Bloqueia Semanal e Mensal para usuários Free
+        if (!isPremium.value && finalScope != "today") {
+            _statsData.value = _statsData.value.copy(
+                aiInsight = currentInsight.copy(error = "Insights Semanais e Mensais são exclusivos para membros PREMIUM ✨")
+            )
+            return
+        }
         
         val now = System.currentTimeMillis()
-        val currentInsight = _statsData.value.aiInsight
         val nextTime = currentInsight.nextAvailableTime[finalScope] ?: 0L
         val count = currentInsight.dailyCounts[finalScope] ?: 0
 
-        if (count >= 12) {
+        // Limite diferenciado: Free = 1/dia | Premium = 12/dia
+        val maxGenerations = if (isPremium.value) 12 else 1
+        if (count >= maxGenerations) {
+            val errorMsg = if (isPremium.value) {
+                "Limite diário de 12 gerações atingido. Libera à meia-noite."
+            } else {
+                "Você já gerou seu insight diário grátis! Evolua para o Premium para ter 12 gerações por período. ✨"
+            }
             _statsData.value = _statsData.value.copy(
-                aiInsight = currentInsight.copy(error = "Limite diário de 12 gerações atingido para este modo. Libera à meia-noite.")
+                aiInsight = currentInsight.copy(error = errorMsg)
             )
             return
         }
@@ -196,8 +215,18 @@ class StatisticsViewModel(
                 val startMillis = startRange.atStartOfDay(zoneId).toInstant().toEpochMilli()
                 val endMillis = endRange.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli()
 
+                // Busca o usuário atual para garantir isolamento de dados
+                val user = repository.userSettings.first()
+                val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+                if (userId.isEmpty()) {
+                    _statsData.value = _statsData.value.copy(
+                        aiInsight = AiInsightData(isLoading = false, error = "Usuário não autenticado.")
+                    )
+                    return@launch
+                }
+
                 // Busca as notas específicas para este escopo direto do repositório
-                val allNotesInRange = repository.getNotesByDateRange(startMillis, endMillis).first()
+                val allNotesInRange = repository.getNotesByDateRange(userId, startMillis, endMillis).first()
                 
                 // Filtra notas por privacidade (Cadeado e Cápsula)
                 val targetNotes = allNotesInRange.filter { note ->
@@ -341,22 +370,36 @@ class StatisticsViewModel(
             val startMillis = startDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
             val endMillis = endDate.atTime(23, 59, 59).atZone(zoneId).toInstant().toEpochMilli()
 
-            repository.getNotesByDateRange(startMillis, endMillis).collect { notes ->
-                currentNotesForAi = notes
-                repository.getGratitudesByDateRange(startMillis, endMillis).collect { gratitudes ->
-                    val totalGratitudes = repository.getTotalGratitudeCountSync()
-                    val streak = repository.getCurrentStreakSync()
-                    
-                    _statsData.value = processAllStats(
-                        notes, 
-                        gratitudes, 
-                        streak, 
-                        startDate, 
-                        endDate,
-                        currentReferenceDate.month.getDisplayName(TextStyle.FULL, Locale("pt", "BR"))
-                            .replaceFirstChar { it.uppercase() },
-                        totalGratitudes
-                    )
+            repository.userSettings.collectLatest { user ->
+                val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+                
+                if (userId.isNotEmpty()) {
+                    combine(
+                        repository.getNotesByDateRange(userId, startMillis, endMillis),
+                        repository.getGratitudesByDateRange(userId, startMillis, endMillis)
+                    ) { notes: List<NoteEntity>, gratitudes: List<GratitudeEntity> ->
+                        notes to gratitudes
+                    }.collect { (notes, gratitudes) ->
+                        viewModelScope.launch {
+                            currentNotesForAi = notes
+                            val totalGratitudes = repository.getTotalGratitudeCountSync(userId)
+                            val streak = 0 // Streak será implementado futuramente
+                            
+                            _statsData.value = processAllStats(
+                                notes, 
+                                gratitudes, 
+                                streak, 
+                                startDate, 
+                                endDate,
+                                currentReferenceDate.month.getDisplayName(TextStyle.FULL, Locale("pt", "BR"))
+                                    .replaceFirstChar { it.uppercase() },
+                                totalGratitudes
+                            )
+                        }
+                    }
+                } else {
+                    // Se não houver usuário, reseta os dados
+                    _statsData.value = StatsData()
                 }
             }
         }

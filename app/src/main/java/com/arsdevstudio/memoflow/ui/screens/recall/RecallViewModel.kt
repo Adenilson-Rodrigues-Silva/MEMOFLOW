@@ -14,6 +14,7 @@ import com.arsdevstudio.memoflow.utils.BillingPrefs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -33,16 +34,37 @@ class RecallViewModel(
 
     private var isPremium = false
 
+    private var currentUserId: String? = null
+
     init {
-        checkLimitAndLoad()
+        observeUserAndLimits()
     }
 
-    private fun checkLimitAndLoad() {
+    private fun observeUserAndLimits() {
+        viewModelScope.launch {
+            repository.userSettings.collectLatest { user ->
+                val userEntity = user ?: UserEntity()
+                val userId = if (userEntity.isGoogleLogged) userEntity.firebaseUid ?: "" else ""
+                
+                if (userId.isNotEmpty()) {
+                    if (currentUserId != userId) {
+                        currentUserId = userId
+                        checkLimitAndLoad(userEntity)
+                    }
+                } else {
+                    currentUserId = null
+                    _uiState.value = RecallUiState.Empty
+                    _remainingRefreshes.value = 0
+                }
+            }
+        }
+    }
+
+    private fun checkLimitAndLoad(user: UserEntity) {
         viewModelScope.launch {
             isPremium = billingPrefs.isPremium.first()
             val maxRecalls = if (isPremium) 6 else 2
             
-            val user = repository.userSettings.first() ?: UserEntity()
             val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             
             if (user.lastRecallDate < today) {
@@ -66,6 +88,12 @@ class RecallViewModel(
         viewModelScope.launch {
             val maxRecalls = if (isPremium) 6 else 2
             val user = repository.userSettings.first() ?: UserEntity()
+            val userId = if (user.isGoogleLogged) user.firebaseUid ?: "" else ""
+            
+            if (userId.isEmpty()) {
+                _uiState.value = RecallUiState.Empty
+                return@launch
+            }
             
             if (user.recallCount >= maxRecalls) {
                 _uiState.value = RecallUiState.LimitReached
@@ -73,7 +101,7 @@ class RecallViewModel(
                 return@launch
             }
 
-            val notes = repository.getRecallableNotes().first()
+            val notes = repository.getRecallableNotes(userId).first()
             if (notes.isEmpty()) {
                 _uiState.value = RecallUiState.Empty
             } else {

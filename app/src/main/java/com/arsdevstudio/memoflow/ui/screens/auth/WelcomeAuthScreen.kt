@@ -34,7 +34,6 @@ import com.arsdevstudio.memoflow.ui.viewmodel.AuthViewModel
 
 @Composable
 fun WelcomeAuthScreen(
-    onSkip: () -> Unit,
     viewModel: AuthViewModel // Recebe o ViewModel da MainActivity
 ) {
     val context = LocalContext.current
@@ -137,31 +136,7 @@ fun WelcomeAuthScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            TextButton(
-                onClick = { 
-                    viewModel.skipSignIn()
-                    onSkip() 
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Explorar sem conta", 
-                        color = Color.White.copy(alpha = 0.6f), 
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward, 
-                        contentDescription = null, 
-                        tint = Color.White.copy(alpha = 0.6f), 
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(32.dp))
         }
 
         // --- DIALOG DE LOADING LÚDICO (Com a nova animação de Boas-Vindas) ---

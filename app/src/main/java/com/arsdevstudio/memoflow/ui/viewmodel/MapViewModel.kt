@@ -42,8 +42,15 @@ class MapViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<MapUiState> = combine(
-        _currentFilter.flatMapLatest { filter ->
-            repository.getNotesWithLocationSince(getSinceDate(filter))
+        repository.userSettings.flatMapLatest { user ->
+            val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+            if (userId.isNotEmpty()) {
+                _currentFilter.flatMapLatest { filter ->
+                    repository.getNotesWithLocationSince(userId, getSinceDate(filter))
+                }
+            } else {
+                flowOf(emptyList())
+            }
         },
         _selectedNotes,
         _currentFilter,
@@ -74,8 +81,15 @@ class MapViewModel(
     fun onMapLongClick(latLng: LatLng) {
         viewModelScope.launch {
             _isLoading.value = true
+            val user = repository.userSettings.first()
+            val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+            if (userId.isEmpty()) {
+                _isLoading.value = false
+                return@launch
+            }
             val threshold = 0.0015
             repository.getNotesByLocationAreaFiltered(
+                userId = userId,
                 minLat = latLng.latitude - threshold,
                 maxLat = latLng.latitude + threshold,
                 minLon = latLng.longitude - threshold,

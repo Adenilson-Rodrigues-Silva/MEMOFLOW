@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.first
 
 @Composable
 fun SplashScreen(
-    onFinished: (Boolean) -> Unit, // ✅ Agora retorna se deve mostrar Boas-Vindas ou não
+    onFinished: (Boolean) -> Unit, // ✅ Agora retorna se o usuário está logado
     viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory)
 ) {
     val alphaAnim = remember { Animatable(0f) }
@@ -27,12 +27,12 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         alphaAnim.animateTo(1f, animationSpec = tween(1200))
         
-        // Verifica no banco se o usuário já passou pela tela inicial
+        // Verifica no banco se o usuário está logado com Google
         val userSettings = viewModel.getUserSettings().first()
-        val hasSeenWelcome = userSettings?.hasSeenWelcome ?: false
+        val isGoogleLogged = userSettings?.isGoogleLogged ?: false
         
         delay(1000)
-        onFinished(hasSeenWelcome)
+        onFinished(isGoogleLogged)
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {

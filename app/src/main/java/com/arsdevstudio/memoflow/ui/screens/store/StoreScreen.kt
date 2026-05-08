@@ -140,19 +140,7 @@ fun StoreScreen(
             
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(120.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onLongPress = {
-                                scope.launch {
-                                    val app = context.applicationContext as com.arsdevstudio.memoflow.MemoApplication
-                                    app.billingPrefs.setPremium(!isPremium)
-                                    Toast.makeText(context, if (!isPremium) "MODO PREMIUM ATIVADO (TESTE)" else "MODO FREE ATIVADO (TESTE)", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        )
-                    }
+                modifier = Modifier.size(120.dp)
             ) {
                 if (isPremium) {
                     Box(

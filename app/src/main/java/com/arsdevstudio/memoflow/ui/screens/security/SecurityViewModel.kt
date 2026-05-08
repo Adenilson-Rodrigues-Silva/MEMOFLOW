@@ -35,8 +35,12 @@ class SecurityViewModel(private val repository: MemoRepository) : ViewModel() {
 
     fun removePin() {
         viewModelScope.launch {
-            repository.unlockAllNotes()
-            saveSettings(_userSettings.value.copy(pin = null))
+            val user = _userSettings.value
+            val userId = user.firebaseUid ?: ""
+            if (userId.isNotEmpty()) {
+                repository.unlockAllNotes(userId)
+            }
+            saveSettings(user.copy(pin = null))
         }
     }
 

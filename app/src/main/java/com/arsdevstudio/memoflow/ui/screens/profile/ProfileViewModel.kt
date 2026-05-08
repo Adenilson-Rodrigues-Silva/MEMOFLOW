@@ -36,8 +36,8 @@ class ProfileViewModel(
     private val billingPrefs: BillingPrefs
 ) : AndroidViewModel(application) {
 
-    private val _userSettings = MutableStateFlow(UserEntity())
-    val userSettings: StateFlow<UserEntity> = _userSettings.asStateFlow()
+    private val _userSettings = MutableStateFlow<UserEntity?>(null)
+    val userSettings: StateFlow<UserEntity?> = _userSettings.asStateFlow()
 
     private val _notificationSettings = MutableStateFlow<NotificationSettings?>(null)
     val notificationSettings: StateFlow<NotificationSettings?> = _notificationSettings.asStateFlow()
@@ -157,23 +157,28 @@ class ProfileViewModel(
     }
 
     fun updateUserName(name: String) {
-        saveSettings(_userSettings.value.copy(userName = name))
+        _userSettings.value?.let { current ->
+            saveSettings(current.copy(userName = name))
+        }
     }
 
     fun updateUserBio(bio: String) {
-        saveSettings(_userSettings.value.copy(bio = bio))
+        _userSettings.value?.let { current ->
+            saveSettings(current.copy(bio = bio))
+        }
     }
 
     fun updateUserPhoto(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
+                val current = _userSettings.value ?: return@launch
                 val fileName = "profile_photo_${System.currentTimeMillis()}.jpg"
                 val file = File(context.filesDir, fileName)
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(file).use { output -> input.copyTo(output) }
                 }
                 val internalUri = Uri.fromFile(file).toString()
-                saveSettings(_userSettings.value.copy(profilePhotoUri = internalUri))
+                saveSettings(current.copy(profilePhotoUri = internalUri))
             } catch (e: Exception) { e.printStackTrace() }
         }
     }

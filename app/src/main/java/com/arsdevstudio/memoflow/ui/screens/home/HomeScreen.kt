@@ -5,7 +5,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
+import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 import com.arsdevstudio.memoflow.ui.components.home.*
 import com.arsdevstudio.memoflow.ui.viewmodel.HomeViewModel
 import java.time.LocalDate
@@ -76,13 +77,28 @@ fun HomeScreen(
     val remainingRecalls by recallViewModel.remainingRefreshes.collectAsState()
     val maxRecalls = if (isPremium) 6 else 2
     
-    var totalCapsules by remember { mutableStateOf(0) }
-    LaunchedEffect(notes, isPremium) {
-        val app = context.applicationContext as com.arsdevstudio.memoflow.MemoApplication
-        totalCapsules = app.repository.getTimeCapsuleCount()
+    // Se não estiver logado, manda para a WelcomeAuth imediatamente
+    LaunchedEffect(userSettings) {
+        // Aguarda carregar o estado (null -> carregado)
+        if (userSettings != null) {
+            if (!userSettings!!.isGoogleLogged) {
+                navController.navigate(Screen.WelcomeAuth.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
     }
 
-    var noteToUnlock by remember { mutableStateOf<com.arsdevstudio.memoflow.data.local.entity.NoteEntity?>(null) }
+    val userId = userSettings?.firebaseUid ?: ""
+    var totalCapsules by remember { mutableIntStateOf(0) }
+    LaunchedEffect(notes, isPremium, userId) {
+        if (userId.isNotEmpty()) {
+            val app = context.applicationContext as com.arsdevstudio.memoflow.MemoApplication
+            totalCapsules = app.repository.getTimeCapsuleCount(userId)
+        }
+    }
+
+    var noteToUnlock by remember { mutableStateOf<NoteEntity?>(null) }
     var showMeltOptions by remember { mutableStateOf(false) }
     var pinInput by remember { mutableStateOf("") }
     
@@ -125,7 +141,7 @@ fun HomeScreen(
                 selectedDate = selectedDate,
                 onDateSelected = { viewModel.onDateSelected(it) },
                 onDeleteNote = { viewModel.deleteNote(it) },
-                userPhotoUrl = userSettings.profilePhotoUri,
+                userPhotoUrl = userSettings?.profilePhotoUri,
                 moodPoints = statsData.moodPoints,
                 onCalendarClick = { showChronosCalendar = true },
                 onStoreClick = { navController.navigate(Screen.Store.route) },
@@ -400,17 +416,17 @@ fun HomeContent(
     padding: PaddingValues,
     neonGreen: Color,
     navController: NavController,
-    notes: List<com.arsdevstudio.memoflow.data.local.entity.NoteEntity>,
+    notes: List<NoteEntity>,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    onDeleteNote: (com.arsdevstudio.memoflow.data.local.entity.NoteEntity) -> Unit,
+    onDeleteNote: (NoteEntity) -> Unit,
     userPhotoUrl: String?,
     moodPoints: List<Float>,
     onCalendarClick: () -> Unit,
     onStoreClick: () -> Unit,
     onStatusClick: () -> Unit,
     isPremium: Boolean,
-    onNoteClick: (com.arsdevstudio.memoflow.data.local.entity.NoteEntity) -> Unit
+    onNoteClick: (NoteEntity) -> Unit
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM", Locale("pt", "BR")) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
@@ -426,7 +442,7 @@ fun HomeContent(
         (0..30).map { today.minusDays(it.toLong()) }
     }
 
-    var noteToDelete by remember { mutableStateOf<com.arsdevstudio.memoflow.data.local.entity.NoteEntity?>(null) }
+    var noteToDelete by remember { mutableStateOf<NoteEntity?>(null) }
 
     if (noteToDelete != null) {
         AlertDialog(

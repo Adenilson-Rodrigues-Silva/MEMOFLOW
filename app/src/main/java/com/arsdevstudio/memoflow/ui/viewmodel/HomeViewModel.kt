@@ -44,9 +44,17 @@ class HomeViewModel(private val repository: MemoRepository) : ViewModel() {
 
     private fun observeNotes() {
         viewModelScope.launch {
-            repository.allNotes.collectLatest { allNotes ->
-                _allNotesList.value = allNotes
-                updateMarkedDates(allNotes)
+            repository.userSettings.collectLatest { user ->
+                val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
+                if (userId.isNotEmpty()) {
+                    repository.getAllNotes(userId).collectLatest { allNotes ->
+                        _allNotesList.value = allNotes
+                        updateMarkedDates(allNotes)
+                    }
+                } else {
+                    _allNotesList.value = emptyList()
+                    _markedDates.value = emptyMap()
+                }
             }
         }
     }
