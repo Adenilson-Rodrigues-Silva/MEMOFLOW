@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
-import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 import com.arsdevstudio.memoflow.ui.components.home.*
 import com.arsdevstudio.memoflow.ui.viewmodel.HomeViewModel
 import com.arsdevstudio.memoflow.ui.screens.profile.BackupViewModel
@@ -46,6 +46,9 @@ import com.arsdevstudio.memoflow.ui.screens.common.ChronosCalendarSheet
 import com.arsdevstudio.memoflow.ui.viewmodel.WriteNoteViewModel
 import com.arsdevstudio.memoflow.ui.screens.recall.RecallViewModel
 import com.arsdevstudio.memoflow.ui.viewmodel.GratitudeViewModel
+import com.arsdevstudio.memoflow.ui.viewmodel.NotificationViewModel
+import com.arsdevstudio.memoflow.data.local.entity.NotificationEntity
+import androidx.compose.ui.text.style.TextOverflow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +60,7 @@ fun HomeScreen(
     statsViewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory),
     writeNoteViewModel: WriteNoteViewModel = viewModel(factory = WriteNoteViewModel.Factory),
     recallViewModel: RecallViewModel = viewModel(factory = RecallViewModel.Factory),
-    gratitudeViewModel: GratitudeViewModel = viewModel(factory = GratitudeViewModel.Factory)
+    notificationViewModel: NotificationViewModel = viewModel(factory = NotificationViewModel.Factory)
 ) {
     val context = LocalContext.current
     val neonGreen = Color(0xFF00FFC2)
@@ -74,6 +77,10 @@ fun HomeScreen(
     val isPremium by profileViewModel.isPremium.collectAsState()
     val securitySettings by securityViewModel.userSettings.collectAsState()
     val statsData by statsViewModel.statsData.collectAsState()
+    var showNotificationsSheet by remember { mutableStateOf(false) }
+    
+    val notifications by notificationViewModel.notifications.collectAsState(initial = emptyList())
+    val unreadCount by notificationViewModel.unreadCount.collectAsState(initial = 0)
 
     val backupViewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory)
 
@@ -151,9 +158,10 @@ fun HomeScreen(
                 userPhotoUrl = userSettings?.profilePhotoUri,
                 moodPoints = statsData.moodPoints,
                 onCalendarClick = { showChronosCalendar = true },
-                onStoreClick = { navController.navigate(Screen.Store.route) },
+                onNotificationsClick = { showNotificationsSheet = true },
                 onStatusClick = { showStatusSheet = true },
                 isPremium = isPremium,
+                unreadNotifications = unreadCount,
                 onNoteClick = { note ->
                     val noteDate = Instant.ofEpochMilli(note.date).atZone(ZoneId.systemDefault()).toLocalDate()
                     val isNoteFromToday = noteDate == LocalDate.now()
@@ -166,6 +174,39 @@ fun HomeScreen(
                     }
                 }
             )
+        }
+
+        if (showNotificationsSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showNotificationsSheet = false },
+                containerColor = Color(0xFF121212),
+                dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Gray) }
+            ) {
+                NotificationBottomSheetContent(
+                    notifications = notifications,
+                    onMarkAllAsRead = { notificationViewModel.markAllAsRead() },
+                    onDelete = { notificationViewModel.deleteNotification(it) },
+                    onNotificationClick = { notification ->
+                        notificationViewModel.markAsRead(notification)
+                        showNotificationsSheet = false
+                        when (notification.type) {
+                            "CAPSULE" -> {
+                                notification.targetId?.let { noteId ->
+                                    navController.navigate(Screen.WriteNote.createRoute(noteId.toLong()) + "&readOnly=true")
+                                }
+                            }
+                            "DONATION" -> {
+                                navController.navigate(Screen.Store.route)
+                            }
+                            "INFO" -> {
+                                if (notification.targetId == "STREAK_REMINDER") {
+                                    navController.navigate(Screen.WriteNote.createRoute())
+                                }
+                            }
+                        }
+                    }
+                )
+            }
         }
 
         if (showStatusSheet) {
@@ -187,6 +228,7 @@ fun HomeScreen(
                 )
             }
         }
+
 
         if (showChronosCalendar) {
             ChronosCalendarSheet(
@@ -383,8 +425,9 @@ fun StatusInfoContent(
             color = purpleAI
         )
 
+        Spacer(Modifier.height(32.dp))
+
         if (!isPremium) {
-            Spacer(Modifier.height(40.dp))
             Button(
                 onClick = onUpgradeClick,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -392,6 +435,18 @@ fun StatusInfoContent(
                 colors = ButtonDefaults.buttonColors(containerColor = purpleAI)
             ) {
                 Text("REMOVER LIMITES AGORA", fontWeight = FontWeight.Bold, color = Color.Black)
+            }
+        } else {
+            // Para quem é Premium, adicionamos um botão para gerenciar/ver a loja
+            OutlinedButton(
+                onClick = onUpgradeClick,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, gold.copy(alpha = 0.5f))
+            ) {
+                Icon(Icons.Default.Diamond, contentDescription = null, tint = gold, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("DETALHES DO PLANO / LOJA", color = gold, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -430,9 +485,10 @@ fun HomeContent(
     userPhotoUrl: String?,
     moodPoints: List<Float>,
     onCalendarClick: () -> Unit,
-    onStoreClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
     onStatusClick: () -> Unit,
     isPremium: Boolean,
+    unreadNotifications: Int,
     onNoteClick: (NoteEntity) -> Unit
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM", Locale("pt", "BR")) }
@@ -483,11 +539,12 @@ fun HomeContent(
             HomeHeader(
                 date = formattedDate,
                 userPhotoUrl = userPhotoUrl,
+                unreadNotifications = unreadNotifications,
                 onProfileClick = {
                     navController.navigate(Screen.Profile.route)
                 },
                 onCalendarClick = onCalendarClick,
-                onStoreClick = onStoreClick,
+                onNotificationsClick = onNotificationsClick,
                 onStatusClick = onStatusClick,
                 isPremium = isPremium
             )
@@ -546,6 +603,135 @@ fun HomeContent(
                 onHeaderClick = { navController.navigate(Screen.Statistics.route) }
             )
             Spacer(modifier = Modifier.height(120.dp))
+        }
+    }
+}
+
+@Composable
+fun NotificationBottomSheetContent(
+    notifications: List<NotificationEntity>,
+    onMarkAllAsRead: () -> Unit,
+    onDelete: (NotificationEntity) -> Unit,
+    onNotificationClick: (NotificationEntity) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.7f)
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Notificações",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            if (notifications.any { !it.isRead }) {
+                TextButton(onClick = onMarkAllAsRead) {
+                    Text("Marcar todas como lidas", color = Color(0xFF00FFC2))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (notifications.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Nenhuma notificação por enquanto.", color = Color.Gray)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(notifications) { notification ->
+                    NotificationItem(
+                        notification = notification,
+                        onClick = { onNotificationClick(notification) },
+                        onDelete = { onDelete(notification) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NotificationItem(
+    notification: NotificationEntity,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val backgroundColor = if (notification.isRead) Color(0xFF1A1A1A) else Color(0xFF252525)
+    val borderColor = if (notification.isRead) Color.Transparent else Color(0xFF00FFC2).copy(alpha = 0.3f)
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp)),
+        color = backgroundColor
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        when (notification.type) {
+                            "CAPSULE" -> Color(0xFF80DEEA).copy(alpha = 0.1f)
+                            "DONATION" -> Color(0xFFBB86FC).copy(alpha = 0.1f)
+                            else -> Color.White.copy(alpha = 0.1f)
+                        },
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    when (notification.type) {
+                        "CAPSULE" -> Icons.Default.AcUnit
+                        "DONATION" -> Icons.Default.Favorite
+                        else -> Icons.Default.Notifications
+                    },
+                    contentDescription = null,
+                    tint = when (notification.type) {
+                        "CAPSULE" -> Color(0xFF80DEEA)
+                        "DONATION" -> Color(0xFFBB86FC)
+                        else -> Color.White
+                    },
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    notification.title,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Text(
+                    notification.message,
+                    color = Color.Gray,
+                    fontSize = 13.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Close, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+            }
         }
     }
 }

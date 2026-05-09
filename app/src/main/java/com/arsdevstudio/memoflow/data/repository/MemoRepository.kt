@@ -1,9 +1,11 @@
 package com.arsdevstudio.memoflow.data.repository
 
 import com.arsdevstudio.memoflow.data.local.dao.GratitudeDao
+import com.arsdevstudio.memoflow.data.local.dao.NotificationDao
 import com.arsdevstudio.memoflow.data.local.dao.NoteDao
 import com.arsdevstudio.memoflow.data.local.dao.UserDao
 import com.arsdevstudio.memoflow.data.local.entity.GratitudeEntity
+import com.arsdevstudio.memoflow.data.local.entity.NotificationEntity
 import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
 import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 import kotlinx.coroutines.flow.Flow
@@ -13,8 +15,18 @@ import java.time.ZoneId
 class MemoRepository(
     private val noteDao: NoteDao,
     private val userDao: UserDao,
-    private val gratitudeDao: GratitudeDao
+    private val gratitudeDao: GratitudeDao,
+    private val notificationDao: NotificationDao
 ) {
+    // Notifications
+    fun getNotifications(userId: String): Flow<List<NotificationEntity>> = notificationDao.getNotifications(userId)
+    fun getUnreadNotificationCount(userId: String): Flow<Int> = notificationDao.getUnreadCount(userId)
+    suspend fun insertNotification(notification: NotificationEntity) = notificationDao.insertNotification(notification)
+    suspend fun updateNotification(notification: NotificationEntity) = notificationDao.updateNotification(notification)
+    suspend fun markAllNotificationsAsRead(userId: String) = notificationDao.markAllAsRead(userId)
+    suspend fun deleteNotification(notification: NotificationEntity) = notificationDao.deleteNotification(notification)
+    suspend fun getNotificationByTarget(userId: String, targetId: String, type: String) = notificationDao.getNotificationByTarget(userId, targetId, type)
+
     // Notes
     fun getAllNotes(userId: String): Flow<List<NoteEntity>> = noteDao.getAllNotes(userId)
 

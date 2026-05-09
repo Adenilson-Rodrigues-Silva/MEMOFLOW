@@ -4,15 +4,17 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.arsdevstudio.memoflow.data.local.dao.GratitudeDao
+import com.arsdevstudio.memoflow.data.local.dao.NotificationDao
 import com.arsdevstudio.memoflow.data.local.dao.NoteDao
 import com.arsdevstudio.memoflow.data.local.dao.UserDao
 import com.arsdevstudio.memoflow.data.local.entity.GratitudeEntity
+import com.arsdevstudio.memoflow.data.local.entity.NotificationEntity
 import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
 import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 
 @Database(
-    entities = [NoteEntity::class, UserEntity::class, GratitudeEntity::class],
-    version = 12, // Incrementado de 11 para 12 para adicionar userId
+    entities = [NoteEntity::class, UserEntity::class, GratitudeEntity::class, NotificationEntity::class],
+    version = 13, // Incrementado de 12 para 13 para adicionar notificações
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -20,8 +22,26 @@ abstract class MemoDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun userDao(): UserDao
     abstract fun gratitudeDao(): GratitudeDao
+    abstract fun notificationDao(): NotificationDao
 
     companion object {
+        val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `notifications` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `userId` TEXT NOT NULL, 
+                        `title` TEXT NOT NULL, 
+                        `message` TEXT NOT NULL, 
+                        `type` TEXT NOT NULL, 
+                        `targetId` TEXT, 
+                        `isRead` INTEGER NOT NULL, 
+                        `timestamp` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
         val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                 // Adiciona a coluna userId na tabela notes

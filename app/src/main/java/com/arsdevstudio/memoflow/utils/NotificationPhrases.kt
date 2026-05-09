@@ -55,6 +55,19 @@ object NotificationPhrases {
         "Gratidões, segredos e humores: o balanço do seu ano chegou."
     )
 
+    val donationPhrases = listOf(
+        "Gostando do app? Considere pagar um pão com ovo ao dev! 🍳",
+        "Dê uma força para o Memo Flow! Pague um café ao dev. ☕",
+        "Ajude a manter o app no ar! Considere uma pequena doação. ✨"
+    )
+
+    val streakPhrases = listOf(
+        "O fluxo está parando... Que tal registrar o momento de hoje para não perder sua sequência? ⚡",
+        "Faz 2 dias que você não escreve. Suas futuras memórias estão sentindo sua falta! ✍️",
+        "Não deixe sua jornada ter um buraco. Escreva algo breve hoje! ✨",
+        "A constância é a chave da evolução. Volte ao fluxo hoje! 🌊"
+    )
+
     fun getRandomPhrase(category: List<String>): String = category.random()
 }
 

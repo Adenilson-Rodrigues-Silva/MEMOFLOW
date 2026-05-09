@@ -370,15 +370,17 @@ fun DiaryNoteCard(
 fun HomeHeader(
     date: String,
     userPhotoUrl: String?,
+    unreadNotifications: Int,
     onProfileClick: () -> Unit,
     onCalendarClick: () -> Unit,
-    onStoreClick: () -> Unit,
     onStatusClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
     isPremium: Boolean
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "diamond_glow")
     val gold = Color(0xFFFFD700)
     val neonGreen = Color(0xFF00FFC2)
+    val alertRed = Color(0xFFFF1744)
     
     val shineOffset by infiniteTransition.animateFloat(
         initialValue = -100f,
@@ -402,34 +404,62 @@ fun HomeHeader(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Botão Calendário (Verde Neon)
             IconButton(
-                onClick = onStatusClick,
+                onClick = onCalendarClick,
                 modifier = Modifier
                     .size(40.dp)
                     .background(Color.White.copy(alpha = 0.05f), CircleShape)
             ) {
-                Icon(
-                    if (isPremium) Icons.Default.Verified else Icons.Default.AutoGraph, 
-                    contentDescription = "Status", 
-                    tint = if (isPremium) gold else neonGreen, 
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.DateRange, contentDescription = "Calendário", tint = neonGreen, modifier = Modifier.size(22.dp))
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
+            // NOVO LOCAL DO SINO: Onde era o Status (Verde Neon)
             IconButton(
-                onClick = onStoreClick,
+                onClick = onNotificationsClick,
                 modifier = Modifier
                     .size(40.dp)
-                    .background(PurpleAI.copy(alpha = 0.1f), CircleShape)
-                    .border(1.dp, PurpleAI.copy(alpha = 0.3f), CircleShape)
+                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
+            ) {
+                BadgedBox(
+                    badge = {
+                        if (unreadNotifications > 0) {
+                            Badge(
+                                containerColor = alertRed,
+                                contentColor = Color.White,
+                                modifier = Modifier.offset(x = (-4).dp, y = 4.dp)
+                            ) {
+                                Text(unreadNotifications.toString())
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Notifications, 
+                        contentDescription = "Notificações", 
+                        tint = if (unreadNotifications > 0) Color.White else neonGreen, 
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // DIAMANTE: Agora abre o STATUS/PREMIUM (onStatusClick)
+            IconButton(
+                onClick = onStatusClick,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(if (isPremium) gold.copy(alpha = 0.15f) else PurpleAI.copy(alpha = 0.1f), CircleShape)
+                    .border(1.dp, if (isPremium) gold.copy(alpha = 0.5f) else PurpleAI.copy(alpha = 0.3f), CircleShape)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Diamond, 
-                        contentDescription = "Loja", 
-                        tint = PurpleAI, 
+                        contentDescription = "Status e Premium", 
+                        tint = if (isPremium) gold else PurpleAI, 
                         modifier = Modifier.size(22.dp)
                     )
                     
@@ -449,26 +479,15 @@ fun HomeHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
-
-            IconButton(
-                onClick = onCalendarClick,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
-            ) {
-                Icon(Icons.Default.DateRange, null, tint = Color(0xFF00FFC2), modifier = Modifier.size(20.dp))
-            }
-            
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             Surface(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
                     .clickable { onProfileClick() },
                 shape = CircleShape,
-                color = Color(0xFF00FFC2) 
+                color = neonGreen
             ) {
                 if (userPhotoUrl != null) {
                     AsyncImage(
