@@ -21,9 +21,16 @@ class GoogleDriveBackupManager(private val context: Context) {
      */
     suspend fun uploadBackup(driveService: Drive, backupData: BackupData): Boolean = withContext(Dispatchers.IO) {
         try {
+            val userId = backupData.userSettings?.firebaseUid ?: ""
+            if (userId.isEmpty()) return@withContext false
+
             val jsonString = Gson().toJson(backupData)
+            
+            // CRIPTOGRAFIA DE PONTA A PONTA
+            val encryptedData = SecurityUtils.encryptBackup(jsonString, userId)
+            
             val tempFile = java.io.File(context.cacheDir, BACKUP_FILE_NAME)
-            tempFile.writeText(jsonString)
+            tempFile.writeText(encryptedData)
 
             // 1. Procura se já existe um backup anterior
             val existingFileId = findBackupFile(driveService)
@@ -33,20 +40,20 @@ class GoogleDriveBackupManager(private val context: Context) {
                 parents = listOf("appDataFolder") // Pasta oculta e segura
             }
 
-            val mediaContent = FileContent("application/json", tempFile)
+            val mediaContent = FileContent("text/plain", tempFile)
 
             if (existingFileId != null) {
                 // Atualiza o existente
                 driveService.files().update(existingFileId, null, mediaContent).execute()
-                Log.d(TAG, "Backup atualizado no Drive com sucesso!")
+                Log.d(TAG, "Backup criptografado atualizado no Drive!")
             } else {
                 // Cria um novo
                 driveService.files().create(metadata, mediaContent).execute()
-                Log.d(TAG, "Novo backup criado no Drive com sucesso!")
+                Log.d(TAG, "Novo backup criptografado criado no Drive!")
             }
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Erro ao fazer upload para o Drive", e)
+            Log.e(TAG, "Erro ao fazer upload criptografado para o Drive", e)
             false
         }
     }
@@ -67,17 +74,21 @@ class GoogleDriveBackupManager(private val context: Context) {
     /**
      * Baixa o backup do Drive e retorna o objeto BackupData.
      */
-    suspend fun downloadBackup(driveService: Drive): BackupData? = withContext(Dispatchers.IO) {
+    suspend fun downloadBackup(driveService: Drive, userId: String): BackupData? = withContext(Dispatchers.IO) {
         try {
             val fileId = findBackupFile(driveService) ?: return@withContext null
             
             val outputStream = java.io.ByteArrayOutputStream()
             driveService.files().get(fileId).executeMediaAndDownloadTo(outputStream)
             
-            val jsonString = outputStream.toString()
-            Gson().fromJson(jsonString, BackupData::class.java)
+            val encryptedData = outputStream.toString()
+            
+            // DESCRIPTOGRAFIA
+            val decryptedJson = SecurityUtils.decryptBackup(encryptedData, userId)
+            
+            Gson().fromJson(decryptedJson, BackupData::class.java)
         } catch (e: Exception) {
-            Log.e(TAG, "Erro ao baixar backup do Drive", e)
+            Log.e(TAG, "Erro ao baixar ou descriptografar backup do Drive", e)
             null
         }
     }

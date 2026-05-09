@@ -73,6 +73,12 @@ fun HomeScreen(
     val isPremium by profileViewModel.isPremium.collectAsState()
     val securitySettings by securityViewModel.userSettings.collectAsState()
     val statsData by statsViewModel.statsData.collectAsState()
+
+    val backupViewModel: com.arsdevstudio.memoflow.ui.screens.profile.BackupViewModel = viewModel(factory = com.arsdevstudio.memoflow.ui.screens.profile.BackupViewModel.Factory)
+
+    LaunchedEffect(Unit) {
+        backupViewModel.silentRestore(context)
+    }
     
     val remainingRecalls by recallViewModel.remainingRefreshes.collectAsState()
     val maxRecalls = if (isPremium) 6 else 2

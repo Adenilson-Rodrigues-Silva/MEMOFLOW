@@ -8,6 +8,10 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import android.util.Base64
 import java.security.SecureRandom
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
+import java.security.MessageDigest
 
 /**
  * Utility class to manage database encryption keys using Android KeyStore.
@@ -16,6 +20,41 @@ object SecurityUtils {
 
     private const val KEY_ALIAS = "memoflow_db_key"
     private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+    private const val AES_ALGORITHM = "AES/CBC/PKCS5Padding"
+
+    /**
+     * Gera uma chave estável a partir do Firebase UID do usuário para o Backup.
+     * Isso permite que o backup seja restaurado em diferentes aparelhos.
+     */
+    private fun generateBackupKey(seed: String): SecretKeySpec {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val bytes = digest.digest(seed.toByteArray(Charsets.UTF_8))
+        return SecretKeySpec(bytes, "AES")
+    }
+
+    fun encryptBackup(data: String, seed: String): String {
+        val key = generateBackupKey(seed)
+        val cipher = Cipher.getInstance(AES_ALGORITHM)
+        val iv = ByteArray(16)
+        SecureRandom().nextBytes(iv)
+        cipher.init(Cipher.ENCRYPT_MODE, key, IvParameterSpec(iv))
+        
+        val encrypted = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+        val combined = iv + encrypted
+        return Base64.encodeToString(combined, Base64.DEFAULT)
+    }
+
+    fun decryptBackup(encryptedData: String, seed: String): String {
+        val combined = Base64.decode(encryptedData, Base64.DEFAULT)
+        val iv = combined.sliceArray(0 until 16)
+        val encrypted = combined.sliceArray(16 until combined.size)
+        
+        val key = generateBackupKey(seed)
+        val cipher = Cipher.getInstance(AES_ALGORITHM)
+        cipher.init(Cipher.DECRYPT_MODE, key, IvParameterSpec(iv))
+        
+        return String(cipher.doFinal(encrypted), Charsets.UTF_8)
+    }
 
     /**
      * Gets or creates a stable passphrase for database encryption.
@@ -54,11 +93,11 @@ object SecurityUtils {
         if (encryptedPassphrase == null) {
             val randomBytes = ByteArray(32)
             SecureRandom().nextBytes(randomBytes)
-            val newPassphrase = Base64.encodeToString(randomBytes, Base64.DEFAULT)
+            val newPassphrase = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
             prefs.edit().putString("db_pass", newPassphrase).apply()
-            return newPassphrase.toByteArray()
+            return randomBytes
         }
 
-        return encryptedPassphrase.toByteArray()
+        return Base64.decode(encryptedPassphrase, Base64.NO_WRAP)
     }
 }

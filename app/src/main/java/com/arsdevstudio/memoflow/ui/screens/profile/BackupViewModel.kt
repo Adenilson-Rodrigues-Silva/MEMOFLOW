@@ -140,33 +140,69 @@ class BackupViewModel(
         viewModelScope.launch {
             _uiState.value = BackupUiState.DriveLoading
             val startTime = System.currentTimeMillis()
+            restoreInternal(context, startTime)
+        }
+    }
 
-            try {
-                val account = GoogleSignIn.getLastSignedInAccount(context)
-                if (account == null) {
+    /**
+     * Tenta restaurar os dados silenciosamente após o login.
+     * Só restaura se o usuário for Premium e se não houver notas locais.
+     */
+    fun silentRestore(context: Context) {
+        viewModelScope.launch {
+            val user = repository.userSettings.first()
+            val userId = user?.firebaseUid ?: ""
+            if (userId.isEmpty()) return@launch
+
+            // Verifica se o banco local está vazio para este usuário
+            val existingNotes = repository.getAllNotes(userId).first()
+            if (existingNotes.isNotEmpty()) return@launch
+
+            // Se for premium, tenta baixar o backup
+            if (isPremium.value) {
+                restoreInternal(context, 0, isSilent = true)
+            }
+        }
+    }
+
+    private suspend fun restoreInternal(context: Context, startTime: Long, isSilent: Boolean = false) {
+        try {
+            val account = GoogleSignIn.getLastSignedInAccount(context)
+            if (account == null) {
+                if (!isSilent) {
                     ensureMinDelay(startTime)
                     _uiState.value = BackupUiState.Error("Login Google não detectado.")
-                    return@launch
                 }
+                return
+            }
 
-                val driveServiceHelper = GoogleDriveService(context)
-                val driveService = driveServiceHelper.getDriveService(account)
-                val backupManager = GoogleDriveBackupManager(context)
+            val driveServiceHelper = GoogleDriveService(context)
+            val driveService = driveServiceHelper.getDriveService(account)
+            val backupManager = GoogleDriveBackupManager(context)
 
-                val backupData = backupManager.downloadBackup(driveService)
-
-                ensureMinDelay(startTime)
-
-                if (backupData != null) {
-                    applyBackup(backupData)
-                    _uiState.value = BackupUiState.Success("Flow restaurado da nuvem!")
-                } else {
-                    _uiState.value = BackupUiState.Error("Nenhum backup automático encontrado.")
+            val user = repository.userSettings.first()
+            val userId = user?.firebaseUid ?: ""
+            if (userId.isEmpty()) {
+                if (!isSilent) {
+                    ensureMinDelay(startTime)
+                    _uiState.value = BackupUiState.Error("Usuário não identificado.")
                 }
-            } catch (e: com.google.api.client.googleapis.json.GoogleJsonResponseException) {
-                ensureMinDelay(startTime)
-                _uiState.value = BackupUiState.Error("Erro Google (${e.statusCode}): Verifique as permissões.")
-            } catch (e: Exception) {
+                return
+            }
+
+            val backupData = backupManager.downloadBackup(driveService, userId)
+
+            if (!isSilent) ensureMinDelay(startTime)
+
+            if (backupData != null) {
+                applyBackup(backupData)
+                if (!isSilent) _uiState.value = BackupUiState.Success("Flow restaurado da nuvem!")
+            } else {
+                if (!isSilent) _uiState.value = BackupUiState.Error("Nenhum backup automático encontrado.")
+            }
+        } catch (e: Exception) {
+            Log.e("BackupViewModel", "Erro na restauração ${if (isSilent) "silenciosa" else ""}", e)
+            if (!isSilent) {
                 ensureMinDelay(startTime)
                 _uiState.value = BackupUiState.Error("Erro na nuvem: ${e.message}")
             }

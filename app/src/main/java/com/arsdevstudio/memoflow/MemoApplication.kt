@@ -9,12 +9,18 @@ import com.arsdevstudio.memoflow.utils.BillingManager
 import com.arsdevstudio.memoflow.utils.BillingPrefs
 import com.arsdevstudio.memoflow.utils.NotificationHelper
 import com.arsdevstudio.memoflow.utils.SecurityUtils
-import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+import net.sqlcipher.database.SQLiteDatabase
+import net.sqlcipher.database.SupportFactory
+
 
 class MemoApplication : Application() {
     
     val database by lazy { 
-        val factory = SupportOpenHelperFactory(SecurityUtils.getDatabasePassphrase(this))
+        // Recupera a senha (ByteArray) gerada pelo KeyStore para o SQLCipher
+        val passphrase = SecurityUtils.getDatabasePassphrase(this)
+        val factory = SupportFactory(passphrase)
+
+
         Room.databaseBuilder(
             this,
             MemoDatabase::class.java,
@@ -36,11 +42,11 @@ class MemoApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // ✅ CRUCIAL: Cria os canais de notificação assim que o app inicia
+        // ✅ Inicializa o SQLCipher
+        SQLiteDatabase.loadLibs(this)
+
+        // ✅ Inicializa recursos essenciais do app
         NotificationHelper(this).createNotificationChannels()
-        
-        // Inicializa o billing
         billingManager.startConnection()
     }
 }
-

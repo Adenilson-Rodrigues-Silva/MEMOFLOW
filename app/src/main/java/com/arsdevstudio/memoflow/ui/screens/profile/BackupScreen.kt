@@ -35,6 +35,9 @@ import com.arsdevstudio.memoflow.R
 import com.arsdevstudio.memoflow.ui.components.home.rememberAnimatedAiGradient
 import com.arsdevstudio.memoflow.utils.GoogleDriveService
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+
 /**
  * PONTO DE RETORNO (INÍCIO DO MÊS):
  * - Esta tela depende do estado 'isPremium' para liberar o Google Drive.
@@ -48,10 +51,13 @@ fun BackupScreen(
     viewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory)
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val uiState by viewModel.uiState.collectAsState()
     val isPremium by viewModel.isPremium.collectAsState()
     val animatedGradient = rememberAnimatedAiGradient()
     val driveService = remember { GoogleDriveService(context) }
+
+    var showHelpDialog by remember { mutableStateOf(false) }
 
     val drivePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -89,6 +95,14 @@ fun BackupScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                     }
                 },
+                actions = {
+                    IconButton(onClick = { 
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showHelpDialog = true 
+                    }) {
+                        Icon(Icons.Default.Info, "Ajuda", tint = Color(0xFF00FFC2))
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Black)
             )
         }
@@ -105,24 +119,25 @@ fun BackupScreen(
                     .fillMaxWidth()
                     .border(1.dp, animatedGradient, RoundedCornerShape(24.dp))
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(24.dp))
+                    .pointerInput(isPremium) {
+                        detectTapGestures(
+                            onLongPress = {
+                                if (isPremium) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    if (driveService.hasDrivePermission()) {
+                                        viewModel.uploadToDriveManual(context)
+                                    } else {
+                                        drivePermissionLauncher.launch(driveService.getGoogleSignInClient().signInIntent)
+                                    }
+                                }
+                            }
+                        )
+                    }
                     .padding(24.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.pointerInput(Unit) {
-                            detectTapGestures(
-                                onLongPress = {
-                                    if (isPremium) {
-                                        if (driveService.hasDrivePermission()) {
-                                            viewModel.uploadToDriveManual(context)
-                                        } else {
-                                            drivePermissionLauncher.launch(driveService.getGoogleSignInClient().signInIntent)
-                                        }
-                                    }
-                                }
-                            )
-                        }
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.CloudQueue, null, tint = if (isPremium) Color(0xFFFFD700) else Color(0xFF00FFC2))
                         Spacer(Modifier.width(8.dp))
@@ -235,6 +250,43 @@ fun BackupScreen(
 
     if (uiState is BackupViewModel.BackupUiState.Loading) {
         BackupLoadingDialog()
+    }
+
+    if (showHelpDialog) {
+        AlertDialog(
+            onDismissRequest = { showHelpDialog = false },
+            containerColor = Color(0xFF1A1A1A),
+            titleContentColor = Color.White,
+            textContentColor = Color.Gray,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.HelpOutline, null, tint = Color(0xFF00FFC2))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Como funciona o Backup?")
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    HelpItem("☁️ Sincronização", "O backup na nuvem (Premium) ocorre a cada 24h enquanto você carrega o celular no Wi-Fi. É totalmente criptografado.")
+                    HelpItem("👆 Segurar para Enviar", "Pressione e segure o card da nuvem para forçar um backup agora.")
+                    HelpItem("📥 Restaurar", "Baixa o último estado salvo na nuvem. Ideal para quando você troca de celular.")
+                    HelpItem("📄 Backup Manual", "Gera um arquivo que você pode enviar para seu e-mail ou WhatsApp como garantia extra.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHelpDialog = false }) {
+                    Text("Entendi", color = Color(0xFF00FFC2), fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun HelpItem(title: String, description: String) {
+    Column {
+        Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(description, color = Color.Gray, fontSize = 13.sp, lineHeight = 18.sp)
     }
 }
 

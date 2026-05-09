@@ -126,6 +126,10 @@ class AuthViewModel(
                     
                     repository.saveUserSettings(updatedUser)
                     billingManager.queryPurchases() // Atualiza o status premium para a nova conta
+                    
+                    // Agenda uma restauração silenciosa caso o banco esteja vazio
+                    // Nota: Idealmente isso seria feito via WorkManager ou chamado aqui se tivéssemos o BackupViewModel
+
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                     _events.emit(AuthEvent.LoginSuccess)
                 }
