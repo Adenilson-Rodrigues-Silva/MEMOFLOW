@@ -18,6 +18,7 @@ import com.arsdevstudio.memoflow.data.repository.MemoRepository
 import com.arsdevstudio.memoflow.utils.BillingPrefs
 import com.arsdevstudio.memoflow.utils.GoogleDriveBackupManager
 import com.arsdevstudio.memoflow.utils.GoogleDriveService
+import com.arsdevstudio.memoflow.utils.SecurityUtils
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.gson.Gson
 import kotlinx.coroutines.delay
@@ -36,7 +37,7 @@ data class BackupData(
     val notes: List<NoteEntity>,
     val gratitudes: List<GratitudeEntity>,
     val userSettings: UserEntity?,
-    val version: Int = 2,
+    val version: Int = 3,
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -70,8 +71,8 @@ class BackupViewModel(
                 
                 val notes = repository.getAllNotes(userId).first()
                 val gratitudes = repository.getAllGratitudes(userId).first()
-                val userSettings = user
-                val backupData = BackupData(notes, gratitudes, userSettings)
+                val backupData = BackupData(notes, gratitudes, user)
+                
                 val gson = com.google.gson.GsonBuilder().serializeNulls().setPrettyPrinting().create()
                 val jsonString = gson.toJson(backupData)
                 val backupDir = File(context.cacheDir, "backups").apply { if (!exists()) mkdirs() }
@@ -88,7 +89,6 @@ class BackupViewModel(
 
     fun uploadToDriveManual(context: Context) {
         viewModelScope.launch {
-            // TRAVA PREMIUM PARA BACKUP NA NUVEM
             if (!isPremium.value) {
                 _uiState.value = BackupUiState.Error("O Backup na Nuvem é um recurso PREMIUM. ✨")
                 return@launch
@@ -98,7 +98,7 @@ class BackupViewModel(
             val startTime = System.currentTimeMillis()
             try {
                 val account = GoogleSignIn.getLastSignedInAccount(context) 
-                    ?: throw Exception("Conta Google não vinculada. Clique em 'Restaurar' primeiro.")
+                    ?: throw Exception("Conta Google não vinculada.")
                 
                 val driveServiceHelper = GoogleDriveService(context)
                 val driveService = driveServiceHelper.getDriveService(account)
@@ -114,8 +114,7 @@ class BackupViewModel(
 
                 val notes = repository.getAllNotes(userId).first()
                 val gratitudes = repository.getAllGratitudes(userId).first()
-                val userSettings = user
-                val backupData = BackupData(notes, gratitudes, userSettings)
+                val backupData = BackupData(notes, gratitudes, user)
 
                 val success = backupManager.uploadBackup(driveService, backupData)
                 
@@ -123,15 +122,11 @@ class BackupViewModel(
                 if (success) {
                     _uiState.value = BackupUiState.Success("Sincronizado com sucesso! ✨")
                 } else {
-                    _uiState.value = BackupUiState.Error("O Google recusou o arquivo. Verifique o SHA-1 no console.")
+                    _uiState.value = BackupUiState.Error("Falha ao subir para o Drive.")
                 }
-            } catch (e: com.google.api.client.googleapis.json.GoogleJsonResponseException) {
-                ensureMinDelay(startTime)
-                _uiState.value = BackupUiState.Error("Erro Google (${e.statusCode}): ${e.details?.message ?: "Acesso Negado"}")
             } catch (e: Exception) {
                 ensureMinDelay(startTime)
                 _uiState.value = BackupUiState.Error(e.message ?: "Erro desconhecido")
-                Log.e("DriveBackup", "Erro no upload", e)
             }
         }
     }
@@ -167,28 +162,14 @@ class BackupViewModel(
 
     private suspend fun restoreInternal(context: Context, startTime: Long, isSilent: Boolean = false) {
         try {
-            val account = GoogleSignIn.getLastSignedInAccount(context)
-            if (account == null) {
-                if (!isSilent) {
-                    ensureMinDelay(startTime)
-                    _uiState.value = BackupUiState.Error("Login Google não detectado.")
-                }
-                return
-            }
-
+            val account = GoogleSignIn.getLastSignedInAccount(context) ?: return
             val driveServiceHelper = GoogleDriveService(context)
             val driveService = driveServiceHelper.getDriveService(account)
             val backupManager = GoogleDriveBackupManager(context)
 
             val user = repository.userSettings.first()
             val userId = user?.firebaseUid ?: ""
-            if (userId.isEmpty()) {
-                if (!isSilent) {
-                    ensureMinDelay(startTime)
-                    _uiState.value = BackupUiState.Error("Usuário não identificado.")
-                }
-                return
-            }
+            if (userId.isEmpty()) return
 
             val backupData = backupManager.downloadBackup(driveService, userId)
 
@@ -197,37 +178,32 @@ class BackupViewModel(
             if (backupData != null) {
                 applyBackup(backupData)
                 if (!isSilent) _uiState.value = BackupUiState.Success("Flow restaurado da nuvem!")
-            } else {
-                if (!isSilent) _uiState.value = BackupUiState.Error("Nenhum backup automático encontrado.")
+            } else if (!isSilent) {
+                _uiState.value = BackupUiState.Error("Nenhum backup encontrado.")
             }
         } catch (e: Exception) {
-            Log.e("BackupViewModel", "Erro na restauração ${if (isSilent) "silenciosa" else ""}", e)
             if (!isSilent) {
                 ensureMinDelay(startTime)
-                _uiState.value = BackupUiState.Error("Erro na nuvem: ${e.message}")
+                _uiState.value = BackupUiState.Error("Erro na restauração.")
             }
         }
-    }
-
-    private suspend fun ensureMinDelay(startTime: Long) {
-        val elapsed = System.currentTimeMillis() - startTime
-        if (elapsed < 5300) delay(5300 - elapsed)
     }
 
     private suspend fun applyBackup(data: BackupData) {
         val user = repository.userSettings.first()
         val userId = user?.firebaseUid ?: ""
-
         if (userId.isEmpty()) return
 
         repository.deleteAllNotes(userId)
         repository.deleteAllGratitudes(userId)
 
-        // Força o userId atual em todos os registros restaurados para garantir isolamento
-        data.notes.forEach { repository.insertNote(it.copy(userId = userId)) }
-        data.gratitudes.forEach { repository.insertGratitude(it.copy(userId = userId)) }
+        for (note in data.notes) {
+            repository.insertNote(note.copy(userId = userId))
+        }
+        for (gratitude in data.gratitudes) {
+            repository.insertGratitude(gratitude.copy(userId = userId))
+        }
         
-        // Opcional: Restaurar apenas dados não sensíveis do perfil
         data.userSettings?.let { backupUser ->
             user?.let { currentUser ->
                 repository.saveUserSettings(currentUser.copy(
@@ -247,12 +223,17 @@ class BackupViewModel(
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
                     val backupData = Gson().fromJson(InputStreamReader(inputStream), BackupData::class.java)
                     applyBackup(backupData)
-                    _uiState.value = BackupUiState.Success("Restauração local concluída!")
+                    _uiState.value = BackupUiState.Success("Restauração concluída!")
                 }
             } catch (e: Exception) {
                 _uiState.value = BackupUiState.Error("Arquivo inválido.")
             }
         }
+    }
+
+    private suspend fun ensureMinDelay(startTime: Long) {
+        val elapsed = System.currentTimeMillis() - startTime
+        if (elapsed < 5300) delay(5300 - elapsed)
     }
 
     fun resetState() { _uiState.value = BackupUiState.Idle }
@@ -275,4 +256,3 @@ class BackupViewModel(
         }
     }
 }
-

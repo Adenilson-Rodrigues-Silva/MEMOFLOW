@@ -84,21 +84,21 @@ fun WelcomeAuthScreen(
             )
 
             Text(
-                text = "Eternize seu fluxo, siga seus rastros.",
+                text = "Seu diário. Seu fluxo.",
                 color = Color(0xFF00FFC2),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Suas memórias organizadas geograficamente e protegidas com a segurança do Google.",
+                text = "Capture momentos, cultive gratidão e organize sua jornada. Suas memórias protegidas e sempre ao seu alcance.",
                 color = Color.Gray,
-                fontSize = 15.sp,
+                fontSize = 16.sp,
                 textAlign = TextAlign.Center,
-                lineHeight = 22.sp,
+                lineHeight = 24.sp,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
 

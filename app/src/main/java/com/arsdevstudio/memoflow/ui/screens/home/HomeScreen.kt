@@ -32,6 +32,7 @@ import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
 import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 import com.arsdevstudio.memoflow.ui.components.home.*
 import com.arsdevstudio.memoflow.ui.viewmodel.HomeViewModel
+import com.arsdevstudio.memoflow.ui.screens.profile.BackupViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -74,7 +75,7 @@ fun HomeScreen(
     val securitySettings by securityViewModel.userSettings.collectAsState()
     val statsData by statsViewModel.statsData.collectAsState()
 
-    val backupViewModel: com.arsdevstudio.memoflow.ui.screens.profile.BackupViewModel = viewModel(factory = com.arsdevstudio.memoflow.ui.screens.profile.BackupViewModel.Factory)
+    val backupViewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory)
 
     LaunchedEffect(Unit) {
         backupViewModel.silentRestore(context)
