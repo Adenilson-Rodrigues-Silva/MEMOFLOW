@@ -100,7 +100,19 @@ fun DiaryNoteCard(
     val deepBlue = Color(0xFF01579B)
     
     // Lógica da Cápsula
-    val isReadyToMelt = isTimeCapsule && (unlockDate != null && unlockDate <= System.currentTimeMillis())
+    val isReadyToMelt = remember(unlockDate, isTimeCapsule) {
+        if (!isTimeCapsule || unlockDate == null) false
+        else {
+            val now = System.currentTimeMillis()
+            if (now >= unlockDate) true
+            else {
+                val unlockDay = java.time.Instant.ofEpochMilli(unlockDate)
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                val today = java.time.LocalDate.now()
+                !today.isBefore(unlockDay)
+            }
+        }
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "card_effects")
     

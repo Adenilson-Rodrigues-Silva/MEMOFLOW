@@ -34,11 +34,29 @@ class NotificationViewModel(
             repository.userSettings.collectLatest { user ->
                 _userId.value = user?.firebaseUid ?: ""
                 if (_userId.value.isNotEmpty()) {
-                    checkCapsuleNotifications(_userId.value)
-                    checkStreakNotifications(_userId.value)
+                    triggerCheck()
                 }
             }
         }
+    }
+
+    fun triggerCheck() {
+        val userId = _userId.value
+        if (userId.isEmpty()) return
+        viewModelScope.launch {
+            checkCapsuleNotifications(userId)
+            checkStreakNotifications(userId)
+        }
+    }
+
+    private fun isReady(unlockDate: Long): Boolean {
+        val now = System.currentTimeMillis()
+        if (now >= unlockDate) return true
+        
+        val unlockDay = java.time.Instant.ofEpochMilli(unlockDate)
+            .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        val today = java.time.LocalDate.now()
+        return !today.isBefore(unlockDay)
     }
 
     private suspend fun checkStreakNotifications(userId: String) {
@@ -67,7 +85,7 @@ class NotificationViewModel(
         
         // 1. Notificações de Cápsulas (In-app)
         repository.getAllNotes(userId).first().forEach { note ->
-            if (note.isTimeCapsule && note.unlockDate != null && note.unlockDate <= System.currentTimeMillis()) {
+            if (note.isTimeCapsule && note.unlockDate != null && isReady(note.unlockDate)) {
                 val existing = repository.getNotificationByTarget(userId, note.id.toString(), "CAPSULE")
                 if (existing == null) {
                     repository.insertNotification(
