@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.util.Log
 import com.android.billingclient.api.*
+import com.arsdevstudio.memoflow.data.repository.MemoRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -12,7 +13,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class BillingManager(private val context: Context, private val billingPrefs: BillingPrefs) {
+class BillingManager(
+    private val context: Context,
+    private val billingPrefs: BillingPrefs,
+    private val repository: MemoRepository
+) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
     private val TAG = "BillingManager"
@@ -140,7 +145,10 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
                 }
                 
                 // Opcional: Se não encontrar premium na consulta, resetamos o estado local
-                scope.launch { billingPrefs.setPremium(hasPremium) }
+                scope.launch { 
+                    billingPrefs.setPremium(hasPremium)
+                    repository.updatePremiumStatus(hasPremium)
+                }
             }
         }
     }
@@ -153,6 +161,7 @@ class BillingManager(private val context: Context, private val billingPrefs: Bil
             scope.launch {
                 if (productId == "premiumlifetime") {
                     billingPrefs.setPremium(true)
+                    repository.updatePremiumStatus(true)
                 }
                 _purchaseEvents.emit(PurchaseEvent.Success(productId))
             }

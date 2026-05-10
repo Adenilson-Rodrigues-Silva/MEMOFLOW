@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -92,7 +93,8 @@ class StatisticsViewModel(
     private val _statsData = MutableStateFlow(StatsData())
     val statsData: StateFlow<StatsData> = _statsData.asStateFlow()
 
-    val isPremium: StateFlow<Boolean> = billingPrefs.isPremium
+    val isPremium: StateFlow<Boolean> = repository.userSettings
+        .map { it?.isPremium ?: false }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private var isMonthly = true

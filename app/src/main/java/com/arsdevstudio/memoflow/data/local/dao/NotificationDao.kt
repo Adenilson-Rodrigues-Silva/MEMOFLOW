@@ -23,6 +23,9 @@ interface NotificationDao {
 
     @Delete
     suspend fun deleteNotification(notification: NotificationEntity)
+
+    @Query("DELETE FROM notifications WHERE userId = :userId")
+    suspend fun deleteAllNotifications(userId: String)
     
     @Query("SELECT * FROM notifications WHERE userId = :userId AND targetId = :targetId AND type = :type LIMIT 1")
     suspend fun getNotificationByTarget(userId: String, targetId: String, type: String): NotificationEntity?

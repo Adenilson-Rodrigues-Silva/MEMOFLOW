@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -21,11 +22,15 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val billingManager: BillingManager = app.billingManager
     private val billingPrefs: BillingPrefs = app.billingPrefs
 
-    val isPremium: StateFlow<Boolean> = billingPrefs.isPremium.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        false
-    )
+    private val repository = app.repository
+
+    val isPremium: StateFlow<Boolean> = repository.userSettings
+        .map { it?.isPremium ?: false }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            false
+        )
 
     val products = billingManager.products
     

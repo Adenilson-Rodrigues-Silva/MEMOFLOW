@@ -9,6 +9,7 @@
     <string name="home_limit_reached">Limite de 3 notas diárias atingido!</string>
     <string name="home_notifications">Notificações</string>
     <string name="home_mark_all_read">Marcar todas como lidas</string>
+    <string name="home_clear_all">Limpar tudo</string>
     <string name="home_no_notifications">Nenhuma notificação por enquanto.</string>
     <string name="home_access_capsule">Acessar Cápsula</string>
     <string name="home_locked_memory">Memória Trancada</string>

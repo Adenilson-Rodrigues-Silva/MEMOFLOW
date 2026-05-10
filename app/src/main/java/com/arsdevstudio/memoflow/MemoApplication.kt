@@ -27,7 +27,11 @@ class MemoApplication : Application() {
             "memo_flow_db"
         )
         .openHelperFactory(factory)
-        .addMigrations(MemoDatabase.MIGRATION_11_12, MemoDatabase.MIGRATION_12_13)
+        .addMigrations(
+            MemoDatabase.MIGRATION_11_12, 
+            MemoDatabase.MIGRATION_12_13,
+            MemoDatabase.MIGRATION_13_14
+        )
         .fallbackToDestructiveMigration()
         .build() 
     }
@@ -43,7 +47,7 @@ class MemoApplication : Application() {
 
     val billingPrefs by lazy { BillingPrefs(this) }
     val aiPrefs by lazy { AiPrefs(this) }
-    val billingManager by lazy { BillingManager(this, billingPrefs) }
+    val billingManager by lazy { BillingManager(this, billingPrefs, repository) }
 
     override fun onCreate() {
         super.onCreate()

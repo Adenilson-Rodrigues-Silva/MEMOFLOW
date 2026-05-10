@@ -76,8 +76,8 @@ class GratitudeViewModel(
 
     private fun observePremiumStatus() {
         viewModelScope.launch {
-            billingPrefs.isPremium.collectLatest { isPremium ->
-                _maxFlashbacks.value = if (isPremium) 6 else 3
+            repository.userSettings.collectLatest { user ->
+                _maxFlashbacks.value = if (user?.isPremium == true) 6 else 3
             }
         }
     }
@@ -138,8 +138,7 @@ class GratitudeViewModel(
     fun incrementFlashbackCount() {
         viewModelScope.launch {
             val user = repository.userSettings.first() ?: UserEntity()
-            val isPremium = billingPrefs.isPremium.first()
-            val limit = if (isPremium) 6 else 3
+            val limit = if (user.isPremium) 6 else 3
             
             if (user.gratitudeRecallCount < limit) {
                 val newCount = user.gratitudeRecallCount + 1

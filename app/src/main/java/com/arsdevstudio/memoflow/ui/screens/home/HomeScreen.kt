@@ -155,7 +155,7 @@ fun HomeScreen(
                         rotation = rotation,
                         neonGreen = neonGreen,
                         onToggle = { isMenuExpanded = !isMenuExpanded },
-                        canAddNote = viewModel.canAddNote(),
+                        canAddNote = viewModel.canAddNote(isPremium),
                         onLimitReached = {
                             Toast.makeText(context, context.getString(R.string.home_limit_reached), Toast.LENGTH_SHORT).show()
                         },
@@ -202,6 +202,7 @@ fun HomeScreen(
                 NotificationBottomSheetContent(
                     notifications = notifications,
                     onMarkAllAsRead = { notificationViewModel.markAllAsRead() },
+                    onDeleteAll = { notificationViewModel.deleteAllNotifications() },
                     onDelete = { notificationViewModel.deleteNotification(it) },
                     onNotificationClick = { notification ->
                         notificationViewModel.markAsRead(notification)
@@ -640,6 +641,7 @@ fun HomeContent(
 fun NotificationBottomSheetContent(
     notifications: List<NotificationEntity>,
     onMarkAllAsRead: () -> Unit,
+    onDeleteAll: () -> Unit,
     onDelete: (NotificationEntity) -> Unit,
     onNotificationClick: (NotificationEntity) -> Unit
 ) {
@@ -660,9 +662,17 @@ fun NotificationBottomSheetContent(
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
-            if (notifications.any { !it.isRead }) {
-                TextButton(onClick = onMarkAllAsRead) {
-                    Text(stringResource(R.string.home_mark_all_read), color = Color(0xFF00FFC2))
+            
+            Row {
+                if (notifications.isNotEmpty()) {
+                    TextButton(onClick = onDeleteAll) {
+                        Text(stringResource(R.string.home_clear_all), color = Color.Red.copy(alpha = 0.7f))
+                    }
+                }
+                if (notifications.any { !it.isRead }) {
+                    TextButton(onClick = onMarkAllAsRead) {
+                        Text(stringResource(R.string.home_mark_all_read), color = Color(0xFF00FFC2))
+                    }
                 }
             }
         }

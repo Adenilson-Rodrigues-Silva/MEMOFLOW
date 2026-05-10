@@ -25,6 +25,7 @@ class MemoRepository(
     suspend fun updateNotification(notification: NotificationEntity) = notificationDao.updateNotification(notification)
     suspend fun markAllNotificationsAsRead(userId: String) = notificationDao.markAllAsRead(userId)
     suspend fun deleteNotification(notification: NotificationEntity) = notificationDao.deleteNotification(notification)
+    suspend fun deleteAllNotifications(userId: String) = notificationDao.deleteAllNotifications(userId)
     suspend fun getNotificationByTarget(userId: String, targetId: String, type: String) = notificationDao.getNotificationByTarget(userId, targetId, type)
 
     // Notes
@@ -71,6 +72,11 @@ class MemoRepository(
     val userSettings: Flow<UserEntity?> = userDao.getUserSettings()
     suspend fun saveUserSettings(user: UserEntity) = userDao.insertUser(user)
     suspend fun getUserPin() = userDao.getUserPin()
+    suspend fun updatePremiumStatus(isPremium: Boolean) {
+        userDao.getUserSettingsSync()?.let { user ->
+            userDao.insertUser(user.copy(isPremium = isPremium))
+        }
+    }
 
     // Gratitude
     fun getAllGratitudes(userId: String): Flow<List<GratitudeEntity>> = gratitudeDao.getAllGratitudes(userId)

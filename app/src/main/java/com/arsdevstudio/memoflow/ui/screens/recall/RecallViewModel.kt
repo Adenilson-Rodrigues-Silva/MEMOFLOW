@@ -62,8 +62,7 @@ class RecallViewModel(
 
     private fun checkLimitAndLoad(user: UserEntity) {
         viewModelScope.launch {
-            isPremium = billingPrefs.isPremium.first()
-            val maxRecalls = if (isPremium) 6 else 2
+            val maxRecalls = if (user.isPremium) 6 else 2
             
             val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             
@@ -86,8 +85,8 @@ class RecallViewModel(
 
     fun loadRandomOldNote() {
         viewModelScope.launch {
-            val maxRecalls = if (isPremium) 6 else 2
             val user = repository.userSettings.first() ?: UserEntity()
+            val maxRecalls = if (user.isPremium) 6 else 2
             val userId = if (user.isGoogleLogged) user.firebaseUid ?: "" else ""
             
             if (userId.isEmpty()) {

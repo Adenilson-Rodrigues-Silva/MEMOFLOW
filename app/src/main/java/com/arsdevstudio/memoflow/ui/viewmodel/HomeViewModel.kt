@@ -79,7 +79,8 @@ class HomeViewModel(private val repository: MemoRepository) : ViewModel() {
         _selectedDate.value = date
     }
 
-    fun canAddNote(): Boolean {
+    fun canAddNote(isPremium: Boolean): Boolean {
+        if (isPremium) return true
         val date = _selectedDate.value
         return _allNotesList.value.count { 
             Instant.ofEpochMilli(it.date).atZone(ZoneId.systemDefault()).toLocalDate() == date 

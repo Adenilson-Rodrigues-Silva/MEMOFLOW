@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -72,11 +73,13 @@ class ProfileViewModel(
     private val _notificationSettings = MutableStateFlow<NotificationSettings?>(null)
     val notificationSettings: StateFlow<NotificationSettings?> = _notificationSettings.asStateFlow()
 
-    val isPremium: StateFlow<Boolean> = billingPrefs.isPremium.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        false
-    )
+    val isPremium: StateFlow<Boolean> = repository.userSettings
+        .map { it?.isPremium ?: false }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            false
+        )
 
     init {
         loadUserSettings()

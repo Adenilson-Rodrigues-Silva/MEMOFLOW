@@ -142,6 +142,14 @@ class NotificationViewModel(
         }
     }
 
+    fun deleteAllNotifications() {
+        viewModelScope.launch {
+            if (_userId.value.isNotEmpty()) {
+                repository.deleteAllNotifications(_userId.value)
+            }
+        }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

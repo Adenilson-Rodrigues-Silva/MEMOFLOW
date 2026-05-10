@@ -15,6 +15,9 @@ interface UserDao {
     @Query("SELECT * FROM user_settings WHERE id = 0")
     fun getUserSettings(): Flow<UserEntity?>
 
+    @Query("SELECT * FROM user_settings WHERE id = 0")
+    suspend fun getUserSettingsSync(): UserEntity?
+
     @Query("SELECT pin FROM user_settings WHERE id = 0")
     suspend fun getUserPin(): String?
 }

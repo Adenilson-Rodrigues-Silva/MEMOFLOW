@@ -14,7 +14,7 @@ import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 
 @Database(
     entities = [NoteEntity::class, UserEntity::class, GratitudeEntity::class, NotificationEntity::class],
-    version = 13, // Incrementado de 12 para 13 para adicionar notificações
+    version = 14, // Incrementado para adicionar isPremium ao UserEntity
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -25,6 +25,12 @@ abstract class MemoDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
 
     companion object {
+        val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN isPremium INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                 db.execSQL("""

@@ -92,6 +92,11 @@ class WriteNoteViewModel(
         viewModelScope.launch {
             if (_uiStateFlow.value.id == 0L) {
                 val user = repository.userSettings.first()
+                if (user?.isPremium == true) {
+                    _uiStateFlow.update { it.copy(isLimitReached = false) }
+                    return@launch
+                }
+
                 val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
                 if (userId.isEmpty()) return@launch
                 
@@ -159,19 +164,20 @@ class WriteNoteViewModel(
 
             // Verifica limites apenas para notas NOVAS
             if (_uiStateFlow.value.id == 0L) {
-                // Limite de 3 notas por dia (IGUAL PARA AMBOS conforme pedido)
-                val countToday = repository.getNoteCountForToday(userId)
-                if (countToday >= 3) {
-                    _uiStateFlow.update { it.copy(error = "Limite de 3 notas diárias atingido.") }
-                    return@launch
+                // Limite de 3 notas por dia para usuários FREE
+                if (user?.isPremium != true) {
+                    val countToday = repository.getNoteCountForToday(userId)
+                    if (countToday >= 3) {
+                        _uiStateFlow.update { it.copy(error = "Limite de 3 notas diárias atingido.") }
+                        return@launch
+                    }
                 }
             }
 
             // Limite de cápsulas do tempo
             if (_uiStateFlow.value.isTimeCapsule && _uiStateFlow.value.id == 0L) {
-                val isPremium = billingPrefs.isPremium.first()
                 val capsuleCount = repository.getTimeCapsuleCount(userId)
-                if (!isPremium && capsuleCount >= 3) {
+                if (user?.isPremium != true && capsuleCount >= 3) {
                     _uiStateFlow.update { it.copy(error = "Limite de 3 cápsulas do tempo atingido. Evolua para o Premium!") }
                     return@launch
                 }
