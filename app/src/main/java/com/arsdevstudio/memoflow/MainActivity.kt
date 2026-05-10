@@ -37,7 +37,9 @@ import com.arsdevstudio.memoflow.ui.theme.MemoFlowTheme
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthViewModel
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthEvent
 
-class MainActivity : ComponentActivity() {
+import androidx.appcompat.app.AppCompatActivity
+
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         

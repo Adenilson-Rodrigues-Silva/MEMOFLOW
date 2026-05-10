@@ -37,11 +37,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.stringResource
 import com.arsdevstudio.memoflow.R
 import com.arsdevstudio.memoflow.ui.components.home.PurpleAI
 import com.arsdevstudio.memoflow.ui.components.home.rememberAnimatedAiGradient
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthEvent
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthViewModel
+
+import com.airbnb.lottie.compose.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +61,7 @@ fun ProfileScreen(
     val context = LocalContext.current
     val userSettings by viewModel.userSettings.collectAsState()
     val isPremium by viewModel.isPremium.collectAsState()
+    val isChangingLanguage by viewModel.isChangingLanguage.collectAsState()
     val animatedGradient = rememberAnimatedAiGradient()
     
     LaunchedEffect(Unit) {
@@ -100,6 +104,7 @@ fun ProfileScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showEditNameDialog by remember { mutableStateOf(false) }
     var showEditBioDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     val neonGreen = Color(0xFF00FFC2)
 
@@ -114,7 +119,7 @@ fun ProfileScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White) }
-                Text("Dono do Flow", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
+                Text(stringResource(R.string.profile_title), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
             }
 
             LazyColumn(
@@ -163,7 +168,7 @@ fun ProfileScreen(
                             
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = if (userSettings?.userName.isNullOrEmpty()) "Dono do Flow" else userSettings!!.userName, 
+                                    text = if (userSettings?.userName.isNullOrEmpty()) stringResource(R.string.profile_title) else userSettings!!.userName, 
                                     color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
                                     modifier = Modifier.clickable { showEditNameDialog = true },
                                     textAlign = TextAlign.Center
@@ -182,7 +187,7 @@ fun ProfileScreen(
                             }
 
                             Text(
-                                text = if (userSettings?.bio.isNullOrEmpty()) "Escreva algo sobre sua jornada..." else userSettings!!.bio, 
+                                text = if (userSettings?.bio.isNullOrEmpty()) stringResource(R.string.profile_bio_placeholder) else userSettings!!.bio, 
                                 color = Color.Gray, fontSize = 15.sp, textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(top = 10.dp, bottom = 20.dp).clickable { showEditBioDialog = true }
                             )
@@ -200,7 +205,7 @@ fun ProfileScreen(
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        text = if (isPremium) "MEMBRO PREMIUM" else "Conta Sincronizada", 
+                                        text = if (isPremium) stringResource(R.string.profile_premium_member) else stringResource(R.string.profile_synced_account), 
                                         color = if (isPremium) PurpleAI else Color(0xFFBB86FC), fontSize = 11.sp, fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -215,15 +220,16 @@ fun ProfileScreen(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         ProfileDashboardCard(
-                            title = "Loja de Evolução", 
-                            subtitle = if (isPremium) "Você é Premium! Ver doações" else "Adquira o Premium ou apoie o dev", 
+                            title = stringResource(R.string.profile_store_title), 
+                            subtitle = if (isPremium) stringResource(R.string.profile_store_premium_subtitle) else stringResource(R.string.profile_store_free_subtitle), 
                             icon = Icons.Default.ShoppingCart, 
                             gradient = if (isPremium) premiumBrush else animatedGradient, 
                             onClick = onStoreClick
                         )
-                        ProfileDashboardCard(title = "Segurança Ativa", subtitle = "Gerencie seu PIN e Biometria", icon = Icons.Default.Shield, gradient = animatedGradient, onClick = onSecurityClick)
-                        ProfileDashboardCard(title = "Fluxo de Alertas", subtitle = "Central de Notificações Inteligente", icon = Icons.Default.NotificationsActive, gradient = animatedGradient, onClick = onNotificationsClick)
-                        ProfileDashboardCard(title = "Arquivos & Backup", subtitle = "Nuvem e Exportação de Memórias", icon = Icons.Default.AutoMode, gradient = animatedGradient, onClick = onBackupClick)
+                        ProfileDashboardCard(title = stringResource(R.string.profile_security_title), subtitle = stringResource(R.string.profile_security_subtitle), icon = Icons.Default.Shield, gradient = animatedGradient, onClick = onSecurityClick)
+                        ProfileDashboardCard(title = stringResource(R.string.profile_notifications_title), subtitle = stringResource(R.string.profile_notifications_subtitle), icon = Icons.Default.NotificationsActive, gradient = animatedGradient, onClick = onNotificationsClick)
+                        ProfileDashboardCard(title = stringResource(R.string.profile_language_title), subtitle = stringResource(R.string.profile_language_subtitle), icon = Icons.Default.Language, gradient = animatedGradient, onClick = { showLanguageDialog = true })
+                        ProfileDashboardCard(title = stringResource(R.string.profile_backup_title), subtitle = stringResource(R.string.profile_backup_subtitle), icon = Icons.Default.AutoMode, gradient = animatedGradient, onClick = onBackupClick)
                     }
                 }
 
@@ -237,7 +243,7 @@ fun ProfileScreen(
                     ) {
                         Icon(Icons.Default.Logout, null, tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("SAIR DA CONTA GOOGLE", color = Color.Red.copy(alpha = 0.6f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(stringResource(R.string.profile_logout), color = Color.Red.copy(alpha = 0.6f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
 
@@ -245,7 +251,7 @@ fun ProfileScreen(
                     TextButton(onClick = { showDeleteDialog = true }, modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp)) {
                         Icon(Icons.Default.DeleteSweep, null, tint = Color.Red.copy(alpha = 0.5f))
                         Spacer(Modifier.width(8.dp))
-                        Text("RESETAR TODA A MINHA JORNADA", color = Color.Red.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(stringResource(R.string.profile_reset_journey), color = Color.Red.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                     Spacer(modifier = Modifier.height(40.dp))
                 }
@@ -255,30 +261,129 @@ fun ProfileScreen(
         // --- DIALOGS PRESERVADOS ---
         if (showEditNameDialog) {
             var nameText by remember { mutableStateOf(userSettings?.userName ?: "") }
-            AlertDialog(onDismissRequest = { showEditNameDialog = false }, containerColor = Color(0xFF1A1A1A), title = { Text("Como quer ser chamado?", color = Color.White) },
+            AlertDialog(onDismissRequest = { showEditNameDialog = false }, containerColor = Color(0xFF1A1A1A), title = { Text(stringResource(R.string.profile_edit_name_title), color = Color.White) },
                 text = { OutlinedTextField(value = nameText, onValueChange = { nameText = it }, shape = RoundedCornerShape(16.dp), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = neonGreen, focusedBorderColor = neonGreen, unfocusedBorderColor = Color.DarkGray)) },
-                confirmButton = { TextButton(onClick = { viewModel.updateUserName(nameText); showEditNameDialog = false }) { Text("SALVAR", color = neonGreen) } }
+                confirmButton = { TextButton(onClick = { viewModel.updateUserName(nameText); showEditNameDialog = false }) { Text(stringResource(R.string.profile_save), color = neonGreen) } }
             )
         }
 
         if (showEditBioDialog) {
             var bioText by remember { mutableStateOf(userSettings?.bio ?: "") }
-            AlertDialog(onDismissRequest = { showEditBioDialog = false }, title = { Text("Sua Biografia", color = Color.White) },
+            AlertDialog(onDismissRequest = { showEditBioDialog = false }, title = { Text(stringResource(R.string.profile_edit_bio_title), color = Color.White) },
                 text = { OutlinedTextField(value = bioText, onValueChange = { bioText = it }, shape = RoundedCornerShape(16.dp), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = neonGreen, focusedBorderColor = neonGreen, unfocusedBorderColor = Color.DarkGray)) },
-                confirmButton = { TextButton(onClick = { viewModel.updateUserBio(bioText); showEditBioDialog = false }) { Text("SALVAR", color = neonGreen) } },
+                confirmButton = { TextButton(onClick = { viewModel.updateUserBio(bioText); showEditBioDialog = false }) { Text(stringResource(R.string.profile_save), color = neonGreen) } },
                 containerColor = Color(0xFF1A1A1A)
             )
         }
 
         if (showDeleteDialog) {
-            AlertDialog(onDismissRequest = { showDeleteDialog = false }, containerColor = Color(0xFF1A1A1A), title = { Text("Apagar tudo?", color = Color.White) },
-                text = { Text("Esta ação removerá permanentemente todos os seus registros do dispositivo.", color = Color.Gray) },
-                confirmButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("APAGAR TUDO", color = Color.Red) } },
-                dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("CANCELAR", color = Color.White) } }
+            AlertDialog(onDismissRequest = { showDeleteDialog = false }, containerColor = Color(0xFF1A1A1A), title = { Text(stringResource(R.string.profile_delete_account_title), color = Color.White) },
+                text = { Text(stringResource(R.string.profile_delete_account_desc), color = Color.Gray) },
+                confirmButton = { TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.profile_delete_all), color = Color.Red) } },
+                dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.profile_cancel), color = Color.White) } }
+            )
+        }
+
+        if (showLanguageDialog) {
+            LanguageSelectionDialog(
+                onDismiss = { showLanguageDialog = false },
+                onLanguageSelected = { langCode ->
+                    viewModel.setLanguage(langCode)
+                    showLanguageDialog = false
+                }
+            )
+        }
+
+        if (isChangingLanguage) {
+            val phrase by viewModel.currentLanguagePhrase.collectAsState()
+            LanguageTransitionOverlay(phrase)
+        }
+    }
+}
+
+@Composable
+fun LanguageSelectionDialog(
+    onDismiss: () -> Unit,
+    onLanguageSelected: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1A1A1A),
+        title = { Text(stringResource(R.string.profile_language_title), color = Color.White) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LanguageOption(
+                    flagRes = R.drawable.ic_flag_brasil,
+                    label = "Português",
+                    onClick = { onLanguageSelected("pt") }
+                )
+                LanguageOption(
+                    flagRes = R.drawable.ic_flag_ingles,
+                    label = "English",
+                    onClick = { onLanguageSelected("en") }
+                )
+                LanguageOption(
+                    flagRes = R.drawable.ic_flag_spain,
+                    label = "Español",
+                    onClick = { onLanguageSelected("es") }
+                )
+            }
+        },
+        confirmButton = {}
+    )
+}
+
+@Composable
+fun LanguageOption(flagRes: Int, label: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        color = Color(0xFF252525),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(flagRes),
+                contentDescription = null,
+                modifier = Modifier.size(32.dp).clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(label, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+fun LanguageTransitionOverlay(phrase: String) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.9f)).clickable(enabled = false) {},
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.animation_dino_dance_save_note))
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier.size(180.dp) // Reduzido de 250.dp para 180.dp
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                phrase,
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
         }
     }
 }
+
 
 @Composable
 fun ProfileDashboardCard(title: String, subtitle: String, icon: ImageVector, gradient: Brush, onClick: () -> Unit) {

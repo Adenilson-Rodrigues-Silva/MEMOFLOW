@@ -20,6 +20,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MemoFlow"
+        android:localeConfig="@xml/locales_config"
         tools:targetApi="31">
 
         <!-- Chave do Google Maps configurada -->

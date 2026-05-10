@@ -25,6 +25,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.arsdevstudio.memoflow.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,12 +55,12 @@ fun SecurityScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White)
             }
-            Text("Segurança", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.security_title), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             Text(
-                "Proteja suas memórias com biometria ou PIN.",
+                stringResource(R.string.security_desc),
                 color = Color.Gray,
                 fontSize = 14.sp
             )
@@ -67,8 +69,8 @@ fun SecurityScreen(
 
             // Biometria
             SecurityToggleItem(
-                title = "Ativar Biometria",
-                description = "Usar digital para desbloquear o app",
+                title = stringResource(R.string.security_biometric_title),
+                description = stringResource(R.string.security_biometric_desc),
                 icon = Icons.Default.Fingerprint,
                 checked = userSettings.isBiometricEnabled,
                 onCheckedChange = { viewModel.updateBiometric(it) },
@@ -80,16 +82,16 @@ fun SecurityScreen(
             // PIN das Notas
             if (userSettings.pin.isNullOrEmpty()) {
                 SecurityClickItem(
-                    title = "Definir PIN de Segurança",
-                    description = "Toque para definir um PIN de 4 dígitos",
+                    title = stringResource(R.string.security_set_pin_title),
+                    description = stringResource(R.string.security_set_pin_desc),
                     icon = Icons.Default.Lock,
                     onClick = { showPinDialog = true },
                     neonGreen = neonGreen
                 )
             } else {
                 SecurityClickItem(
-                    title = "PIN Definido",
-                    description = "Toque para remover seu PIN de segurança",
+                    title = stringResource(R.string.security_pin_active_title),
+                    description = stringResource(R.string.security_pin_active_desc),
                     icon = Icons.Default.LockOpen,
                     onClick = { showRemovePinDialog = true },
                     neonGreen = neonGreen,
@@ -101,8 +103,8 @@ fun SecurityScreen(
 
             // Tempo de Bloqueio (Futuro)
             SecurityToggleItem(
-                title = "Bloqueio Automático",
-                description = "Bloquear após 30 segundos fora do app",
+                title = stringResource(R.string.security_auto_lock_title),
+                description = stringResource(R.string.security_auto_lock_desc),
                 icon = Icons.Default.Timer,
                 checked = true,
                 onCheckedChange = {}, 
@@ -121,14 +123,14 @@ fun SecurityScreen(
             containerColor = Color(0xFF1A1A1A),
             title = { 
                 Text(
-                    if (pinStep == 1) "Definir PIN" else "Confirmar PIN", 
+                    if (pinStep == 1) stringResource(R.string.security_dialog_set_pin) else stringResource(R.string.security_dialog_confirm_pin), 
                     color = Color.White 
                 ) 
             },
             text = {
                 Column {
                     Text(
-                        if (pinStep == 1) "Digite um PIN de 4 dígitos." else "Digite o PIN novamente para confirmar.",
+                        if (pinStep == 1) stringResource(R.string.security_pin_instructions) else stringResource(R.string.security_pin_confirm_instructions),
                         color = Color.Gray, 
                         fontSize = 14.sp
                     )
@@ -162,22 +164,22 @@ fun SecurityScreen(
                         } else {
                             if (firstPin == secondPin) {
                                 viewModel.updatePin(firstPin)
-                                Toast.makeText(context, "PIN definido com sucesso!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.security_pin_success), Toast.LENGTH_SHORT).show()
                                 showPinDialog = false
                             } else {
-                                Toast.makeText(context, "Os PINs não coincidem!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.security_pin_mismatch), Toast.LENGTH_SHORT).show()
                                 secondPin = ""
                             }
                         }
                     },
                     enabled = if (pinStep == 1) firstPin.length == 4 else secondPin.length == 4
                 ) {
-                    Text(if (pinStep == 1) "PRÓXIMO" else "CONFIRMAR", color = neonGreen)
+                    Text(if (pinStep == 1) stringResource(R.string.security_next) else stringResource(R.string.security_confirm), color = neonGreen)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPinDialog = false }) {
-                    Text("CANCELAR", color = Color.White)
+                    Text(stringResource(R.string.security_cancel), color = Color.White)
                 }
             }
         )
@@ -187,20 +189,20 @@ fun SecurityScreen(
         AlertDialog(
             onDismissRequest = { showRemovePinDialog = false },
             containerColor = Color(0xFF1A1A1A),
-            title = { Text("Remover PIN?", color = Color.White) },
-            text = { Text("Suas notas trancadas ficarão acessíveis sem senha.", color = Color.Gray) },
+            title = { Text(stringResource(R.string.security_remove_pin_title), color = Color.White) },
+            text = { Text(stringResource(R.string.security_remove_pin_desc), color = Color.Gray) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.removePin()
                     showRemovePinDialog = false
-                    Toast.makeText(context, "PIN removido.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.security_pin_removed_toast), Toast.LENGTH_SHORT).show()
                 }) {
-                    Text("REMOVER", color = Color.Red)
+                    Text(stringResource(R.string.security_remove_action), color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRemovePinDialog = false }) {
-                    Text("CANCELAR", color = Color.White)
+                    Text(stringResource(R.string.security_cancel), color = Color.White)
                 }
             }
         )

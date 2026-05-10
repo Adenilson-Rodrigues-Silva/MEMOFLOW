@@ -28,6 +28,11 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
+import com.arsdevstudio.memoflow.R
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import kotlinx.coroutines.delay
+
 class ProfileViewModel(
     application: Application,
     private val repository: MemoRepository,
@@ -35,6 +40,31 @@ class ProfileViewModel(
     private val scheduler: NotificationScheduler,
     private val billingPrefs: BillingPrefs
 ) : AndroidViewModel(application) {
+
+    private val _isChangingLanguage = MutableStateFlow(false)
+    val isChangingLanguage = _isChangingLanguage.asStateFlow()
+
+    private val _currentLanguagePhrase = MutableStateFlow("")
+    val currentLanguagePhrase = _currentLanguagePhrase.asStateFlow()
+
+    fun setLanguage(languageCode: String) {
+        viewModelScope.launch {
+            val phrases = getApplication<Application>().resources.getStringArray(R.array.language_switch_phrases)
+            _currentLanguagePhrase.value = phrases.random()
+            _isChangingLanguage.value = true
+            
+            delay(2500) // Tempo para a animação inicial do Dino
+            
+            val appLocale: LocaleListCompat = LocaleListCompat.forLanguageTags(languageCode)
+            AppCompatDelegate.setApplicationLocales(appLocale)
+
+            // Como o ViewModel sobrevive à recriação da Activity, precisamos resetar o estado
+            // após um pequeno delay para que a nova Activity tenha tempo de carregar
+            // mantendo o overlay visível durante a transição de sistema.
+            delay(2000) 
+            _isChangingLanguage.value = false
+        }
+    }
 
     private val _userSettings = MutableStateFlow<UserEntity?>(null)
     val userSettings: StateFlow<UserEntity?> = _userSettings.asStateFlow()

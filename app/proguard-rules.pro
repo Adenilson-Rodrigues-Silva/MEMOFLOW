@@ -20,6 +20,7 @@
 -keep public class * implements com.google.gson.JsonSerializer
 -keep public class * implements com.google.gson.JsonDeserializer
 -keep class com.arsdevstudio.memoflow.data.model.** { *; }
+-keep class com.arsdevstudio.memoflow.data.local.entity.** { *; }
 
 # Retrofit & OkHttp rules
 -keepattributes Signature, InnerClasses, EnclosingMethod
@@ -46,3 +47,18 @@
 
 # Keep line numbers for crash reporting (optional but recommended)
 -keepattributes SourceFile,LineNumberTable
+
+# Lottie rules
+-keep class com.airbnb.lottie.** { *; }
+
+# RichEditor rules
+-keep class com.mohamedrejeb.richeditor.** { *; }
+
+# Billing Library
+-keep class com.android.billingclient.** { *; }
+-dontwarn com.android.billingclient.**
+
+# Keep Compose-specific things if needed (usually handled by the compiler)
+-keepclassmembers class * extends androidx.lifecycle.ViewModel {
+    <init>(...);
+}

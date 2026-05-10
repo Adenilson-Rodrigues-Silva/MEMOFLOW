@@ -35,6 +35,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.airbnb.lottie.RenderMode
 import com.airbnb.lottie.compose.*
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
 import com.arsdevstudio.memoflow.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arsdevstudio.memoflow.ui.components.home.rememberAnimatedAiGradient
@@ -87,7 +89,7 @@ fun StatisticsScreen(
         containerColor = Color.Black,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Estatísticas", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+                title = { Text(stringResource(R.string.stats_title), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
@@ -112,11 +114,11 @@ fun StatisticsScreen(
                         .padding(4.dp)
                 ) {
                     Row(modifier = Modifier.fillMaxSize()) {
-                        PeriodTab(Modifier.weight(1f), "Semanal", selectedTab == 0, dataGradient) { 
+                        PeriodTab(Modifier.weight(1f), stringResource(R.string.stats_weekly), selectedTab == 0, dataGradient) { 
                             selectedTab = 0
                             viewModel.setPeriodInt(0)
                         }
-                        PeriodTab(Modifier.weight(1f), "Mensal", selectedTab == 1, dataGradient) { 
+                        PeriodTab(Modifier.weight(1f), stringResource(R.string.stats_monthly), selectedTab == 1, dataGradient) { 
                             selectedTab = 1
                             viewModel.setPeriodInt(1)
                         }
@@ -127,7 +129,7 @@ fun StatisticsScreen(
             // --- AI INSIGHTS CARD ---
             item {
                 val isPremium by viewModel.isPremium.collectAsState()
-                SectionHeader("Inteligência Artificial", isAi = true)
+                SectionHeader(stringResource(R.string.stats_ai_section), isAi = true)
                 AiInsightCard(
                     insight = statsData.aiInsight,
                     isPremium = isPremium,
@@ -147,13 +149,13 @@ fun StatisticsScreen(
             // --- NOVO CARD: LUGAR MAIS FELIZ ---
             statsData.happiestCity?.let { cityStat ->
                 item {
-                    SectionHeader("Geografia da Felicidade")
+                    SectionHeader(stringResource(R.string.stats_happiness_geography))
                     HappiestCityCard(cityStat, dataGradient)
                 }
             }
 
             item {
-                SectionHeader("Luz no Pote")
+                SectionHeader(stringResource(R.string.stats_light_in_jar))
                 Card(
                     modifier = Modifier.fillMaxWidth().border(1.5.dp, dataGradient, RoundedCornerShape(24.dp)),
                     shape = RoundedCornerShape(24.dp),
@@ -175,13 +177,13 @@ fun StatisticsScreen(
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text(
-                                "${statsData.gratitudeCount} novas gratidões",
+                                stringResource(R.string.stats_gratitudes_count, statsData.gratitudeCount),
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
                             )
                             Text(
-                                "Total no pote: ${statsData.totalGratitudesInPote}",
+                                stringResource(R.string.stats_total_gratitudes, statsData.totalGratitudesInPote),
                                 color = Color.Gray,
                                 fontSize = 12.sp
                             )
@@ -192,29 +194,29 @@ fun StatisticsScreen(
 
             item {
                 if (selectedTab == 1) {
-                    SectionHeader("Termômetro de Humores")
+                    SectionHeader(stringResource(R.string.stats_mood_thermometer))
                     MonthlyMoodThermometer(statsData.topMoods, statsData.monthName, dataGradient)
                 } else {
-                    SectionHeader("Resumo da Semana")
+                    SectionHeader(stringResource(R.string.stats_summary_week))
                     WeeklyMoodInsight(statsData.topMoods, dataGradient)
                 }
             }
 
             item {
                 Column {
-                    SectionHeader(if (selectedTab == 0) "Tendência Semanal" else "Tendência Mensal")
+                    SectionHeader(if (selectedTab == 0) stringResource(R.string.stats_weekly_trend) else stringResource(R.string.stats_monthly_trend))
                     MoodChartProfessional(statsData.moodPoints, statsData.dayLabels, neonGreen, dataGradient)
                 }
             }
 
             item {
-                SectionHeader("Segredos e Futuro")
+                SectionHeader(stringResource(R.string.stats_secrets_future))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     InsightCardClickable(
                         Modifier.weight(1f), 
-                        "Trancadas", 
+                        stringResource(R.string.stats_locked), 
                         statsData.lockedCount.toString(), 
-                        "notas", 
+                        stringResource(R.string.stats_notes), 
                         Icons.Default.Lock, 
                         neonGreen,
                         dataGradient,
@@ -222,9 +224,9 @@ fun StatisticsScreen(
                     )
                     InsightCardClickable(
                         Modifier.weight(1f), 
-                        "Congeladas", 
+                        stringResource(R.string.stats_frozen), 
                         statsData.capsuleCount.toString(), 
-                        "notas", 
+                        stringResource(R.string.stats_notes), 
                         Icons.Default.AcUnit, 
                         iceBlue,
                         dataGradient,
@@ -234,7 +236,7 @@ fun StatisticsScreen(
             }
 
             item {
-                SectionHeader("Volume de Memórias")
+                SectionHeader(stringResource(R.string.stats_memory_volume))
                 EntriesBarChart(statsData.entriesPerDay, statsData.dayLabels, neonGreen, dataGradient)
             }
 
@@ -251,14 +253,14 @@ fun StatisticsScreen(
                 containerColor = Color(0xFF1A1A1A),
                 title = { 
                     Text(
-                        if (filterType == "Lock") "Dias com Cadeado 🔒" else "Dias com Cápsula ❄️", 
+                        if (filterType == "Lock") stringResource(R.string.stats_locked_days_title) else stringResource(R.string.stats_frozen_days_title), 
                         color = Color.White 
                     ) 
                 },
                 text = {
                     Column {
                         if (days.isEmpty()) {
-                            Text("Nenhum registro encontrado neste período.", color = Color.Gray)
+                            Text(stringResource(R.string.stats_no_records_period), color = Color.Gray)
                         } else {
                             days.forEach { date ->
                                 Text(
@@ -273,7 +275,7 @@ fun StatisticsScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { showSpecialDaysDialog = false }) {
-                        Text("FECHAR", color = neonGreen)
+                        Text(stringResource(R.string.stats_close), color = neonGreen)
                     }
                 }
             )
@@ -303,7 +305,7 @@ fun HappiestCityCard(cityStat: CityHumorStat, borderBrush: Brush) {
             }
             Spacer(Modifier.width(20.dp))
             Column {
-                Text("Seu Lugar Mais Feliz", color = Color.Gray, fontSize = 12.sp)
+                Text(stringResource(R.string.stats_happiest_place_title), color = Color.Gray, fontSize = 12.sp)
                 Text(
                     text = cityStat.cityName, 
                     color = Color.White, 
@@ -311,7 +313,7 @@ fun HappiestCityCard(cityStat: CityHumorStat, borderBrush: Brush) {
                     fontWeight = FontWeight.ExtraBold 
                 )
                 Text(
-                    text = "Você costuma estar mais vibrante aqui!",
+                    text = stringResource(R.string.stats_happiest_place_desc),
                     color = Color(0xFF00FFC2),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -330,7 +332,7 @@ fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String, borderBrush
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                text = "Resumo de $monthName",
+                text = stringResource(R.string.stats_summary_of, monthName),
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -339,7 +341,7 @@ fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String, borderBrush
             val dominantMood = moods.firstOrNull()
             if (dominantMood != null) {
                 Text(
-                    text = "Este mês você esteve predominantemente ${dominantMood.label.lowercase()}.",
+                    text = stringResource(R.string.stats_predominant_mood, dominantMood.label.lowercase()),
                     color = Color.Gray,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
@@ -365,7 +367,7 @@ fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String, borderBrush
                 }
             } else {
                 Text(
-                    text = "Sem registros suficientes.",
+                    text = stringResource(R.string.stats_not_enough_data),
                     color = Color.Gray,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 8.dp)
@@ -383,7 +385,7 @@ fun MonthlyMoodThermometer(moods: List<MoodStat>, monthName: String, borderBrush
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(mood.label, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
                     Text(
-                        "${mood.count} ${if (mood.count == 1) "nota" else "notas"}",
+                        "${mood.count} ${if (mood.count == 1) stringResource(R.string.stats_note) else stringResource(R.string.stats_notes)}",
                         color = Color.Gray,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -425,7 +427,7 @@ fun WeeklyMoodInsight(moods: List<MoodStat>, borderBrush: Brush) {
                 }
                 Spacer(Modifier.width(20.dp))
                 Column {
-                    Text("Humor Dominante", color = Color.Gray, fontSize = 12.sp)
+                    Text(stringResource(R.string.stats_dominant_mood), color = Color.Gray, fontSize = 12.sp)
                     Text(
                         dominantMood.label, 
                         color = Color.White, 
@@ -433,14 +435,14 @@ fun WeeklyMoodInsight(moods: List<MoodStat>, borderBrush: Brush) {
                         fontWeight = FontWeight.ExtraBold 
                     )
                     Text(
-                        "Presente em ${dominantMood.percentage}% da sua semana.",
+                        text = stringResource(R.string.stats_mood_presence, dominantMood.percentage),
                         color = dominantMood.color,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
             } else {
-                Text("Inicie seus registros para ver o resumo da semana!", color = Color.Gray, fontSize = 14.sp)
+                Text(stringResource(R.string.stats_start_entries_prompt), color = Color.Gray, fontSize = 14.sp)
             }
         }
     }
@@ -557,7 +559,7 @@ fun AiInsightCard(
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "MemoFlow AI Insight",
+                        stringResource(R.string.stats_ai_insight_title),
                         color = Color.White,
                         fontWeight = FontWeight.Black,
                         fontSize = 18.sp,
@@ -573,10 +575,10 @@ fun AiInsightCard(
                     ) {
                         Text(
                             when(insight.currentScope) {
-                                "today" -> "HOJE"
-                                "weekly" -> "SEMANAL"
-                                "monthly" -> "MENSAL"
-                                else -> "INSIGHT"
+                                "today" -> stringResource(R.string.stats_ai_today)
+                                "weekly" -> stringResource(R.string.stats_ai_weekly)
+                                "monthly" -> stringResource(R.string.stats_ai_monthly)
+                                else -> stringResource(R.string.stats_ai_insight_label)
                             },
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             color = Color(0xFF00FFC2),
@@ -593,7 +595,7 @@ fun AiInsightCard(
 
             if (!isPremium) {
                 Text(
-                    "Assine o Premium para desbloquear resumos semanais e análises de humor geradas por Inteligência Artificial.",
+                    stringResource(R.string.stats_ai_premium_desc),
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
@@ -604,12 +606,12 @@ fun AiInsightCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("VER PLANOS PREMIUM", color = Color.Black, fontWeight = FontWeight.Black)
+                    Text(stringResource(R.string.stats_ai_view_plans), color = Color.Black, fontWeight = FontWeight.Black)
                 }
             } else {
                 if (insight.summary.isEmpty() && !insight.isLoading) {
                     Text(
-                        "Sua jornada merece ser compreendida. A IA analisará suas notas para encontrar padrões, motivação e insights sobre o seu bem-estar.",
+                        stringResource(R.string.stats_ai_free_desc),
                         color = Color.LightGray,
                         fontSize = 15.sp,
                         lineHeight = 22.sp
@@ -618,9 +620,9 @@ fun AiInsightCard(
                     
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         listOf(
-                            Triple("HOJE", "today", onTodayGenerate),
-                            Triple("SEMANA", "weekly", onGenerateWeekly),
-                            Triple("MÊS", "monthly", onGenerateMonthly)
+                            Triple(stringResource(R.string.stats_ai_today), "today", onTodayGenerate),
+                            Triple(stringResource(R.string.stats_ai_weekly), "weekly", onGenerateWeekly),
+                            Triple(stringResource(R.string.stats_ai_monthly), "monthly", onGenerateMonthly)
                         ).forEach { (label, scope, action) ->
                             val nextTime = insight.nextAvailableTime[scope] ?: 0L
                             val isCooldown = System.currentTimeMillis() < nextTime
@@ -649,7 +651,7 @@ fun AiInsightCard(
                                         val remaining = (nextTime - System.currentTimeMillis()) / 1000
                                         Text("${remaining / 60}m ${remaining % 60}s", color = timerColor, fontWeight = FontWeight.Bold)
                                     } else {
-                                        Text("REVELAR INSIGHT $label", color = Color.Black, fontWeight = FontWeight.Black)
+                                        Text(stringResource(R.string.stats_ai_reveal_btn, label), color = Color.Black, fontWeight = FontWeight.Black)
                                     }
                                 }
                             }
@@ -688,9 +690,9 @@ fun AiInsightCard(
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
-                            Triple("HOJE", "today", onTodayGenerate),
-                            Triple("SEMANA", "weekly", onGenerateWeekly),
-                            Triple("MÊS", "monthly", onGenerateMonthly)
+                            Triple(stringResource(R.string.stats_ai_today), "today", onTodayGenerate),
+                            Triple(stringResource(R.string.stats_ai_weekly), "weekly", onGenerateWeekly),
+                            Triple(stringResource(R.string.stats_ai_monthly), "monthly", onGenerateMonthly)
                         ).forEach { (label, scope, action) ->
                             val nextTime = insight.nextAvailableTime[scope] ?: 0L
                             val isCooldown = System.currentTimeMillis() < nextTime
@@ -735,16 +737,8 @@ fun AiInsightCard(
 
 @Composable
 fun MemoFlowAiLoadingDialog() {
-    val loadingMessages = remember {
-        listOf(
-            "MemoFlow AI está conectando os pontos...",
-            "Acelerando com a tecnologia Groq ⚡",
-            "Refletindo sobre suas memórias...",
-            "Llama 3.1 processando em velocidade máxima!",
-            "Sua jornada está sendo resumida agora..."
-        )
-    }
-    val currentMessage = remember { loadingMessages.random() }
+    val loadingMessages = stringArrayResource(R.array.stats_ai_loading_messages)
+    val currentMessage = remember { if (loadingMessages.isNotEmpty()) loadingMessages.random() else "" }
 
     Dialog(
         onDismissRequest = { },
@@ -778,7 +772,7 @@ fun MemoFlowAiLoadingDialog() {
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    "Quase pronto! A IA é veloz.",
+                    stringResource(R.string.stats_ai_loading_footer),
                     color = DataGreen,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
@@ -891,7 +885,7 @@ fun AiSentimentEvolutionChart(scores: List<Float>) {
 
 @Composable
 fun MoodChartProfessional(points: List<Float>, labels: List<String>, color: Color, borderBrush: Brush) {
-    val verticalLabels = listOf("Incrível", "", "", "Neutro", "", "", "Muito Triste")
+    val verticalLabels = listOf(stringResource(R.string.stats_chart_incredible), "", "", stringResource(R.string.stats_chart_neutral), "", "", stringResource(R.string.stats_chart_sad))
     
     Card(
         modifier = Modifier.fillMaxWidth().height(250.dp).border(1.5.dp, borderBrush, RoundedCornerShape(24.dp)),
@@ -1030,9 +1024,9 @@ fun MediaSummaryCard(audios: Int, images: Int, color: Color, borderBrush: Brush)
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-            MediaItemStats(audios, "Áudios", Icons.Default.Mic, DataCyan)
+            MediaItemStats(audios, stringResource(R.string.stats_audios), Icons.Default.Mic, DataCyan)
             Box(modifier = Modifier.width(1.dp).height(30.dp).background(Color.White.copy(alpha = 0.1f)))
-            MediaItemStats(images, "Fotos", Icons.Default.Image, DataCyan)
+            MediaItemStats(images, stringResource(R.string.stats_photos), Icons.Default.Image, DataCyan)
         }
     }
 }

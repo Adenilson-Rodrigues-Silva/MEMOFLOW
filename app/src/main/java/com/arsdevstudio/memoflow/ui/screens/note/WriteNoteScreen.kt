@@ -1,5 +1,8 @@
 package com.arsdevstudio.memoflow.ui.screens.note
 
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
+import com.arsdevstudio.memoflow.R
 import android.Manifest
 import android.content.Intent
 import android.graphics.Bitmap
@@ -51,7 +54,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.*
-import com.arsdevstudio.memoflow.R
 import com.arsdevstudio.memoflow.ui.components.EmojiSelector
 import com.arsdevstudio.memoflow.ui.components.FloatingColorMenu
 import com.arsdevstudio.memoflow.ui.components.PhotoGrid
@@ -127,14 +129,14 @@ fun WriteNoteScreen(
         AlertDialog(
             onDismissRequest = { onBack() },
             containerColor = Color(0xFF1A1A1A),
-            title = { Text("Limite Atingido", color = Color.White) },
-            text = { Text("Você já atingiu o limite de 3 notas hoje. Guarde suas próximas memórias amanhã!", color = Color.Gray) },
+            title = { Text(stringResource(R.string.write_note_limit_reached_title), color = Color.White) },
+            text = { Text(stringResource(R.string.write_note_limit_reached_desc), color = Color.Gray) },
             confirmButton = {
                 Button(
                     onClick = { onBack() },
                     colors = ButtonDefaults.buttonColors(containerColor = neonGreen)
                 ) {
-                    Text("VOLTAR", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.write_note_back_button), color = Color.Black, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -198,35 +200,9 @@ fun WriteNoteScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    val savingPhrases = remember {
-                        listOf(
-                            "Esse momento não vai se perder\nno tempo... ⏳",
-                            "O Dino está guardando\nsua memória... 🦖",
-                            "Eternizando mais um pedaço\nda sua história... ✨",
-                            "Sua jornada está sendo escrita\nnas estrelas... 🌌",
-                            "Arquivando um momento\nprecioso... 💾",
-                            "Deixando sua marca no\nfluxo do tempo... 🌊",
-                            "Salvando esse instante\nespecial... 💛",
-                            "Transformando agora em\nlembrança... 🧠",
-                            "Registrando um capítulo\nda sua vida... 📖",
-                            "Guardando isso com\ncarinho... 🤍",
-                            "Mais uma memória\npara o futuro... 🚀",
-                            "Seu momento foi salvo\ncom sucesso... ✅",
-                            "O Dino aprovou esse\nmomento! 🦖✨",
-                            "Uma memória digna\nde celebração! 🎉",
-                            "Capturando esse instante\nmágico... 🌠",
-                            "Isso merece ser lembrado\npra sempre... ♾️",
-                            "Organizando seu passado\ncom cuidado... 🗂️",
-                            "Esse momento agora é\neterno... ⌛",
-                            "Protegido no cofre\ndo Dino 🛡️🦖",
-                            "Guardado com estilo\njurássico 🕺🦖",
-                            "Mais uma lembrança\nsalva no tempo... ⏱️",
-                            "Seu momento agora vive\nna história... 📚",
-                            "Salvando com carinho\ne um passinho... 🕺💾"
-                        )
-                    }
+                    val savingPhrases = stringArrayResource(R.array.write_note_saving_phrases)
                     val randomPhrase = remember(uiState.isSaving) {
-                        if (uiState.isSaving) savingPhrases.random() else ""
+                        if (uiState.isSaving && savingPhrases.isNotEmpty()) savingPhrases.random() else ""
                     }
 
                     Text(
@@ -268,13 +244,13 @@ fun WriteNoteScreen(
         containerColor = Color.Black,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(if (readOnly) "Modo Espiadinha ❄️" else "Entrada", color = Color.White, fontSize = 18.sp) },
+                title = { Text(if (readOnly) stringResource(R.string.write_note_peek_mode) else stringResource(R.string.write_note_entry), color = Color.White, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = Color.White, modifier = Modifier.size(32.dp)) }
                 },
                 actions = {
                     if (readOnly) {
-                        TextButton(onClick = onBack) { Text("SAIR", color = iceBlue, fontWeight = FontWeight.ExtraBold) }
+                        TextButton(onClick = onBack) { Text(stringResource(R.string.write_note_exit), color = iceBlue, fontWeight = FontWeight.ExtraBold) }
                     } else {
                         IconButton(onClick = { showOverflowMenu = true }) { Icon(Icons.Default.MoreVert, null, tint = Color.White) }
                         NoteOptionsOverflowMenu(
@@ -283,12 +259,12 @@ fun WriteNoteScreen(
                             onDismissRequest = { showOverflowMenu = false },
                             onShareClick = { showShareDialog = true; showOverflowMenu = false },
                             onFontStyleClick = { 
-                                Toast.makeText(context, "Estilos de fonte em breve na v2.0! ✨", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.write_note_font_styles_soon), Toast.LENGTH_SHORT).show()
                                 showOverflowMenu = false 
                             },
                             onDetailsClick = { showDetailsDialog = true; showOverflowMenu = false },
                             onLockClick = {
-                                if (securitySettings.pin.isNullOrEmpty()) Toast.makeText(context, "Defina um PIN primeiro!", Toast.LENGTH_LONG).show()
+                                if (securitySettings.pin.isNullOrEmpty()) Toast.makeText(context, context.getString(R.string.write_note_set_pin_first), Toast.LENGTH_LONG).show()
                                 else showLockConfirmDialog = true
                                 showOverflowMenu = false
                             },
@@ -362,8 +338,9 @@ fun WriteNoteScreen(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(scrollState).padding(16.dp)
         ) {
             if (uiState.isTimeCapsule) {
+                val unlockDateStr = uiState.unlockDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) } ?: ""
                 Text(
-                    text = "CONGELADA ATÉ ${uiState.unlockDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) }}",
+                    text = stringResource(R.string.write_note_frozen_until, unlockDateStr),
                     color = iceBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
@@ -403,7 +380,7 @@ fun WriteNoteScreen(
                                 cursorBrush = SolidColor(if (uiState.isTimeCapsule) iceBlue else neonGreen)
                             )
                             Text(
-                                text = "Humor: ${uiState.selectedHumor}",
+                                text = stringResource(R.string.write_note_mood_label, uiState.selectedHumor),
                                 color = if (uiState.isTimeCapsule) iceBlue else neonGreen,
                                 fontSize = 14.sp
                             )
@@ -485,7 +462,7 @@ fun WriteNoteScreen(
                         val bitmap = Bitmap.createBitmap(dialogView.width, dialogView.height, Bitmap.Config.ARGB_8888)
                         val canvas = Canvas(bitmap)
                         dialogView.draw(canvas)
-                        ShareUtils.shareBitmap(context, bitmap, "Minha Memória")
+                        ShareUtils.shareBitmap(context, bitmap, context.getString(R.string.write_note_share_title))
                     } catch (e: Exception) { e.printStackTrace() }
                     isGeneratingCard = false
                 }
@@ -519,12 +496,12 @@ fun WriteNoteScreen(
                         viewModel.setTimeCapsule(selectedDate)
                         viewModel.captureLocationAndSave(context) { onBack() }
                     } else {
-                        Toast.makeText(context, "Escolha uma data presente ou futura!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.write_note_invalid_date), Toast.LENGTH_SHORT).show()
                     }
                     showDatePicker = false
-                }) { Text("CONGELAR", color = iceBlue) }
+                }) { Text(stringResource(R.string.write_note_freeze_action), color = iceBlue) }
             },
-            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("CANCELAR", color = Color.White) } }
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.write_note_cancel_action), color = Color.White) } }
         ) { DatePicker(state = datePickerState) }
     }
 
@@ -532,17 +509,17 @@ fun WriteNoteScreen(
         AlertDialog(
             onDismissRequest = { showLockConfirmDialog = false },
             containerColor = Color(0xFF1A1A1A),
-            title = { Text(if (uiState.isLocked) "Destrancar Memória?" else "Trancar Memória?", color = Color.White) },
-            text = { Text(if (uiState.isLocked) "Deseja remover o bloqueio desta nota?" else "Tem certeza que deseja trancar esta memória? Ela só poderá ser aberta com o seu PIN.", color = Color.Gray) },
+            title = { Text(if (uiState.isLocked) stringResource(R.string.write_note_unlock_title) else stringResource(R.string.write_note_lock_title), color = Color.White) },
+            text = { Text(if (uiState.isLocked) stringResource(R.string.write_note_unlock_desc) else stringResource(R.string.write_note_lock_desc), color = Color.Gray) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.toggleLock()
                     viewModel.captureLocationAndSave(context) { onBack() }
                     showLockConfirmDialog = false
-                    Toast.makeText(context, if (!uiState.isLocked) "Memória Trancada!" else "Memória Destrancada!", Toast.LENGTH_SHORT).show()
-                }) { Text("CONFIRMAR", color = neonGreen) }
+                    Toast.makeText(context, if (!uiState.isLocked) context.getString(R.string.write_note_locked_toast) else context.getString(R.string.write_note_unlocked_toast), Toast.LENGTH_SHORT).show()
+                }) { Text(stringResource(R.string.write_note_confirm_action), color = neonGreen) }
             },
-            dismissButton = { TextButton(onClick = { showLockConfirmDialog = false }) { Text("CANCELAR", color = Color.White) } }
+            dismissButton = { TextButton(onClick = { showLockConfirmDialog = false }) { Text(stringResource(R.string.write_note_cancel_action), color = Color.White) } }
         )
     }
 
@@ -552,7 +529,7 @@ fun WriteNoteScreen(
             charCount = richTextState.annotatedString.text.length,
             hasAudio = uiState.audioPath != null,
             imageCount = uiState.images.size,
-            date = "HOJE",
+            date = stringResource(R.string.write_note_today_label),
             onDismiss = { showDetailsDialog = false },
             neonGreen = neonGreen
         )
@@ -574,17 +551,17 @@ fun NoteBottomToolbar(
     Surface(color = Color(0xFF121212), modifier = Modifier.fillMaxWidth().height(80.dp), shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
         Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
-                ToolbarButton(Icons.Default.Mic, "Voz", onClick = onVoiceClick)
-                ToolbarButton(Icons.Default.FormatBold, "Formatar", onClick = onFormatClick)
-                ToolbarButton(Icons.Default.Face, "Emoji", onClick = onEmojiClick)
+                ToolbarButton(Icons.Default.Mic, stringResource(R.string.write_note_toolbar_voice), onClick = onVoiceClick)
+                ToolbarButton(Icons.Default.FormatBold, stringResource(R.string.write_note_toolbar_format), onClick = onFormatClick)
+                ToolbarButton(Icons.Default.Face, stringResource(R.string.write_note_toolbar_emoji), onClick = onEmojiClick)
                 IconButton(onClick = onAddImageClick, enabled = canAddMoreImages) {
                     Icon(
                         imageVector = Icons.Default.Image,
-                        contentDescription = "Adicionar Imagem",
+                        contentDescription = stringResource(R.string.write_note_toolbar_add_image),
                         tint = if (canAddMoreImages) Color.Gray else Color.DarkGray.copy(alpha = 0.5f)
                     )
                 }
-                ToolbarButton(icon = Icons.Default.Brush, desc = "Marcador", onClick = onMarkerClick)
+                ToolbarButton(icon = Icons.Default.Brush, desc = stringResource(R.string.write_note_toolbar_marker), onClick = onMarkerClick)
             }
             FloatingActionButton(
                 onClick = onSaveClick,

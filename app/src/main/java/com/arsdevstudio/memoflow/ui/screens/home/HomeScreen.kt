@@ -1,5 +1,7 @@
 package com.arsdevstudio.memoflow.ui.screens.home
 
+import androidx.compose.ui.res.stringResource
+import com.arsdevstudio.memoflow.R
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -155,7 +157,7 @@ fun HomeScreen(
                         onToggle = { isMenuExpanded = !isMenuExpanded },
                         canAddNote = viewModel.canAddNote(),
                         onLimitReached = {
-                            Toast.makeText(context, "Limite de 3 notas diárias atingido!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.home_limit_reached), Toast.LENGTH_SHORT).show()
                         },
                         isToday = isToday
                     )
@@ -263,10 +265,10 @@ fun HomeScreen(
             AlertDialog(
                 onDismissRequest = { noteToUnlock = null; pinInput = "" },
                 containerColor = Color(0xFF1A1A1A),
-                title = { Text(if (isCapsule) "Acessar Cápsula" else "Memória Trancada", color = Color.White) },
+                title = { Text(if (isCapsule) stringResource(R.string.home_access_capsule) else stringResource(R.string.home_locked_memory), color = Color.White) },
                 text = {
                     Column {
-                        Text("Digite seu PIN de 4 dígitos para acessar.", color = Color.Gray, fontSize = 14.sp)
+                        Text(stringResource(R.string.home_pin_instructions), color = Color.Gray, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(16.dp))
                         TextField(
                             value = pinInput,
@@ -301,28 +303,39 @@ fun HomeScreen(
                                 navController.navigate(route)
                             }
                         } else {
-                            Toast.makeText(context, "PIN Incorreto!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.home_wrong_pin), Toast.LENGTH_SHORT).show()
                             pinInput = ""
                         }
                     }) {
-                        Text("VERIFICAR", color = neonGreen)
+                        Text(stringResource(R.string.home_verify), color = neonGreen)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { noteToUnlock = null; pinInput = "" }) {
-                        Text("CANCELAR", color = Color.White)
+                        Text(stringResource(R.string.home_cancel), color = Color.White)
                     }
                 }
             )
         }
 
         if (showMeltOptions) {
-            val isReady = noteToUnlock?.unlockDate?.let { it <= System.currentTimeMillis() } ?: false
+            val isReady = remember(noteToUnlock) {
+                noteToUnlock?.unlockDate?.let { unlockDate ->
+                    val now = System.currentTimeMillis()
+                    if (now >= unlockDate) true
+                    else {
+                        val unlockDay = Instant.ofEpochMilli(unlockDate)
+                            .atZone(ZoneId.systemDefault()).toLocalDate()
+                        val today = LocalDate.now()
+                        !today.isBefore(unlockDay)
+                    }
+                } ?: false
+            }
             AlertDialog(
                 onDismissRequest = { showMeltOptions = false; noteToUnlock = null; pinInput = "" },
                 containerColor = Color(0xFF1A1A1A),
-                title = { Text(if(isReady) "O gelo derreteu!" else "Ainda está congelada", color = Color.White) },
-                text = { Text(if(isReady) "Esta memória está pronta para ser revelada. Deseja descongelar para sempre?" else "O tempo de espera ainda não acabou, mas você pode dar uma espiadinha silenciosa.", color = Color.Gray) },
+                title = { Text(if(isReady) stringResource(R.string.home_ice_melted) else stringResource(R.string.home_still_frozen), color = Color.White) },
+                text = { Text(if(isReady) stringResource(R.string.home_melt_ready_desc) else stringResource(R.string.home_melt_wait_desc), color = Color.Gray) },
                 confirmButton = {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         if (isReady) {
@@ -342,7 +355,7 @@ fun HomeScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = neonGreen)
                             ) {
-                                Text("DERRETER PARA SEMPRE", color = Color.Black, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.home_melt_permanently), color = Color.Black, fontWeight = FontWeight.Bold)
                             }
                         } else {
                             OutlinedButton(
@@ -356,7 +369,7 @@ fun HomeScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 border = BorderStroke(1.dp, iceBlue)
                             ) {
-                                Text("SÓ ESPIAR (CONGELADA)", color = iceBlue)
+                                Text(stringResource(R.string.home_just_peek), color = iceBlue)
                             }
                         }
                         Spacer(Modifier.height(8.dp))
@@ -364,7 +377,7 @@ fun HomeScreen(
                             onClick = { showMeltOptions = false; noteToUnlock = null; pinInput = "" },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("CANCELAR", color = Color.White)
+                            Text(stringResource(R.string.home_cancel), color = Color.White)
                         }
                     }
                 }
@@ -401,13 +414,13 @@ fun StatusInfoContent(
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            if (isPremium) "Status Premium Ativo" else "Status do seu Flow",
+            if (isPremium) stringResource(R.string.home_premium_active) else stringResource(R.string.home_flow_status),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
         Text(
-            if (isPremium) "Você tem acesso ilimitado a quase tudo!" else "Gerencie seu uso diário e limites.",
+            if (isPremium) stringResource(R.string.home_premium_desc) else stringResource(R.string.home_free_desc),
             fontSize = 14.sp,
             color = Color.Gray,
             modifier = Modifier.padding(top = 4.dp)
@@ -416,7 +429,7 @@ fun StatusInfoContent(
         Spacer(Modifier.height(32.dp))
 
         StatusItem(
-            label = "Notas de hoje",
+            label = stringResource(R.string.home_notes_today),
             value = "$noteCountToday/3",
             progress = noteCountToday / 3f,
             color = neonGreen
@@ -425,7 +438,7 @@ fun StatusInfoContent(
         Spacer(Modifier.height(20.dp))
 
         StatusItem(
-            label = "Cápsulas do Tempo",
+            label = stringResource(R.string.home_time_capsules),
             value = if (isPremium) "$capsuleCount/∞" else "$capsuleCount/3",
             progress = if (isPremium) 0.5f else capsuleCount / 3f,
             color = Color(0xFF80DEEA)
@@ -434,8 +447,8 @@ fun StatusInfoContent(
         Spacer(Modifier.height(20.dp))
 
         StatusItem(
-            label = "Vislumbres (Recall)",
-            value = "$remainingRecalls/$maxRecalls restantes",
+            label = stringResource(R.string.home_recall_glimpses),
+            value = "$remainingRecalls/$maxRecalls",
             progress = remainingRecalls.toFloat() / maxRecalls,
             color = purpleAI
         )
@@ -449,7 +462,7 @@ fun StatusInfoContent(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = purpleAI)
             ) {
-                Text("REMOVER LIMITES AGORA", fontWeight = FontWeight.Bold, color = Color.Black)
+                Text(stringResource(R.string.home_remove_limits), fontWeight = FontWeight.Bold, color = Color.Black)
             }
         } else {
             // Para quem é Premium, adicionamos um botão para gerenciar/ver a loja
@@ -461,7 +474,7 @@ fun StatusInfoContent(
             ) {
                 Icon(Icons.Default.Diamond, contentDescription = null, tint = gold, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("DETALHES DO PLANO / LOJA", color = gold, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.home_plan_details), color = gold, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -506,7 +519,8 @@ fun HomeContent(
     unreadNotifications: Int,
     onNoteClick: (NoteEntity) -> Unit
 ) {
-    val formatter = remember { DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM", Locale("pt", "BR")) }
+    val dateFormatPattern = stringResource(R.string.home_date_format)
+    val formatter = remember(dateFormatPattern) { DateTimeFormatter.ofPattern(dateFormatPattern, Locale("pt", "BR")) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
 
     val formattedDate = remember(selectedDate) {
@@ -525,19 +539,19 @@ fun HomeContent(
     if (noteToDelete != null) {
         AlertDialog(
             onDismissRequest = { noteToDelete = null },
-            title = { Text("Apagar memória?", color = Color.White) },
-            text = { Text("Esta ação não pode ser desfeita. Deseja apagar esta nota para sempre?", color = Color.Gray) },
+            title = { Text(stringResource(R.string.home_delete_memory_title), color = Color.White) },
+            text = { Text(stringResource(R.string.home_delete_memory_desc), color = Color.Gray) },
             confirmButton = {
                 TextButton(onClick = {
                     noteToDelete?.let { onDeleteNote(it) }
                     noteToDelete = null
                 }) {
-                    Text("Apagar", color = Color.Red)
+                    Text(stringResource(R.string.home_delete), color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { noteToDelete = null }) {
-                    Text("Cancelar", color = Color.White)
+                    Text(stringResource(R.string.home_cancel_action), color = Color.White)
                 }
             },
             containerColor = Color(0xFF1A1A1A)
@@ -587,8 +601,8 @@ fun HomeContent(
                     .toLocalTime()
                     .format(timeFormatter)
 
-                val snippet = if (note.isTimeCapsule) "Memória congelada no tempo" 
-                              else if (note.isLocked) "Memória protegida por PIN" 
+                val snippet = if (note.isTimeCapsule) stringResource(R.string.home_frozen_snippet) 
+                              else if (note.isLocked) stringResource(R.string.home_protected_snippet) 
                               else {
                                 note.contentHtml
                                     .replace(Regex("<[^>]*>"), "")
@@ -641,14 +655,14 @@ fun NotificationBottomSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Notificações",
+                stringResource(R.string.home_notifications),
                 color = Color.White,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
             if (notifications.any { !it.isRead }) {
                 TextButton(onClick = onMarkAllAsRead) {
-                    Text("Marcar todas como lidas", color = Color(0xFF00FFC2))
+                    Text(stringResource(R.string.home_mark_all_read), color = Color(0xFF00FFC2))
                 }
             }
         }
@@ -657,7 +671,7 @@ fun NotificationBottomSheetContent(
 
         if (notifications.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Nenhuma notificação por enquanto.", color = Color.Gray)
+                Text(stringResource(R.string.home_no_notifications), color = Color.Gray)
             }
         } else {
             LazyColumn(
@@ -776,29 +790,29 @@ fun FabMenu(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                HubButton(Icons.Default.Map, "Rastros", neonGreen) {
+                HubButton(Icons.Default.Map, stringResource(R.string.home_fab_traces), neonGreen) {
                     onToggle()
                     navController.navigate(Screen.PlacesMap.route)
                 }
 
-                HubButton(Icons.Default.BarChart, "Status", neonGreen) {
+                HubButton(Icons.Default.BarChart, stringResource(R.string.home_fab_status), neonGreen) {
                     onToggle()
                     navController.navigate(Screen.Statistics.route)
                 }
 
-                HubButton(Icons.Default.AutoAwesome, "Gratidão", neonGreen) {
+                HubButton(Icons.Default.AutoAwesome, stringResource(R.string.home_fab_gratitude), neonGreen) {
                     onToggle()
                     navController.navigate(Screen.Gratitude.route)
                 }
 
-                HubButton(Icons.Default.History, "Relembrar", neonGreen) {
+                HubButton(Icons.Default.History, stringResource(R.string.home_fab_recall), neonGreen) {
                     onToggle()
                     navController.navigate(Screen.Recall.route)
                 }
 
                 HubButton(
                     icon = Icons.Default.Edit, 
-                    label = "Nota", 
+                    label = stringResource(R.string.home_fab_note),
                     color = if (isToday) neonGreen else Color.Gray 
                 ) {
                     onToggle()

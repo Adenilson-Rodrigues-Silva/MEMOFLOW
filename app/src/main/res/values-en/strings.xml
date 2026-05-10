@@ -1,0 +1,215 @@
+<resources>
+    <string name="app_name">Memo Flow</string>
+    <string name="shortcut_new_note">New Note</string>
+    <string name="shortcut_recall">Recall</string>
+    <string name="shortcut_gratitude">Gratitude</string>
+    <string name="shortcut_map">Trail Map</string>
+
+    <!-- Home Screen -->
+    <string name="home_limit_reached">Limit of 3 daily notes reached!</string>
+    <string name="home_notifications">Notifications</string>
+    <string name="home_mark_all_read">Mark all as read</string>
+    <string name="home_no_notifications">No notifications for now.</string>
+    <string name="home_access_capsule">Access Capsule</string>
+    <string name="home_locked_memory">Locked Memory</string>
+    <string name="home_pin_instructions">Enter your 4-digit PIN to access.</string>
+    <string name="home_verify">VERIFY</string>
+    <string name="home_cancel">CANCEL</string>
+    <string name="home_wrong_pin">Incorrect PIN!</string>
+    <string name="home_ice_melted">The ice has melted!</string>
+    <string name="home_still_frozen">It\'s still frozen</string>
+    <string name="home_melt_ready_desc">This memory is ready to be revealed. Do you want to defrost forever?</string>
+    <string name="home_melt_wait_desc">The waiting time is not over yet, but you can take a silent peek.</string>
+    <string name="home_melt_permanently">MELT FOREVER</string>
+    <string name="home_just_peek">JUST PEEK (FROZEN)</string>
+    <string name="home_premium_active">Premium Status Active</string>
+    <string name="home_flow_status">Your Flow Status</string>
+    <string name="home_premium_desc">You have unlimited access to almost everything!</string>
+    <string name="home_free_desc">Manage your daily usage and limits.</string>
+    <string name="home_notes_today">Notes today</string>
+    <string name="home_time_capsules">Time Capsules</string>
+    <string name="home_recall_glimpses">Recall Glimpses</string>
+    <string name="home_remove_limits">REMOVE LIMITS NOW</string>
+    <string name="home_plan_details">PLAN DETAILS / STORE</string>
+    <string name="home_delete_memory_title">Delete memory?</string>
+    <string name="home_delete_memory_desc">This action cannot be undone. Do you want to delete this note forever?</string>
+    <string name="home_delete">Delete</string>
+    <string name="home_cancel_action">Cancel</string>
+    <string name="home_frozen_snippet">Memory frozen in time</string>
+    <string name="home_protected_snippet">Memory protected by PIN</string>
+    <string name="home_fab_traces">Traces</string>
+    <string name="home_fab_status">Status</string>
+    <string name="home_fab_gratitude">Gratitude</string>
+    <string name="home_fab_recall">Recall</string>
+    <string name="home_fab_note">Note</string>
+    <string name="home_date_format">EEEE, MMMM dd</string>
+
+    <!-- Write Note Screen -->
+    <string name="write_note_peek_mode">Peek Mode ❄️</string>
+    <string name="write_note_entry">Entry</string>
+    <string name="write_note_exit">EXIT</string>
+    <string name="write_note_font_styles_soon">Font styles coming soon in v2.0! ✨</string>
+    <string name="write_note_set_pin_first">Set a PIN first!</string>
+    <string name="write_note_toolbar_voice">Voice</string>
+    <string name="write_note_toolbar_format">Format</string>
+    <string name="write_note_toolbar_emoji">Emoji</string>
+    <string name="write_note_toolbar_add_image">Add Image</string>
+    <string name="write_note_toolbar_marker">Marker</string>
+    <string name="write_note_limit_reached_title">Limit Reached</string>
+    <string name="write_note_limit_reached_desc">You have already reached the limit of 3 notes today. Save your next memories tomorrow!</string>
+    <string name="write_note_back_button">BACK</string>
+    <string name="write_note_frozen_until">FROZEN UNTIL %1$s</string>
+    <string name="write_note_mood_label">Mood: %1$s</string>
+    <string name="write_note_share_title">My Memory</string>
+    <string name="write_note_invalid_date">Choose a present or future date!</string>
+    <string name="write_note_freeze_action">FREEZE</string>
+    <string name="write_note_cancel_action">CANCEL</string>
+    <string name="write_note_unlock_title">Unlock Memory?</string>
+    <string name="write_note_lock_title">Lock Memory?</string>
+    <string name="write_note_unlock_desc">Do you want to remove the lock from this note?</string>
+    <string name="write_note_lock_desc">Are you sure you want to lock this memory? It can only be opened with your PIN.</string>
+    <string name="write_note_confirm_action">CONFIRM</string>
+    <string name="write_note_locked_toast">Memory Locked!</string>
+    <string name="write_note_unlocked_toast">Memory Unlocked!</string>
+    <string name="write_note_today_label">TODAY</string>
+
+    <!-- Profile Screen -->
+    <string name="profile_title">Flow Owner</string>
+    <string name="profile_edit_name_title">What do you want to be called?</string>
+    <string name="profile_edit_bio_title">Your Bio</string>
+    <string name="profile_bio_placeholder">Write something about your journey...</string>
+    <string name="profile_save">SAVE</string>
+    <string name="profile_delete_account_title">Delete everything?</string>
+    <string name="profile_delete_account_desc">This action will permanently remove all your records from the device.</string>
+    <string name="profile_delete_all">DELETE EVERYTHING</string>
+    <string name="profile_cancel">CANCEL</string>
+    <string name="profile_store_title">Evolution Store</string>
+    <string name="profile_store_premium_subtitle">You are Premium! View donations</string>
+    <string name="profile_store_free_subtitle">Get Premium or support the dev</string>
+    <string name="profile_security_title">Active Security</string>
+    <string name="profile_security_subtitle">Manage your PIN and Biometrics</string>
+    <string name="profile_notifications_title">Alert Flow</string>
+    <string name="profile_notifications_subtitle">Smart Notification Center</string>
+    <string name="profile_backup_title">Files &amp; Backup</string>
+    <string name="profile_backup_subtitle">Cloud and Memory Export</string>
+    <string name="profile_logout">LOG OUT FROM GOOGLE ACCOUNT</string>
+    <string name="profile_reset_journey">RESET MY ENTIRE JOURNEY</string>
+    <string name="profile_premium_member">PREMIUM MEMBER</string>
+    <string name="profile_synced_account">Synced Account</string>
+    <string name="profile_language_title">Language</string>
+    <string name="profile_language_subtitle">Choose your preferred language</string>
+
+    <string-array name="language_switch_phrases">
+        <item>Translating your thoughts...</item>
+        <item>Dino is learning a new language...</item>
+        <item>Adjusting the flow of time...</item>
+        <item>Eternizing memories in new words...</item>
+        <item>Preparing the magic...</item>
+        <item>Almost there, Dino is polyglot!</item>
+    </string-array>
+
+    <!-- Statistics Screen -->
+    <string name="stats_title">Statistics</string>
+    <string name="stats_weekly">Weekly</string>
+    <string name="stats_monthly">Monthly</string>
+    <string name="stats_ai_section">Artificial Intelligence</string>
+    <string name="stats_happiest_place_title">Your Happiest Place</string>
+    <string name="stats_happiness_geography">Happiness Geography</string>
+    <string name="stats_happiest_place_desc">You tend to be more vibrant here!</string>
+    <string name="stats_light_in_jar">Light in the Jar</string>
+    <string name="stats_gratitudes_count">%1$d new gratitudes</string>
+    <string name="stats_total_gratitudes">Total in the jar: %1$d</string>
+    <string name="stats_mood_thermometer">Mood Thermometer</string>
+    <string name="stats_summary_of">Summary of %1$s</string>
+    <string name="stats_summary_week">Week Summary</string>
+    <string name="stats_predominant_mood">This month you were predominantly %1$s.</string>
+    <string name="stats_not_enough_data">Not enough records.</string>
+    <string name="stats_start_entries_prompt">Start your entries to see the week summary!</string>
+    <string name="stats_dominant_mood">Dominant Mood</string>
+    <string name="stats_mood_presence">Present in %1$d%% of your week.</string>
+    <string name="stats_weekly_trend">Weekly Trend</string>
+    <string name="stats_monthly_trend">Monthly Trend</string>
+    <string name="stats_secrets_future">Secrets and Future</string>
+    <string name="stats_locked">Locked</string>
+    <string name="stats_frozen">Frozen</string>
+    <string name="stats_memory_volume">Memory Volume</string>
+    <string name="stats_audios">Audios</string>
+    <string name="stats_photos">Photos</string>
+    <string name="stats_note">note</string>
+    <string name="stats_notes">notes</string>
+    <string name="stats_close">CLOSE</string>
+    <string name="stats_locked_days_title">Locked Days 🔒</string>
+    <string name="stats_frozen_days_title">Frozen Days ❄️</string>
+    <string name="stats_no_records_period">No records found in this period.</string>
+    <string name="stats_chart_incredible">Incredible</string>
+    <string name="stats_chart_neutral">Neutral</string>
+    <string name="stats_chart_sad">Very Sad</string>
+    <string name="stats_ai_insight_title">MemoFlow AI Insight</string>
+    <string name="stats_ai_today">TODAY</string>
+    <string name="stats_ai_weekly">WEEKLY</string>
+    <string name="stats_ai_monthly">MONTHLY</string>
+    <string name="stats_ai_insight_label">INSIGHT</string>
+    <string name="stats_ai_reveal_btn">REVEAL %1$s INSIGHT</string>
+    <string name="stats_ai_view_plans">VIEW PREMIUM PLANS</string>
+    <string name="stats_ai_premium_desc">Subscribe to Premium to unlock weekly summaries and mood analysis generated by Artificial Intelligence.</string>
+    <string name="stats_ai_free_desc">Your journey deserves to be understood. AI will analyze your notes to find patterns, motivation, and insights about your well-being.</string>
+    <string name="stats_ai_loading_footer">Almost ready! AI is fast.</string>
+    <string-array name="stats_ai_loading_messages">
+        <item>MemoFlow AI is connecting the dots...</item>
+        <item>Speeding up with Groq technology ⚡</item>
+        <item>Reflecting on your memories...</item>
+        <item>Llama 3.1 processing at full speed!</item>
+        <item>Your journey is being summarized now...</item>
+    </string-array>
+
+    <!-- Security Screen -->
+    <string name="security_title">Security</string>
+    <string name="security_desc">Protect your memories with biometrics or PIN.</string>
+    <string name="security_biometric_title">Enable Biometrics</string>
+    <string name="security_biometric_desc">Use fingerprint to unlock the app</string>
+    <string name="security_set_pin_title">Set Security PIN</string>
+    <string name="security_set_pin_desc">Tap to set a 4-digit PIN</string>
+    <string name="security_pin_active_title">PIN Set</string>
+    <string name="security_pin_active_desc">Tap to remove your security PIN</string>
+    <string name="security_auto_lock_title">Auto Lock</string>
+    <string name="security_auto_lock_desc">Lock after 30 seconds away from the app</string>
+    <string name="security_dialog_set_pin">Set PIN</string>
+    <string name="security_dialog_confirm_pin">Confirm PIN</string>
+    <string name="security_pin_instructions">Enter a 4-digit PIN.</string>
+    <string name="security_pin_confirm_instructions">Enter the PIN again to confirm.</string>
+    <string name="security_next">NEXT</string>
+    <string name="security_confirm">CONFIRM</string>
+    <string name="security_cancel">CANCEL</string>
+    <string name="security_pin_success">PIN set successfully!</string>
+    <string name="security_pin_mismatch">PINs do not match!</string>
+    <string name="security_remove_pin_title">Remove PIN?</string>
+    <string name="security_remove_pin_desc">Your locked notes will be accessible without a password.</string>
+    <string name="security_remove_action">REMOVE</string>
+    <string name="security_pin_removed_toast">PIN removed.</string>
+
+    <string-array name="write_note_saving_phrases">
+        <item>This moment won\'t be lost\nin time... ⏳</item>
+        <item>Dino is keeping\nyour memory... 🦖</item>
+        <item>Eternizing another piece\nof your story... ✨</item>
+        <item>Your journey is being written\nin the stars... 🌌</item>
+        <item>Archiving a precious\nmoment... 💾</item>
+        <item>Leaving your mark on the\nflow of time... 🌊</item>
+        <item>Saving this special\ninstant... 💛</item>
+        <item>Turning now into\na memory... 🧠</item>
+        <item>Recording a chapter\nof your life... 📖</item>
+        <item>Keeping this with\ncare... 🤍</item>
+        <item>One more memory\nfor the future... 🚀</item>
+        <item>Your moment was saved\nsuccessfully... ✅</item>
+        <item>Dino approved this\nmoment! 🦖✨</item>
+        <item>A memory worthy\nof celebration! 🎉</item>
+        <item>Capturing this magical\ninstant... 🌠</item>
+        <item>This deserves to be remembered\nforever... ♾️</item>
+        <item>Organizing your past\nwith care... 🗂️</item>
+        <item>This moment is now\neternal... ⌛</item>
+        <item>Protected in Dino\'s\nvault 🛡️🦖</item>
+        <item>Kept with Jurassic\nstyle 🕺🦖</item>
+        <item>One more memory\nsaved in time... ⏱️</item>
+        <item>Your moment now lives\nin history... 📚</item>
+        <item>Saving with care\nand a little dance... 🕺💾</item>
+    </string-array>
+</resources>
