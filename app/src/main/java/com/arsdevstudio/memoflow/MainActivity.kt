@@ -156,14 +156,20 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     composable(Screen.Statistics.route) {
-                        StatisticsScreen(onBack = { navController.popBackStack() })
+                        StatisticsScreen(
+                            onBack = { navController.popBackStack() },
+                            onNavigateToStore = { navController.navigate(Screen.Store.route) }
+                        )
                     }
 
                     composable(
                         route = Screen.Gratitude.route,
                         deepLinks = listOf(navDeepLink { uriPattern = "memoflow://gratitude" })
                     ) {
-                        GratitudeScreen(onBack = { navController.popBackStack() })
+                        GratitudeScreen(
+                            onBack = { navController.popBackStack() },
+                            onNavigateToStore = { navController.navigate(Screen.Store.route) }
+                        )
                     }
 
                     composable(

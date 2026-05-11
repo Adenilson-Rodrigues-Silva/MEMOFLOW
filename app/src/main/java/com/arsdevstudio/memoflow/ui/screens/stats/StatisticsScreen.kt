@@ -72,6 +72,7 @@ fun rememberDataAiGradient(): Brush {
 @Composable
 fun StatisticsScreen(
     onBack: () -> Unit,
+    onNavigateToStore: () -> Unit,
     viewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory)
 ) {
     val statsData by viewModel.statsData.collectAsState()
@@ -136,6 +137,7 @@ fun StatisticsScreen(
                     onGenerateWeekly = { viewModel.generateAiInsights("weekly") },
                     onGenerateMonthly = { viewModel.generateAiInsights("monthly") },
                     onTodayGenerate = { viewModel.generateAiInsights("today") },
+                    onNavigateToStore = onNavigateToStore,
                     borderBrush = dataGradient
                 )
             }
@@ -511,6 +513,7 @@ fun AiInsightCard(
     onGenerateWeekly: () -> Unit,
     onGenerateMonthly: () -> Unit,
     onTodayGenerate: () -> Unit,
+    onNavigateToStore: () -> Unit,
     borderBrush: Brush
 ) {
     val aiGradient = remember {
@@ -601,7 +604,7 @@ fun AiInsightCard(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(
-                    onClick = { /* Navegar para Loja */ },
+                    onClick = onNavigateToStore,
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
@@ -658,8 +661,20 @@ fun AiInsightCard(
                         }
                     }
 
-                    insight.error?.let {
-                        Text(it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp), textAlign = TextAlign.Center)
+                    insight.errorRes?.let { errorResId ->
+                        val errorText = if (errorResId == R.string.stats_ai_wait_time) {
+                            val totalSeconds = insight.error?.toLongOrNull() ?: 0L
+                            stringResource(errorResId, totalSeconds / 60, totalSeconds % 60)
+                        } else {
+                            stringResource(errorResId)
+                        }
+                        Text(
+                            text = errorText,
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 12.dp),
+                            textAlign = TextAlign.Center
+                        )
                     }
                 } else if (insight.isLoading) {
                     Column(

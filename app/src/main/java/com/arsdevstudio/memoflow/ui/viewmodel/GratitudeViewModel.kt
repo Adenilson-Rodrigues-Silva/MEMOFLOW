@@ -44,6 +44,9 @@ class GratitudeViewModel(
     private val _maxFlashbacks = MutableStateFlow(3)
     val maxFlashbacks: StateFlow<Int> = _maxFlashbacks.asStateFlow()
 
+    private val _errorRes = MutableStateFlow<Int?>(null)
+    val errorRes: StateFlow<Int?> = _errorRes.asStateFlow()
+
     init {
         observeUserAndGratitudes()
         observePremiumStatus()
@@ -107,8 +110,18 @@ class GratitudeViewModel(
 
     fun addGratitude(text: String, colorHex: String) {
         viewModelScope.launch {
+            val user = repository.userSettings.first()
             val userId = currentUserId ?: return@launch
             if (userId.isEmpty()) return@launch
+
+            // Limite de 5 registros por dia para usuários FREE
+            if (user?.isPremium != true) {
+                val countToday = repository.getGratitudeCountForToday(userId)
+                if (countToday >= 5) {
+                    _errorRes.value = com.arsdevstudio.memoflow.R.string.gratitude_limit_reached
+                    return@launch
+                }
+            }
 
             val now = LocalDate.now()
             val gratitude = GratitudeEntity(
@@ -120,6 +133,10 @@ class GratitudeViewModel(
             repository.insertGratitude(gratitude)
             updateDailyCount(userId)
         }
+    }
+
+    fun clearError() {
+        _errorRes.value = null
     }
 
     fun updateGratitude(gratitude: GratitudeEntity) {
@@ -144,6 +161,8 @@ class GratitudeViewModel(
                 val newCount = user.gratitudeRecallCount + 1
                 repository.saveUserSettings(user.copy(gratitudeRecallCount = newCount))
                 _flashbackCount.value = newCount
+            } else {
+                _errorRes.value = com.arsdevstudio.memoflow.R.string.gratitude_flashback_limit
             }
         }
     }

@@ -38,6 +38,8 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
 import com.arsdevstudio.memoflow.R
 import com.arsdevstudio.memoflow.utils.BillingManager
 import com.arsdevstudio.memoflow.ui.components.home.PurpleAI
@@ -94,9 +96,9 @@ fun StoreScreen(
                 is BillingManager.PurchaseEvent.Success -> {
                     showSuccessAnimation = true
                     if (event.productId == "premiumlifetime") {
-                        Toast.makeText(context, "Parabéns! Você agora é PREMIUM ✨", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.store_congrats_premium), Toast.LENGTH_LONG).show()
                     } else {
-                        Toast.makeText(context, "Obrigado pelo seu apoio! ❤️", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.store_thanks_support), Toast.LENGTH_SHORT).show()
                     }
                 }
                 is BillingManager.PurchaseEvent.Error -> {
@@ -112,15 +114,15 @@ fun StoreScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Evolução do Sistema", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.store_evolution_title), color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.write_note_back_button), tint = Color.White)
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.restorePurchases() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Restaurar", tint = Color.White)
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.store_restore), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
@@ -160,14 +162,14 @@ fun StoreScreen(
             }
             
             Text(
-                text = if (isPremium) "MemoFlow Premium Ativo" else "MemoFlow Premium",
+                text = if (isPremium) stringResource(R.string.store_premium_active_title) else stringResource(R.string.store_premium_title),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = if (isPremium) Color(0xFFFFD700) else Color.White
             )
             
             Text(
-                if (isPremium) "Obrigado por apoiar o desenvolvimento!" else "Desbloqueie o potencial máximo do seu diário",
+                if (isPremium) stringResource(R.string.store_premium_active_desc) else stringResource(R.string.store_premium_desc),
                 fontSize = 14.sp,
                 color = Color.Gray,
                 modifier = Modifier.padding(top = 8.dp)
@@ -176,15 +178,9 @@ fun StoreScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             PlanCard(
-                title = "Versão Grátis",
+                title = stringResource(R.string.store_free_plan_title),
                 price = "R$ 0,00",
-                benefits = listOf(
-                    "3 notas por dia",
-                    "3 cápsulas do tempo ao total",
-                    "Relembrar 2x ao dia",
-                    "Backup manual JSON",
-                    "IA: Apenas Insight Diário"
-                ),
+                benefits = stringArrayResource(R.array.store_free_benefits).toList(),
                 isPremium = false,
                 isSelected = !isPremium
             )
@@ -195,16 +191,9 @@ fun StoreScreen(
             val premiumPrice = premiumProduct?.oneTimePurchaseOfferDetails?.formattedPrice ?: "R$ 49,90"
 
             PlanCard(
-                title = "Compra Única",
+                title = stringResource(R.string.store_premium_plan_title),
                 price = premiumPrice,
-                benefits = listOf(
-                    "3 notas por dia",
-                    "Cápsulas do tempo ilimitadas",
-                    "Relembrar 6x dia",
-                    "Backup automático Google Drive",
-                    "Selo Premium no Perfil",
-                    "IA: 12 usos/dia por período (D/S/M)"
-                ),
+                benefits = stringArrayResource(R.array.store_premium_benefits).toList(),
                 isPremium = true,
                 brush = premiumBrush,
                 isSelected = isPremium
@@ -222,7 +211,7 @@ fun StoreScreen(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
                 ) {
-                    Text("EVOLUIR AGORA", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.store_evolve_now), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             } else {
                 Surface(
@@ -234,7 +223,7 @@ fun StoreScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Star, null, tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("VOCÊ JÁ É PREMIUM ✨", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.store_already_premium), color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -252,7 +241,7 @@ fun StoreScreen(
             ) {
                 Icon(Icons.Default.Coffee, contentDescription = null, tint = PurpleAI, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Pague um café ao desenvolvedor", color = PurpleAI, fontWeight = FontWeight.Medium)
+                Text(stringResource(R.string.store_coffee_dev), color = PurpleAI, fontWeight = FontWeight.Medium)
             }
             
             Spacer(modifier = Modifier.height(40.dp))
@@ -317,13 +306,13 @@ fun StoreScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "Apoie o Projeto",
+                        stringResource(R.string.store_support_project_title),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                     Text(
-                        "Sua contribuição ajuda a manter o MemoFlow vivo e evoluindo!",
+                        stringResource(R.string.store_support_project_desc),
                         fontSize = 14.sp,
                         color = Color.Gray,
                         modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
@@ -336,7 +325,7 @@ fun StoreScreen(
 
                     DonationOption(
                         icon = Icons.Default.Coffee,
-                        label = "Um cafézinho",
+                        label = stringResource(R.string.store_donation_coffee),
                         price = coffeePrice,
                         onClick = { 
                             activity?.let { viewModel.donate(it, "coffee") }
@@ -348,7 +337,7 @@ fun StoreScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     DonationOption(
                         icon = Icons.Default.Fastfood,
-                        label = "Pão com ovo",
+                        label = stringResource(R.string.store_donation_snack),
                         price = snackPrice,
                         onClick = { 
                             activity?.let { viewModel.donate(it, "snack") }
@@ -360,7 +349,7 @@ fun StoreScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     DonationOption(
                         icon = Icons.Default.Restaurant,
-                        label = "Arroz e feijão",
+                        label = stringResource(R.string.store_donation_meal),
                         price = mealPrice,
                         onClick = { 
                             activity?.let { viewModel.donate(it, "meal") }
@@ -403,7 +392,7 @@ fun DonationOption(
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(label, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Contribuição voluntária", color = Color.Gray, fontSize = 12.sp)
+                Text(stringResource(R.string.store_voluntary_contribution), color = Color.Gray, fontSize = 12.sp)
             }
             Text(price, color = PurpleAI, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
         }

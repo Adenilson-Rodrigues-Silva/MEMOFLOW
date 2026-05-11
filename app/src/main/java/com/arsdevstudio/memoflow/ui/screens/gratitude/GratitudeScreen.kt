@@ -98,6 +98,7 @@ fun rememberSolarAiGradient(): Brush {
 @Composable
 fun GratitudeScreen(
     onBack: () -> Unit,
+    onNavigateToStore: () -> Unit,
     viewModel: GratitudeViewModel = viewModel(factory = GratitudeViewModel.Factory)
 ) {
     val context = LocalContext.current
@@ -116,7 +117,7 @@ fun GratitudeScreen(
         containerColor = Color.Black,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Mural da Gratidão", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp) },
+                title = { Text(context.getString(R.string.gratitude_title), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
@@ -141,7 +142,7 @@ fun GratitudeScreen(
                 if (todaysGratitudes.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            "O mural está limpo.\nEspalhe brilho hoje! ✨",
+                            context.getString(R.string.gratitude_empty_mural),
                             color = Color.Gray,
                             textAlign = TextAlign.Center,
                             fontSize = 18.sp,
@@ -180,7 +181,7 @@ fun GratitudeScreen(
                         OutlinedTextField(
                             value = gratitudeText,
                             onValueChange = { gratitudeText = it },
-                            placeholder = { Text("Pelo que você é grato agora?", color = Color.Gray) },
+                            placeholder = { Text(context.getString(R.string.gratitude_input_placeholder), color = Color.Gray) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .border(1.5.dp, solarGradient, RoundedCornerShape(20.dp)),
@@ -216,7 +217,7 @@ fun GratitudeScreen(
                             }
                         )
                         Text(
-                            "${dailyCount}/5 hoje • brilhe mais",
+                            context.getString(R.string.gratitude_daily_count, dailyCount),
                             color = Color.Gray,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 8.dp)
@@ -232,7 +233,7 @@ fun GratitudeScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "Luz total por hoje! Volte amanhã ✨",
+                                context.getString(R.string.gratitude_limit_reached),
                                 color = SolarGold,
                                 fontWeight = FontWeight.Bold
                             )
@@ -256,7 +257,7 @@ fun GratitudeScreen(
                                 }
                                 viewModel.incrementFlashbackCount()
                             } else {
-                                Toast.makeText(context, "Limite de reflexão diária atingido! O pote precisa descansar ✨", Toast.LENGTH_SHORT).show()
+                                onNavigateToStore()
                             }
                         }
                     }) {
@@ -281,7 +282,7 @@ fun GratitudeScreen(
             AlertDialog(
                 onDismissRequest = { gratitudeToEdit = null },
                 containerColor = Color(0xFF1A1A1A),
-                title = { Text("Editar Gratidão", color = Color.White) },
+                title = { Text(context.getString(R.string.gratitude_edit_title), color = Color.White) },
                 text = {
                     Column {
                         OutlinedTextField(
@@ -306,7 +307,7 @@ fun GratitudeScreen(
                         viewModel.updateGratitude(currentGratitude.copy(text = editText))
                         gratitudeToEdit = null
                     }) {
-                        Text("SALVAR", color = SolarGold)
+                        Text(context.getString(R.string.gratitude_save), color = SolarGold)
                     }
                 },
                 dismissButton = {
@@ -317,10 +318,10 @@ fun GratitudeScreen(
                         }) {
                             Icon(Icons.Default.Delete, null, tint = Color.Red)
                             Spacer(Modifier.width(4.dp))
-                            Text("EXCLUIR", color = Color.Red)
+                            Text(context.getString(R.string.gratitude_delete), color = Color.Red)
                         }
                         TextButton(onClick = { gratitudeToEdit = null }) {
-                            Text("CANCELAR", color = Color.White)
+                            Text(context.getString(R.string.gratitude_cancel), color = Color.White)
                         }
                     }
                 }
@@ -331,6 +332,7 @@ fun GratitudeScreen(
 
 @Composable
 fun FlashbackDialog(gratitude: GratitudeEntity, onDismiss: () -> Unit) {
+    val context = LocalContext.current
     val infiniteTransition = rememberInfiniteTransition(label = "flashback_glow")
     val scale by infiniteTransition.animateFloat(
         initialValue = 0.95f,
@@ -344,7 +346,8 @@ fun FlashbackDialog(gratitude: GratitudeEntity, onDismiss: () -> Unit) {
 
     val dateStr = remember(gratitude.date) {
         val date = Instant.ofEpochMilli(gratitude.date).atZone(ZoneId.systemDefault()).toLocalDate()
-        val formatter = DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", Locale("pt", "BR"))
+        val locale = context.resources.configuration.locales[0]
+        val formatter = DateTimeFormatter.ofPattern(context.getString(R.string.gratitude_date_format), locale)
         date.format(formatter)
     }
 
@@ -360,7 +363,7 @@ fun FlashbackDialog(gratitude: GratitudeEntity, onDismiss: () -> Unit) {
                 modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
             ) {
                 Text(
-                    "Em $dateStr você foi grato por:",
+                    context.getString(R.string.gratitude_flashback_title, dateStr),
                     color = SolarGold,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
@@ -374,7 +377,7 @@ fun FlashbackDialog(gratitude: GratitudeEntity, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(32.dp))
                 
                 Text(
-                    "Toque em qualquer lugar para fechar",
+                    context.getString(R.string.gratitude_flashback_footer),
                     color = Color.White.copy(alpha = 0.5f),
                     fontSize = 12.sp
                 )
@@ -440,6 +443,7 @@ fun PostItNote(gratitude: GratitudeEntity, onLongClick: () -> Unit) {
 
 @Composable
 fun GratitudeJar(hasGratitude: Boolean) {
+    val context = LocalContext.current
     val infiniteTransition = rememberInfiniteTransition(label = "jar_effects")
     
     val floatAnim by infiniteTransition.animateFloat(
@@ -493,7 +497,7 @@ fun GratitudeJar(hasGratitude: Boolean) {
 
             Image(
                 painter = painterResource(id = R.drawable.jar_gratitude),
-                contentDescription = "Pote da Gratidão",
+                contentDescription = context.getString(R.string.gratitude_jar_title),
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -532,7 +536,7 @@ fun GratitudeJar(hasGratitude: Boolean) {
         }
         
         Text(
-            "Pote da Gratidão",
+            context.getString(R.string.gratitude_jar_title),
             color = Color.White,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 22.sp,
@@ -540,7 +544,7 @@ fun GratitudeJar(hasGratitude: Boolean) {
             modifier = Modifier.padding(top = 8.dp)
         )
         Text(
-            "Toque para reviver seus momentos de luz",
+            context.getString(R.string.gratitude_jar_subtitle),
             color = SolarGold.copy(alpha = 0.9f),
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold

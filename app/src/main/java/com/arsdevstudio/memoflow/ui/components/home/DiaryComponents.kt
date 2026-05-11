@@ -1,13 +1,11 @@
 package com.arsdevstudio.memoflow.ui.components.home
 
-import android.content.Context
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -24,7 +22,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -46,13 +43,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.arsdevstudio.memoflow.R
-import java.util.Date
 import kotlin.random.Random
 
 // Cores Temáticas
@@ -87,7 +84,6 @@ fun DiaryNoteCard(
     time: String, 
     title: String, 
     content: String, 
-    neonGreen: Color,
     isLocked: Boolean = false,
     isTimeCapsule: Boolean = false,
     unlockDate: Long? = null,
@@ -217,16 +213,16 @@ fun DiaryNoteCard(
                 onClick = {
                     if (isReadyToMelt) {
                         try {
-                            val mp = MediaPlayer.create(context, R.raw.ice_sound)
-                            mp.start()
-                            mp.setOnCompletionListener { it.release() }
+                            val player: MediaPlayer? = MediaPlayer.create(context, R.raw.ice_sound)
+                            player?.start()
+                            player?.setOnCompletionListener { it.release() }
                         } catch (e: Exception) { e.printStackTrace() }
 
                         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+                            (context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
                         } else {
                             @Suppress("DEPRECATION")
-                            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                            context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as Vibrator
                         }
                         vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
                     }
@@ -361,14 +357,23 @@ fun DiaryNoteCard(
             Column {
                 Text(text = time, color = Color.Gray, fontSize = 11.sp)
                 Text(
-                    text = if (isLocked) "Memória Trancada" else if (isReadyToMelt) "PRONTA PARA ABRIR!" else if (isTimeCapsule) "Cápsula do Tempo" else title,
+                    text = if (isLocked) stringResource(R.string.home_diary_locked) 
+                           else if (isReadyToMelt) stringResource(R.string.home_diary_ready_melt) 
+                           else if (isTimeCapsule) stringResource(R.string.home_diary_capsule) 
+                           else title,
                     color = if (isLocked) PurpleAI else if (isReadyToMelt) Color.White else if (isTimeCapsule) cyan else Color.White,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
                 Text(
-                    text = if (isLocked) "Segredo protegido por PIN" else if (isReadyToMelt) "Toque para derreter o gelo ✨" else if (isTimeCapsule) "Disponível em ${unlockDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy").format(Date(it)) }}" else content,
+                    text = if (isLocked) stringResource(R.string.home_diary_protected) 
+                           else if (isReadyToMelt) stringResource(R.string.home_diary_melt_hint) 
+                           else if (isTimeCapsule) {
+                               val formattedDate = unlockDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: ""
+                               stringResource(R.string.home_diary_available_at, formattedDate)
+                           } 
+                           else content,
                     color = Color.White.copy(alpha = if (isLocked || isReadyToMelt) 0.8f else 0.6f),
                     fontSize = 14.sp,
                     maxLines = 1
@@ -416,19 +421,24 @@ fun HomeHeader(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Botão Calendário (Verde Neon)
+            // Botão Calendário
             IconButton(
                 onClick = onCalendarClick,
                 modifier = Modifier
                     .size(40.dp)
                     .background(Color.White.copy(alpha = 0.05f), CircleShape)
             ) {
-                Icon(Icons.Default.DateRange, contentDescription = "Calendário", tint = neonGreen, modifier = Modifier.size(22.dp))
+                Icon(
+                    imageVector = Icons.Default.DateRange, 
+                    contentDescription = stringResource(R.string.home_calendar_desc), 
+                    tint = neonGreen, 
+                    modifier = Modifier.size(22.dp)
+                )
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // NOVO LOCAL DO SINO: Onde era o Status (Verde Neon)
+            // SINO
             IconButton(
                 onClick = onNotificationsClick,
                 modifier = Modifier
@@ -450,7 +460,7 @@ fun HomeHeader(
                 ) {
                     Icon(
                         Icons.Default.Notifications, 
-                        contentDescription = "Notificações", 
+                        contentDescription = stringResource(R.string.home_notifications_desc), 
                         tint = if (unreadNotifications > 0) Color.White else neonGreen, 
                         modifier = Modifier.size(22.dp)
                     )
@@ -459,7 +469,7 @@ fun HomeHeader(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // DIAMANTE: Agora abre o STATUS/PREMIUM (onStatusClick)
+            // DIAMANTE
             IconButton(
                 onClick = onStatusClick,
                 modifier = Modifier
@@ -470,7 +480,7 @@ fun HomeHeader(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Diamond, 
-                        contentDescription = "Status e Premium", 
+                        contentDescription = stringResource(R.string.home_status_premium_desc), 
                         tint = if (isPremium) gold else PurpleAI, 
                         modifier = Modifier.size(22.dp)
                     )
@@ -504,7 +514,7 @@ fun HomeHeader(
                 if (userPhotoUrl != null) {
                     AsyncImage(
                         model = userPhotoUrl,
-                        contentDescription = "Foto de Perfil",
+                        contentDescription = stringResource(R.string.home_profile_photo_desc),
                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
@@ -522,7 +532,10 @@ fun CalendarRow(
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    val formatterDia = remember { DateTimeFormatter.ofPattern("EEE", java.util.Locale("pt", "BR")) }
+    val context = LocalContext.current
+    val formatterDia = remember(context) { 
+        DateTimeFormatter.ofPattern("EEE", context.resources.configuration.locales[0]) 
+    }
     val animatedAiGradient = rememberAnimatedAiGradient()
 
     LazyRow(
@@ -631,7 +644,12 @@ fun MoodChartCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Humor da Semana", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = stringResource(R.string.home_mood_chart_title),
+                    color = Color.White, 
+                    fontSize = 18.sp, 
+                    fontWeight = FontWeight.Bold
+                )
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = CyanAI)
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -643,7 +661,7 @@ fun MoodChartCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (points.isEmpty()) {
-                    Text("Sem dados para esta semana", color = Color.DarkGray, fontSize = 12.sp)
+                    Text(stringResource(R.string.home_mood_no_data), color = Color.DarkGray, fontSize = 12.sp)
                 } else {
                     Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 20.dp)) {
                         val width = size.width
@@ -708,17 +726,16 @@ fun MoodChartCard(
 
 @Composable
 fun EmptyStateLottie() {
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(com.arsdevstudio.memoflow.R.raw.layout_vazio))
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.layout_vazio))
     val progress by animateLottieCompositionAsState(composition, iterations = LottieConstants.IterateForever)
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         LottieAnimation(composition, { progress }, modifier = Modifier.size(280.dp))
         Text(
-            text = "Nenhuma memória no vácuo deste dia...",
+            text = stringResource(R.string.home_empty_state_text),
             color = Color.Gray.copy(alpha = 0.6f),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )
     }
 }
-

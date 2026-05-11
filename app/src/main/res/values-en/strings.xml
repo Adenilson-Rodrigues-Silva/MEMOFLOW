@@ -44,6 +44,85 @@
     <string name="home_fab_recall">Recall</string>
     <string name="home_fab_note">Note</string>
     <string name="home_date_format">EEEE, MMMM dd</string>
+    <string name="notif_center_title">Notification Center</string>
+    <string name="notif_permission_required">Permission required for notifications.</string>
+    <string name="notif_all_enabled">Enable Notifications</string>
+    <string name="notif_all_enabled_desc">Enable all Memo Flow communications</string>
+    <string name="notif_special_events">SPECIAL EVENTS</string>
+    <string name="notif_new_year_title">New Year Capsule</string>
+    <string name="notif_new_year_desc">Annual review on January 1st</string>
+    <string name="notif_smart_categories">SMART CATEGORIES</string>
+    <string name="notif_moment_flow_title">Flow Moment</string>
+    <string name="notif_moment_flow_desc">Daily reminder to record your day</string>
+    <string name="notif_reminder_time">Reminder time</string>
+    <string name="notif_defrost_title">Defrosting</string>
+    <string name="notif_defrost_desc">Notify at 09:00 about opened capsules</string>
+    <string name="notif_gratitude_pot_title">Gratitude Jar</string>
+    <string name="notif_gratitude_pot_desc">Incentive at 15:00 when the jar is empty</string>
+    <string name="notif_past_echoes_title">Past Echoes</string>
+    <string name="notif_past_echoes_desc">Saturdays at 11:00: revisit old secrets</string>
+    <string name="notif_weekly_insight_title">Weekly Insight</string>
+    <string name="notif_weekly_insight_desc">Sundays at 18:00: summary of your emotions</string>
+    <string name="notif_alert_prefs">ALERT PREFERENCES</string>
+    <string name="notif_sound_title">Sound Alerts</string>
+    <string name="notif_sound_desc">Play sound when receiving notifications</string>
+    <string name="notif_vibration_title">Vibration</string>
+    <string name="notif_vibration_desc">Vibrate on alerts</string>
+    <string name="notif_footer">Memo Flow distributes alerts throughout the day to avoid overwhelming your routine.</string>
+    <string name="notif_picker_title">Choose the best time to reflect</string>
+    <string name="notif_picker_confirm">SET</string>
+    <string name="notif_picker_cancel">CANCEL</string>
+
+    <!-- Recall Screen -->
+    <string name="recall_title">Glimpse of the Past</string>
+    <string name="recall_refreshes">Refreshes: %1$d</string>
+    <string name="recall_back">Back</string>
+    <string name="recall_refresh_desc">Another Memory</string>
+    <string name="recall_empty">No old memories to show yet.</string>
+    <string name="recall_limit_title">Your glimpses for today are over.</string>
+    <string name="recall_limit_desc">Come back tomorrow to recall more moments or get the Premium version.</string>
+    <string name="recall_close">Close</string>
+    <string name="recall_special_moment">A special\nmoment for you</string>
+    <string name="recall_date_format">MMMM dd, yyyy</string>
+
+    <!-- Store Screen -->
+    <string name="store_evolution_title">System Evolution</string>
+    <string name="store_premium_active_title">MemoFlow Premium Active</string>
+    <string name="store_premium_title">MemoFlow Premium</string>
+    <string name="store_premium_active_desc">Thanks for supporting development!</string>
+    <string name="store_premium_desc">Unlock the full potential of your diary</string>
+    <string name="store_free_plan_title">Free Version</string>
+    <string name="store_premium_plan_title">One-time Purchase</string>
+    <string name="store_evolve_now">EVOLVE NOW</string>
+    <string name="store_already_premium">YOU ARE ALREADY PREMIUM ✨</string>
+    <string name="store_coffee_dev">Buy the developer a coffee</string>
+    <string name="store_support_project_title">Support the Project</string>
+    <string name="store_support_project_desc">Your contribution helps keep MemoFlow alive and evolving!</string>
+    <string name="store_donation_coffee">A little coffee</string>
+    <string name="store_donation_snack">Bread and eggs</string>
+    <string name="store_donation_meal">Rice and beans</string>
+    <string name="store_voluntary_contribution">Voluntary contribution</string>
+    <string name="store_congrats_premium">Congrats! You are now PREMIUM ✨</string>
+    <string name="store_thanks_support">Thanks for your support! ❤️</string>
+    <string name="store_purchase_cancelled">Purchase cancelled</string>
+    <string name="store_restore">Restore</string>
+
+    <string-array name="store_free_benefits">
+        <item>3 notes per day</item>
+        <item>3 time capsules in total</item>
+        <item>Recall 2x per day</item>
+        <item>Manual JSON backup</item>
+        <item>AI: Daily Insight only</item>
+    </string-array>
+
+    <string-array name="store_premium_benefits">
+        <item>Unlimited notes</item>
+        <item>Unlimited time capsules</item>
+        <item>Recall 6x per day</item>
+        <item>Automatic Google Drive backup</item>
+        <item>Premium Badge on Profile</item>
+        <item>AI: 12 uses/day per period (D/W/M)</item>
+    </string-array>
 
     <!-- Write Note Screen -->
     <string name="write_note_peek_mode">Peek Mode ❄️</string>
@@ -58,6 +137,7 @@
     <string name="write_note_toolbar_marker">Marker</string>
     <string name="write_note_limit_reached_title">Limit Reached</string>
     <string name="write_note_limit_reached_desc">You have already reached the limit of 3 notes today. Save your next memories tomorrow!</string>
+    <string name="write_note_capsule_limit_reached">Limit of 3 time capsules reached. Evolve to Premium for unlimited capsules! ✨</string>
     <string name="write_note_back_button">BACK</string>
     <string name="write_note_frozen_until">FROZEN UNTIL %1$s</string>
     <string name="write_note_mood_label">Mood: %1$s</string>
@@ -155,6 +235,38 @@
     <string name="stats_ai_premium_desc">Subscribe to Premium to unlock weekly summaries and mood analysis generated by Artificial Intelligence.</string>
     <string name="stats_ai_free_desc">Your journey deserves to be understood. AI will analyze your notes to find patterns, motivation, and insights about your well-being.</string>
     <string name="stats_ai_loading_footer">Almost ready! AI is fast.</string>
+
+    <string name="home_empty_state_text">Your journey begins with the first trace...</string>
+    <string name="home_diary_locked">Locked Memory</string>
+    <string name="home_diary_ready_melt">READY TO OPEN!</string>
+    <string name="home_diary_capsule">Time Capsule</string>
+    <string name="home_diary_protected">Secret protected by PIN</string>
+    <string name="home_diary_melt_hint">Tap to melt the ice ✨</string>
+    <string name="home_diary_available_at">Available on %1$s</string>
+    <string name="home_calendar_desc">Calendar</string>
+    <string name="home_notifications_desc">Notifications</string>
+    <string name="home_status_premium_desc">Status and Premium</string>
+    <string name="home_profile_photo_desc">Profile Photo</string>
+    <string name="home_mood_chart_title">Weekly Mood</string>
+    <string name="home_mood_no_data">No data for this week</string>
+
+    <!-- Gratitude Screen -->
+    <string name="gratitude_title">Gratitude Wall</string>
+    <string name="gratitude_empty_mural">The wall is clean.\nSpread some brightness today! ✨</string>
+    <string name="gratitude_input_placeholder">What are you grateful for now?</string>
+    <string name="gratitude_daily_count">%1$d/5 today • shine more</string>
+    <string name="gratitude_limit_reached">Full light for today! Come back tomorrow ✨</string>
+    <string name="gratitude_flashback_limit">Daily reflection limit reached! The jar needs to rest ✨</string>
+    <string name="gratitude_edit_title">Edit Gratitude</string>
+    <string name="gratitude_save">SAVE</string>
+    <string name="gratitude_delete">DELETE</string>
+    <string name="gratitude_cancel">CANCEL</string>
+    <string name="gratitude_flashback_title">On %1$s you were grateful for:</string>
+    <string name="gratitude_flashback_footer">Tap anywhere to close</string>
+    <string name="gratitude_jar_title">Gratitude Jar</string>
+    <string name="gratitude_jar_subtitle">Tap to relive your moments of light</string>
+    <string name="gratitude_date_format">MMMM dd, yyyy</string>
+
     <string-array name="stats_ai_loading_messages">
         <item>MemoFlow AI is connecting the dots...</item>
         <item>Speeding up with Groq technology ⚡</item>

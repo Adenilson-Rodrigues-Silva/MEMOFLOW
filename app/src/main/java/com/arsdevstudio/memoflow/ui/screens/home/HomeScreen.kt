@@ -521,12 +521,14 @@ fun HomeContent(
     onNoteClick: (NoteEntity) -> Unit
 ) {
     val dateFormatPattern = stringResource(R.string.home_date_format)
-    val formatter = remember(dateFormatPattern) { DateTimeFormatter.ofPattern(dateFormatPattern, Locale("pt", "BR")) }
+    val context = LocalContext.current
+    val locale = remember(context) { context.resources.configuration.locales[0] }
+    val formatter = remember(dateFormatPattern, locale) { DateTimeFormatter.ofPattern(dateFormatPattern, locale) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
 
-    val formattedDate = remember(selectedDate) {
+    val formattedDate = remember(selectedDate, locale) {
         selectedDate.format(formatter).replaceFirstChar {
-            if (it.isLowerCase()) it.titlecase(Locale("pt", "BR")) else it.toString()
+            if (it.isLowerCase()) it.titlecase(locale) else it.toString()
         }
     }
 
@@ -616,7 +618,6 @@ fun HomeContent(
                     time = noteTime,
                     title = note.title,
                     content = snippet,
-                    neonGreen = neonGreen,
                     isLocked = note.isLocked,
                     isTimeCapsule = note.isTimeCapsule,
                     unlockDate = note.unlockDate,

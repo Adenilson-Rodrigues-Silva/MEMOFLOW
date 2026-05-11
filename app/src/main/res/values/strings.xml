@@ -44,6 +44,85 @@
     <string name="home_fab_recall">Relembrar</string>
     <string name="home_fab_note">Nota</string>
     <string name="home_date_format">EEEE, dd \'de\' MMMM</string>
+    <string name="notif_center_title">Central de Notificações</string>
+    <string name="notif_permission_required">Permissão necessária para notificações.</string>
+    <string name="notif_all_enabled">Ativar Notificações</string>
+    <string name="notif_all_enabled_desc">Habilitar todas as comunicações do Memo Flow</string>
+    <string name="notif_special_events">EVENTOS ESPECIAIS</string>
+    <string name="notif_new_year_title">Cápsula da Virada</string>
+    <string name="notif_new_year_desc">Balanço anual no dia 1º de Janeiro</string>
+    <string name="notif_smart_categories">CATEGORIAS INTELIGENTES</string>
+    <string name="notif_moment_flow_title">Momento Flow</string>
+    <string name="notif_moment_flow_desc">Lembrete diário para registrar seu dia</string>
+    <string name="notif_reminder_time">Horário do lembrete</string>
+    <string name="notif_defrost_title">Descongelamento</string>
+    <string name="notif_defrost_desc">Avisar às 09:00 sobre cápsulas abertas</string>
+    <string name="notif_gratitude_pot_title">Pote de Gratidão</string>
+    <string name="notif_gratitude_pot_desc">Incentivo às 15:00 quando o pote estiver vazio</string>
+    <string name="notif_past_echoes_title">Ecos do Passado</string>
+    <string name="notif_past_echoes_desc">Sábados às 11:00: revisite segredos antigos</string>
+    <string name="notif_weekly_insight_title">Insight Semanal</string>
+    <string name="notif_weekly_insight_desc">Domingos às 18:00: resumo das suas emoções</string>
+    <string name="notif_alert_prefs">PREFERÊNCIAS DE ALERTA</string>
+    <string name="notif_sound_title">Alertas Sonoros</string>
+    <string name="notif_sound_desc">Tocar som ao receber notificações</string>
+    <string name="notif_vibration_title">Vibração</string>
+    <string name="notif_vibration_desc">Vibrar ao receber alertas</string>
+    <string name="notif_footer">O Memo Flow distribui os alertas ao longo do dia para não sobrecarregar sua rotina.</string>
+    <string name="notif_picker_title">Escolha o melhor horário para refletir</string>
+    <string name="notif_picker_confirm">DEFINIR</string>
+    <string name="notif_picker_cancel">CANCELAR</string>
+
+    <!-- Recall Screen -->
+    <string name="recall_title">Vislumbre do Passado</string>
+    <string name="recall_refreshes">Refreshes: %1$d</string>
+    <string name="recall_back">Voltar</string>
+    <string name="recall_refresh_desc">Outra Memória</string>
+    <string name="recall_empty">Ainda não há memórias antigas para mostrar.</string>
+    <string name="recall_limit_title">Seus vislumbres de hoje acabaram.</string>
+    <string name="recall_limit_desc">Volte amanhã para relembrar mais momentos ou adquira a versão Premium.</string>
+    <string name="recall_close">Fechar</string>
+    <string name="recall_special_moment">Um momento\nespecial para você</string>
+    <string name="recall_date_format">dd \'de\' MMMM, yyyy</string>
+
+    <!-- Store Screen -->
+    <string name="store_evolution_title">Evolução do Sistema</string>
+    <string name="store_premium_active_title">MemoFlow Premium Ativo</string>
+    <string name="store_premium_title">MemoFlow Premium</string>
+    <string name="store_premium_active_desc">Obrigado por apoiar o desenvolvimento!</string>
+    <string name="store_premium_desc">Desbloqueie o potencial máximo do seu diário</string>
+    <string name="store_free_plan_title">Versão Grátis</string>
+    <string name="store_premium_plan_title">Compra Única</string>
+    <string name="store_evolve_now">EVOLUIR AGORA</string>
+    <string name="store_already_premium">VOCÊ JÁ É PREMIUM ✨</string>
+    <string name="store_coffee_dev">Pague um café ao desenvolvedor</string>
+    <string name="store_support_project_title">Apoie o Projeto</string>
+    <string name="store_support_project_desc">Sua contribuição ajuda a manter o MemoFlow vivo e evoluindo!</string>
+    <string name="store_donation_coffee">Um cafézinho</string>
+    <string name="store_donation_snack">Pão com ovo</string>
+    <string name="store_donation_meal">Arroz e feijão</string>
+    <string name="store_voluntary_contribution">Contribuição voluntária</string>
+    <string name="store_congrats_premium">Parabéns! Você agora é PREMIUM ✨</string>
+    <string name="store_thanks_support">Obrigado pelo seu apoio! ❤️</string>
+    <string name="store_purchase_cancelled">Compra cancelada</string>
+    <string name="store_restore">Restaurar</string>
+
+    <string-array name="store_free_benefits">
+        <item>3 notas por dia</item>
+        <item>3 cápsulas do tempo ao total</item>
+        <item>Relembrar 2x ao dia</item>
+        <item>Backup manual JSON</item>
+        <item>IA: Apenas Insight Diário</item>
+    </string-array>
+
+    <string-array name="store_premium_benefits">
+        <item>Notas ilimitadas</item>
+        <item>Cápsulas do tempo ilimitadas</item>
+        <item>Relembrar 6x dia</item>
+        <item>Backup automático Google Drive</item>
+        <item>Selo Premium no Perfil</item>
+        <item>IA: 12 usos/dia por período (D/S/M)</item>
+    </string-array>
 
     <!-- Write Note Screen -->
     <string name="write_note_peek_mode">Modo Espiadinha ❄️</string>
@@ -58,6 +137,7 @@
     <string name="write_note_toolbar_marker">Marcador</string>
     <string name="write_note_limit_reached_title">Limite Atingido</string>
     <string name="write_note_limit_reached_desc">Você já atingiu o limite de 3 notas hoje. Guarde suas próximas memórias amanhã!</string>
+    <string name="write_note_capsule_limit_reached">Limite de 3 cápsulas do tempo atingido. Evolua para o Premium para ter cápsulas ilimitadas! ✨</string>
     <string name="write_note_back_button">VOLTAR</string>
     <string name="write_note_frozen_until">CONGELADA ATÉ %1$s</string>
     <string name="write_note_mood_label">Humor: %1$s</string>
@@ -161,6 +241,38 @@
     <string name="stats_ai_premium_desc">Assine o Premium para desbloquear resumos semanais e análises de humor geradas por Inteligência Artificial.</string>
     <string name="stats_ai_free_desc">Sua jornada merece ser compreendida. A IA analisará suas notas para encontrar padrões, motivação e insights sobre o seu bem-estar.</string>
     <string name="stats_ai_loading_footer">Quase pronto! A IA é veloz.</string>
+
+    <string name="home_empty_state_text">Sua jornada começa com o primeiro rastro...</string>
+    <string name="home_diary_locked">Memória Trancada</string>
+    <string name="home_diary_ready_melt">PRONTA PARA ABRIR!</string>
+    <string name="home_diary_capsule">Cápsula do Tempo</string>
+    <string name="home_diary_protected">Segredo protegido por PIN</string>
+    <string name="home_diary_melt_hint">Toque para derreter o gelo ✨</string>
+    <string name="home_diary_available_at">Disponível em %1$s</string>
+    <string name="home_calendar_desc">Calendário</string>
+    <string name="home_notifications_desc">Notificações</string>
+    <string name="home_status_premium_desc">Status e Premium</string>
+    <string name="home_profile_photo_desc">Foto de Perfil</string>
+    <string name="home_mood_chart_title">Humor da Semana</string>
+    <string name="home_mood_no_data">Sem dados para esta semana</string>
+
+    <!-- Gratitude Screen -->
+    <string name="gratitude_title">Mural da Gratidão</string>
+    <string name="gratitude_empty_mural">O mural está limpo.\nEspalhe brilho hoje! ✨</string>
+    <string name="gratitude_input_placeholder">Pelo que você é grato agora?</string>
+    <string name="gratitude_daily_count">%1$d/5 hoje • brilhe mais</string>
+    <string name="gratitude_limit_reached">Luz total por hoje! Volte amanhã ✨</string>
+    <string name="gratitude_flashback_limit">Limite de reflexão diária atingido! O pote precisa descansar ✨</string>
+    <string name="gratitude_edit_title">Editar Gratidão</string>
+    <string name="gratitude_save">SALVAR</string>
+    <string name="gratitude_delete">EXCLUIR</string>
+    <string name="gratitude_cancel">CANCELAR</string>
+    <string name="gratitude_flashback_title">Em %1$s você foi grato por:</string>
+    <string name="gratitude_flashback_footer">Toque em qualquer lugar para fechar</string>
+    <string name="gratitude_jar_title">Pote da Gratidão</string>
+    <string name="gratitude_jar_subtitle">Toque para reviver seus momentos de luz</string>
+    <string name="gratitude_date_format">dd \'de\' MMMM \'de\' yyyy</string>
+
     <string-array name="stats_ai_loading_messages">
         <item>MemoFlow AI está conectando os pontos...</item>
         <item>Acelerando com a tecnologia Groq ⚡</item>
@@ -219,4 +331,16 @@
         <item>Seu momento agora vive\nna história... 📚</item>
         <item>Salvando com carinho\ne um passinho... 🕺💾</item>
     </string-array>
+    <string name="stats_ai_premium_exclusive">Insights Semanais e Mensais são exclusivos para membros PREMIUM ✨</string>
+    <string name="stats_ai_limit_premium">Limite diário de 12 gerações atingido. Libera à meia-noite.</string>
+    <string name="stats_ai_limit_free">Você já gerou seu insight diário grátis! Evolua para o Premium para ter 12 gerações por período. ✨</string>
+    <string name="stats_ai_wait_time">Aguarde %1$dmin %2$ds para gerar novamente.</string>
+    <string name="stats_ai_not_authenticated">Usuário não autenticado.</string>
+    <string name="stats_ai_no_notes_today">Você ainda não escreveu nada hoje!</string>
+    <string name="stats_ai_no_notes_weekly">Nenhuma nota encontrada nesta semana!</string>
+    <string name="stats_ai_no_notes_monthly">Nenhuma nota encontrada este mês!</string>
+    <string name="stats_ai_no_notes_generic">Escreva algumas notas primeiro!</string>
+    <string name="stats_ai_notes_protected">Suas notas deste período estão protegidas (trancadas ou em cápsulas) e a IA não tem permissão para lê-las.</string>
+    <string name="stats_ai_connection_error">Falha na conexão com a IA. Verifique sua chave e internet.</string>
+    <string name="stats_ai_config_error">Configuração da IA incompleta.</string>
 </resources>

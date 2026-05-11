@@ -57,6 +57,7 @@ data class AiInsightData(
     val sentimentScores: List<Float> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
+    val errorRes: Int? = null,
     val currentScope: String = "", // "", "today", "weekly", "monthly"
     val dailyCounts: Map<String, Int> = mapOf("today" to 0, "weekly" to 0, "monthly" to 0),
     val nextAvailableTime: Map<String, Long> = emptyMap() // Timestamp em ms
@@ -97,7 +98,7 @@ class StatisticsViewModel(
         .map { it?.isPremium ?: false }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    private var isMonthly = true
+    private var isMonthly = false
     private var currentReferenceDate = LocalDate.now()
     private var currentNotesForAi: List<NoteEntity> = emptyList()
 
@@ -158,7 +159,9 @@ class StatisticsViewModel(
         // REGRA DE PREMIUM: Bloqueia Semanal e Mensal para usuários Free
         if (!isPremium.value && finalScope != "today") {
             _statsData.value = _statsData.value.copy(
-                aiInsight = currentInsight.copy(error = "Insights Semanais e Mensais são exclusivos para membros PREMIUM ✨")
+                aiInsight = currentInsight.copy(
+                    errorRes = com.arsdevstudio.memoflow.R.string.stats_ai_premium_exclusive
+                )
             )
             return
         }
@@ -170,21 +173,24 @@ class StatisticsViewModel(
         // Limite diferenciado: Free = 1/dia | Premium = 12/dia
         val maxGenerations = if (isPremium.value) 12 else 1
         if (count >= maxGenerations) {
-            val errorMsg = if (isPremium.value) {
-                "Limite diário de 12 gerações atingido. Libera à meia-noite."
+            val errorResId = if (isPremium.value) {
+                com.arsdevstudio.memoflow.R.string.stats_ai_limit_premium
             } else {
-                "Você já gerou seu insight diário grátis! Evolua para o Premium para ter 12 gerações por período. ✨"
+                com.arsdevstudio.memoflow.R.string.stats_ai_limit_free
             }
             _statsData.value = _statsData.value.copy(
-                aiInsight = currentInsight.copy(error = errorMsg)
+                aiInsight = currentInsight.copy(errorRes = errorResId)
             )
             return
         }
 
         if (now < nextTime) {
-            val remainingSec = (nextTime - now) / 1000
             _statsData.value = _statsData.value.copy(
-                aiInsight = currentInsight.copy(error = "Aguarde ${remainingSec / 60}min ${remainingSec % 60}s para gerar novamente.")
+                aiInsight = currentInsight.copy(
+                    errorRes = com.arsdevstudio.memoflow.R.string.stats_ai_wait_time,
+                    // Note: We'll need to handle the formatting in the UI or pass args
+                    error = ((nextTime - now) / 1000).toString() 
+                )
             )
             return
         }
@@ -194,13 +200,13 @@ class StatisticsViewModel(
             
             if (key.isBlank() || key == "COLE_SUA_CHAVE_DO_GROQ_AQUI") {
                 _statsData.value = _statsData.value.copy(
-                    aiInsight = AiInsightData(error = "Chave do Groq não configurada no local.properties")
+                    aiInsight = AiInsightData(errorRes = com.arsdevstudio.memoflow.R.string.stats_ai_config_error)
                 )
                 return@launch
             }
 
             _statsData.value = _statsData.value.copy(
-                aiInsight = _statsData.value.aiInsight.copy(isLoading = true, error = null)
+                aiInsight = _statsData.value.aiInsight.copy(isLoading = true, error = null, errorRes = null)
             )
 
             try {
@@ -222,7 +228,7 @@ class StatisticsViewModel(
                 val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
                 if (userId.isEmpty()) {
                     _statsData.value = _statsData.value.copy(
-                        aiInsight = AiInsightData(isLoading = false, error = "Usuário não autenticado.")
+                        aiInsight = AiInsightData(isLoading = false, errorRes = com.arsdevstudio.memoflow.R.string.stats_ai_not_authenticated)
                     )
                     return@launch
                 }
@@ -246,17 +252,15 @@ class StatisticsViewModel(
                 }.joinToString("\n---\n")
 
                 if (cleanNotes.isBlank()) {
-                    val msg = when {
-                        allNotesInRange.isNotEmpty() && targetNotes.isEmpty() -> {
-                            "Suas notas deste período estão protegidas (trancadas ou em cápsulas) e a IA não tem permissão para lê-las."
-                        }
-                        finalScope == "today" -> "Você ainda não escreveu nada hoje!"
-                        finalScope == "weekly" -> "Nenhuma nota encontrada nesta semana!"
-                        finalScope == "monthly" -> "Nenhuma nota encontrada este mês!"
-                        else -> "Escreva algumas notas primeiro!"
+                    val errorResId = when {
+                        allNotesInRange.isNotEmpty() && targetNotes.isEmpty() -> com.arsdevstudio.memoflow.R.string.stats_ai_notes_protected
+                        finalScope == "today" -> com.arsdevstudio.memoflow.R.string.stats_ai_no_notes_today
+                        finalScope == "weekly" -> com.arsdevstudio.memoflow.R.string.stats_ai_no_notes_weekly
+                        finalScope == "monthly" -> com.arsdevstudio.memoflow.R.string.stats_ai_no_notes_monthly
+                        else -> com.arsdevstudio.memoflow.R.string.stats_ai_no_notes_generic
                     }
                     _statsData.value = _statsData.value.copy(
-                        aiInsight = AiInsightData(isLoading = false, error = msg)
+                        aiInsight = AiInsightData(isLoading = false, errorRes = errorResId)
                     )
                     return@launch
                 }
@@ -340,6 +344,7 @@ class StatisticsViewModel(
                         summary = summary,
                         sentimentScores = sentimentScores,
                         isLoading = false,
+                        errorRes = null,
                         currentScope = finalScope,
                         dailyCounts = newCounts,
                         nextAvailableTime = newNextTimes
@@ -349,7 +354,7 @@ class StatisticsViewModel(
             } catch (e: Exception) {
                 Log.e("StatisticsViewModel", "Erro Groq", e)
                 _statsData.value = _statsData.value.copy(
-                    aiInsight = AiInsightData(isLoading = false, error = "Falha na conexão com a IA. Verifique sua chave e internet.")
+                    aiInsight = AiInsightData(isLoading = false, errorRes = com.arsdevstudio.memoflow.R.string.stats_ai_connection_error)
                 )
             }
         }
@@ -426,6 +431,8 @@ class StatisticsViewModel(
         }
 
         var lastValidScore = 0.5f
+        val today = LocalDate.now()
+
         for (i in 0 until daysInRange) {
             val date = startDate.plusDays(i.toLong())
             labels[i] = if (daysInRange <= 7) {
@@ -443,7 +450,13 @@ class StatisticsViewModel(
                 moodPoints.add(avgScore)
                 lastValidScore = avgScore
             } else {
-                moodPoints.add(lastValidScore)
+                // Se for um dia futuro, retorna ao neutro (0.5f)
+                // Se for passado sem nota, mantém o humor anterior ou o inicial (0.5f)
+                if (date.isAfter(today)) {
+                    moodPoints.add(0.5f)
+                } else {
+                    moodPoints.add(lastValidScore)
+                }
             }
         }
 

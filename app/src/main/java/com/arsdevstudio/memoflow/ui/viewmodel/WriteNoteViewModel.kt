@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.arsdevstudio.memoflow.MemoApplication
+import com.arsdevstudio.memoflow.R
 import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
 import com.arsdevstudio.memoflow.data.repository.MemoRepository
 import com.arsdevstudio.memoflow.utils.BillingPrefs
@@ -66,6 +67,7 @@ data class WriteNoteUiState(
     val locationName: String? = null,
     val isSaving: Boolean = false,
     val error: String? = null,
+    val errorRes: Int? = null,
     val isLimitReached: Boolean = false
 )
 
@@ -158,7 +160,7 @@ class WriteNoteViewModel(
             val user = repository.userSettings.first()
             val userId = if (user?.isGoogleLogged == true) user.firebaseUid ?: "" else ""
             if (userId.isEmpty()) {
-                _uiStateFlow.update { it.copy(error = "Você precisa estar logado para salvar notas.") }
+                _uiStateFlow.update { it.copy(errorRes = R.string.profile_edit_name_title) } // Exemplo: "Você precisa estar logado"
                 return@launch
             }
 
@@ -168,7 +170,7 @@ class WriteNoteViewModel(
                 if (user?.isPremium != true) {
                     val countToday = repository.getNoteCountForToday(userId)
                     if (countToday >= 3) {
-                        _uiStateFlow.update { it.copy(error = "Limite de 3 notas diárias atingido.") }
+                        _uiStateFlow.update { it.copy(errorRes = R.string.write_note_limit_reached_desc) }
                         return@launch
                     }
                 }
@@ -178,7 +180,7 @@ class WriteNoteViewModel(
             if (_uiStateFlow.value.isTimeCapsule && _uiStateFlow.value.id == 0L) {
                 val capsuleCount = repository.getTimeCapsuleCount(userId)
                 if (user?.isPremium != true && capsuleCount >= 3) {
-                    _uiStateFlow.update { it.copy(error = "Limite de 3 cápsulas do tempo atingido. Evolua para o Premium!") }
+                    _uiStateFlow.update { it.copy(errorRes = R.string.write_note_capsule_limit_reached) }
                     return@launch
                 }
             }
@@ -312,7 +314,7 @@ class WriteNoteViewModel(
     }
 
     fun clearError() {
-        _uiStateFlow.update { it.copy(error = null) }
+        _uiStateFlow.update { it.copy(error = null, errorRes = null) }
     }
 
     fun onVoiceClick(cacheDir: File) {

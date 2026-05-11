@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.stringResource
 import com.arsdevstudio.memoflow.R
 import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
 import java.time.Instant
@@ -63,12 +64,12 @@ fun RecallScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar", tint = textColor)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.recall_back), tint = textColor)
                 }
                 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Vislumbre do Passado",
+                        text = stringResource(R.string.recall_title),
                         color = textColor.copy(alpha = 0.8f),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
@@ -76,7 +77,7 @@ fun RecallScreen(
                     )
                     if (uiState !is RecallUiState.LimitReached) {
                         Text(
-                            text = "Refreshes: $remaining",
+                            text = stringResource(R.string.recall_refreshes, remaining),
                             color = textColor.copy(alpha = 0.5f),
                             fontSize = 11.sp,
                             fontFamily = FontFamily.Serif
@@ -90,7 +91,7 @@ fun RecallScreen(
                 ) {
                     Icon(
                         Icons.Default.Refresh, 
-                        contentDescription = "Outra Memória", 
+                        contentDescription = stringResource(R.string.recall_refresh_desc), 
                         tint = if (remaining > 0) textColor else textColor.copy(alpha = 0.3f)
                     )
                 }
@@ -111,7 +112,7 @@ fun RecallScreen(
                     }
                     is RecallUiState.Empty -> {
                         Text(
-                            text = "Ainda não há memórias antigas para mostrar.",
+                            text = stringResource(R.string.recall_empty),
                             color = textColor,
                             modifier = Modifier.align(Alignment.Center),
                             textAlign = TextAlign.Center,
@@ -124,7 +125,7 @@ fun RecallScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Seus vislumbres de hoje acabaram.",
+                                text = stringResource(R.string.recall_limit_title),
                                 color = textColor,
                                 fontSize = 20.sp,
                                 textAlign = TextAlign.Center,
@@ -133,7 +134,7 @@ fun RecallScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Volte amanhã para relembrar mais momentos ou adquira a versão Premium.",
+                                text = stringResource(R.string.recall_limit_desc),
                                 color = textColor.copy(alpha = 0.7f),
                                 fontSize = 16.sp,
                                 textAlign = TextAlign.Center,
@@ -156,7 +157,7 @@ fun RecallScreen(
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Fechar",
+                    contentDescription = stringResource(R.string.recall_close),
                     tint = textColor,
                     modifier = Modifier.size(32.dp)
                 )
@@ -168,7 +169,11 @@ fun RecallScreen(
 @Composable
 fun RecallNoteContent(note: NoteEntity, textColor: Color) {
     val scrollState = rememberScrollState()
-    val formatter = remember { DateTimeFormatter.ofPattern("dd 'de' MMMM, yyyy", Locale("pt", "BR")) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val locale = remember { context.resources.configuration.locales[0] }
+    val formatter = remember(locale) { 
+        DateTimeFormatter.ofPattern(context.getString(R.string.recall_date_format), locale) 
+    }
     val dateStr = remember(note.date) {
         Instant.ofEpochMilli(note.date)
             .atZone(ZoneId.systemDefault())
@@ -184,7 +189,7 @@ fun RecallNoteContent(note: NoteEntity, textColor: Color) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Um momento\nespecial para você",
+            text = stringResource(R.string.recall_special_moment),
             color = textColor,
             fontSize = 28.sp,
             fontFamily = FontFamily.Serif,
