@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -231,17 +233,72 @@ fun StoreScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedButton(
+            val coffeeGlow by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1000f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(3000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ), label = "coffee_glow"
+            )
+
+            val coffeeScale by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 1.03f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1500, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ), label = "coffee_scale"
+            )
+
+            val coffeeBrush = Brush.linearGradient(
+                colors = listOf(PurpleAI.copy(alpha = 0.7f), Color(0xFF00E5FF).copy(alpha = 0.7f), PurpleAI.copy(alpha = 0.7f)),
+                start = androidx.compose.ui.geometry.Offset(coffeeGlow, coffeeGlow),
+                end = androidx.compose.ui.geometry.Offset(coffeeGlow + 400f, coffeeGlow + 400f),
+                tileMode = androidx.compose.ui.graphics.TileMode.Repeated
+            )
+
+            Surface(
                 onClick = { showDonationSheet = true },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(54.dp)
+                    .graphicsLayer(scaleX = coffeeScale, scaleY = coffeeScale),
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, PurpleAI.copy(alpha = 0.5f))
+                color = Color(0xFF1A1A1A),
+                border = BorderStroke(1.5.dp, coffeeBrush)
             ) {
-                Icon(Icons.Default.Coffee, contentDescription = null, tint = PurpleAI, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.store_coffee_dev), color = PurpleAI, fontWeight = FontWeight.Medium)
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Efeito de brilho interno sutil
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(PurpleAI.copy(alpha = 0.15f), Color.Transparent),
+                                center = center,
+                                radius = size.maxDimension
+                            )
+                        )
+                    }
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Coffee, 
+                            contentDescription = null, 
+                            tint = Color.White, 
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            stringResource(R.string.store_coffee_dev), 
+                            color = Color.White, 
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(40.dp))

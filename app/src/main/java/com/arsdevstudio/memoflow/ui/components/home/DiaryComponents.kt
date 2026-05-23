@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -46,15 +47,29 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.*
+import androidx.compose.ui.tooling.preview.Preview
+import com.arsdevstudio.memoflow.ui.theme.MemoFlowTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import com.arsdevstudio.memoflow.R
 import kotlin.random.Random
 
+data class SupportParticle(
+    val id: Int,
+    val x: Float,
+    val y: Float,
+    val vx: Float,
+    val vy: Float,
+    val alpha: Float,
+    val scale: Float,
+    val symbol: String
+)
+
 // Cores Temáticas
 val CyanAI = Color(0xFF00E5FF)
 val PurpleAI = Color(0xFFD500F9)
+val DataGreen = Color(0xFF00FFC2)
 val AlertRed = Color(0xFFFF1744)
 
 @Composable
@@ -95,7 +110,6 @@ fun DiaryNoteCard(
     val iceBlue = Color(0xFFB3E5FC)
     val deepBlue = Color(0xFF01579B)
     
-    // Lógica da Cápsula
     val isReadyToMelt = remember(unlockDate, isTimeCapsule) {
         if (!isTimeCapsule || unlockDate == null) false
         else {
@@ -112,7 +126,6 @@ fun DiaryNoteCard(
 
     val infiniteTransition = rememberInfiniteTransition(label = "card_effects")
     
-    // --- Animações para "Memória Trancada" ---
     val scannerPosition by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(2500, easing = LinearOutSlowInEasing), RepeatMode.Reverse), label = "scanner"
@@ -421,7 +434,6 @@ fun HomeHeader(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Botão Calendário
             IconButton(
                 onClick = onCalendarClick,
                 modifier = Modifier
@@ -438,7 +450,6 @@ fun HomeHeader(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // SINO
             IconButton(
                 onClick = onNotificationsClick,
                 modifier = Modifier
@@ -469,7 +480,6 @@ fun HomeHeader(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // DIAMANTE
             IconButton(
                 onClick = onStatusClick,
                 modifier = Modifier
@@ -667,16 +677,13 @@ fun MoodChartCard(
                         val width = size.width
                         val height = size.height
                         
-                        // Pegamos apenas os últimos 7 pontos (ou menos se não houver)
                         val last7Points = points.takeLast(7)
                         val numCols = 7f
                         val numRows = 7f
                         val colWidth = width / (numCols - 1)
                         val rowHeight = height / (numRows - 1)
 
-                        // Desenha Grade Vertical (Dias) e Horizontal (Humor)
                         for (i in 0 until 7) {
-                            // Linhas horizontais
                             val yGuide = i * rowHeight
                             drawLine(
                                 color = if (i == 3) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
@@ -685,7 +692,6 @@ fun MoodChartCard(
                                 strokeWidth = if (i == 3) 1.5.dp.toPx() else 1.dp.toPx()
                             )
                             
-                            // Marcas verticais
                             val xGuide = i * colWidth
                             drawLine(
                                 color = Color.White.copy(alpha = 0.05f),
@@ -695,18 +701,14 @@ fun MoodChartCard(
                             )
                         }
 
-                        // Desenha a linha de humor
                         if (last7Points.isNotEmpty()) {
                             val path = Path()
                             last7Points.forEachIndexed { i, score ->
                                 val x = i * colWidth
-                                // Mapeia score 0.0 (triste) -> fundo, 1.0 (feliz) -> topo
-                                // Invertemos para o Canvas (0 é topo)
                                 val y = height - (score * height)
                                 
                                 if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                                 
-                                // Brilho no ponto
                                 drawCircle(CyanAI.copy(alpha = 0.3f), radius = 6.dp.toPx(), center = Offset(x, y))
                                 drawCircle(CyanAI, radius = 3.dp.toPx(), center = Offset(x, y))
                             }
@@ -725,6 +727,156 @@ fun MoodChartCard(
 }
 
 @Composable
+fun SupportDevDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    particles: List<SupportParticle> = emptyList()
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "diamond_shine")
+    val shimmerTranslate by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            Color.Transparent,
+            DataGreen.copy(alpha = 0.3f),
+            Color.White.copy(alpha = 0.9f),
+            Color(0xFFB2FFFF).copy(alpha = 0.8f),
+            CyanAI.copy(alpha = 0.6f),
+            Color.White.copy(alpha = 0.9f),
+            DataGreen.copy(alpha = 0.3f),
+            Color.Transparent
+        ),
+        start = Offset(shimmerTranslate - 600f, shimmerTranslate - 600f),
+        end = Offset(shimmerTranslate, shimmerTranslate)
+    )
+
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        particles.forEach { p ->
+            Text(
+                text = p.symbol,
+                modifier = Modifier
+                    .offset(x = p.x.dp, y = p.y.dp)
+                    .graphicsLayer(
+                        alpha = p.alpha,
+                        scaleX = p.scale,
+                        scaleY = p.scale
+                    ),
+                fontSize = 24.sp
+            )
+        }
+
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            modifier = Modifier
+                .border(4.dp, shimmerBrush, RoundedCornerShape(24.dp))
+                .fillMaxWidth(0.92f),
+            title = {
+                Text(
+                    stringResource(R.string.home_support_dev_title),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    stringResource(R.string.home_support_dev_desc),
+                    color = Color.Gray
+                )
+            },
+            confirmButton = {
+                val btnTransition = rememberInfiniteTransition(label = "btn_effects")
+                val offset by btnTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 2000f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(2500, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "offset"
+                )
+
+                val scale by btnTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.05f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1000, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "scale"
+                )
+
+                val buttonGradient = Brush.linearGradient(
+                    colors = listOf(DataGreen, CyanAI, PurpleAI, DataGreen),
+                    start = Offset(offset, offset),
+                    end = Offset(offset + 500f, offset + 500f),
+                    tileMode = TileMode.Repeated
+                )
+
+                Button(
+                    onClick = onConfirm,
+                    contentPadding = PaddingValues(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .height(52.dp)
+                        .fillMaxWidth()
+                        .graphicsLayer(scaleX = scale, scaleY = scale)
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = DataGreen,
+                            spotColor = PurpleAI
+                        )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(buttonGradient)
+                            .padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                stringResource(R.string.home_support_dev_confirm).uppercase(),
+                                color = Color.Black,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 14.sp,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        stringResource(R.string.home_support_dev_later),
+                        color = Color.White
+                    )
+                }
+            },
+            containerColor = Color(0xFF1A1A1A),
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
+}
+
+@Composable
 fun EmptyStateLottie() {
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.layout_vazio))
     val progress by animateLottieCompositionAsState(composition, iterations = LottieConstants.IterateForever)
@@ -737,5 +889,41 @@ fun EmptyStateLottie() {
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000, name = "Support Dialog - Dark")
+@Composable
+fun SupportDevDialogDarkPreview() {
+    MemoFlowTheme(darkTheme = true) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            SupportDevDialog(
+                onDismiss = {},
+                onConfirm = {},
+                particles = listOf(
+                    SupportParticle(1, 100f, 100f, 0f, 0f, 1f, 1f, "💎"),
+                    SupportParticle(2, -100f, -150f, 0f, 0f, 0.8f, 1.2f, "✨"),
+                    SupportParticle(3, 150f, -50f, 0f, 0f, 0.6f, 0.9f, "🍀"),
+                    SupportParticle(4, -50f, 200f, 0f, 0f, 0.9f, 1.1f, "⚡")
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF, name = "Support Dialog - Light")
+@Composable
+fun SupportDevDialogLightPreview() {
+    MemoFlowTheme(darkTheme = false) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            SupportDevDialog(
+                onDismiss = {},
+                onConfirm = {},
+                particles = listOf(
+                    SupportParticle(1, 100f, 100f, 0f, 0f, 1f, 1f, "💎"),
+                    SupportParticle(2, -100f, -150f, 0f, 0f, 0.8f, 1.2f, "✨")
+                )
+            )
+        }
     }
 }

@@ -7,21 +7,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -47,21 +35,12 @@ import com.arsdevstudio.memoflow.ui.screens.security.SecurityScreen
 import com.arsdevstudio.memoflow.ui.screens.splash.SplashScreen
 import com.arsdevstudio.memoflow.ui.screens.stats.StatisticsScreen
 import com.arsdevstudio.memoflow.ui.screens.store.StoreScreen
+import com.arsdevstudio.memoflow.ui.components.home.SupportDevDialog
+import com.arsdevstudio.memoflow.ui.components.home.SupportParticle
 import com.arsdevstudio.memoflow.ui.theme.MemoFlowTheme
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthEvent
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
-
-data class SupportParticle(
-    val id: Int,
-    val x: Float,
-    val y: Float,
-    val vx: Float,
-    val vy: Float,
-    val alpha: Float,
-    val scale: Float,
-    val symbol: String
-)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -123,33 +102,6 @@ class MainActivity : ComponentActivity() {
                         particles.clear()
                     }
                 }
-
-                // Efeito de diamante (Brilho animado mais intenso e luxuoso)
-                val infiniteTransition = rememberInfiniteTransition(label = "diamond_shine")
-                val shimmerTranslate by infiniteTransition.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 2000f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, easing = LinearEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "shimmer"
-                )
-
-                val shimmerBrush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        Color(0xFF00FFC2).copy(alpha = 0.3f),
-                        Color.White.copy(alpha = 0.9f),
-                        Color(0xFFB2FFFF).copy(alpha = 0.8f), // Azul diamante claro
-                        Color(0xFF00E5FF).copy(alpha = 0.6f), // Ciano brilhante
-                        Color.White.copy(alpha = 0.9f),
-                        Color(0xFF00FFC2).copy(alpha = 0.3f),
-                        Color.Transparent
-                    ),
-                    start = Offset(shimmerTranslate - 600f, shimmerTranslate - 600f),
-                    end = Offset(shimmerTranslate, shimmerTranslate)
-                )
 
                 LaunchedEffect(userSettings?.appEntryCount) {
                     val count = userSettings?.appEntryCount ?: 0
@@ -338,72 +290,17 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (showSupportDevDialog) {
-                        // Camada de partículas (Diamantes/Sifrões flutuantes)
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            particles.forEach { p ->
-                                Text(
-                                    text = p.symbol,
-                                    modifier = Modifier
-                                        .offset(x = p.x.dp, y = p.y.dp)
-                                        .graphicsLayer(
-                                            alpha = p.alpha,
-                                            scaleX = p.scale,
-                                            scaleY = p.scale
-                                        ),
-                                    fontSize = 24.sp
-                                )
-                            }
-                        }
-
-                        Log.i("MemoFlow_Debug", "MainActivity - [UI] Renderizando AlertDialog agora!")
-                        AlertDialog(
-                            onDismissRequest = {
+                        SupportDevDialog(
+                            onDismiss = {
                                 showSupportDevDialog = false
                                 profileViewModel.resetAppEntryCount()
                             },
-                            modifier = Modifier.border(4.dp, shimmerBrush, RoundedCornerShape(24.dp)),
-                            title = {
-                                Text(
-                                    stringResource(R.string.home_support_dev_title),
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            onConfirm = {
+                                showSupportDevDialog = false
+                                profileViewModel.resetAppEntryCount()
+                                navController.navigate(Screen.Store.route)
                             },
-                            text = {
-                                Text(
-                                    stringResource(R.string.home_support_dev_desc),
-                                    color = Color.Gray
-                                )
-                            },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        showSupportDevDialog = false
-                                        profileViewModel.resetAppEntryCount()
-                                        navController.navigate(Screen.Store.route)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00FFC2))
-                                ) {
-                                    Text(
-                                        stringResource(R.string.home_support_dev_confirm),
-                                        color = Color.Black,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = {
-                                    showSupportDevDialog = false
-                                    profileViewModel.resetAppEntryCount()
-                                }) {
-                                    Text(
-                                        stringResource(R.string.home_support_dev_later),
-                                        color = Color.White
-                                    )
-                                }
-                            },
-                            containerColor = Color(0xFF1A1A1A),
-                            shape = RoundedCornerShape(24.dp)
+                            particles = particles
                         )
                     }
                 }
