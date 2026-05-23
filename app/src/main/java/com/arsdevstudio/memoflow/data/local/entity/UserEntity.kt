@@ -20,6 +20,7 @@ data class UserEntity(
     val gratitudeRecallCount: Int = 0,
     val isGoogleLogged: Boolean = false,
     val hasSeenWelcome: Boolean = false, // ✅ Para saber se já passou pela tela inicial
-    val isPremium: Boolean = false // ✅ Status profissional por conta
+    val isPremium: Boolean = false, // ✅ Status profissional por conta
+    val appEntryCount: Int = 0 // ✅ Contador de entradas no app
 )
 

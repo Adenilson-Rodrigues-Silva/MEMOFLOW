@@ -30,7 +30,8 @@ class MemoApplication : Application() {
         .addMigrations(
             MemoDatabase.MIGRATION_11_12, 
             MemoDatabase.MIGRATION_12_13,
-            MemoDatabase.MIGRATION_13_14
+            MemoDatabase.MIGRATION_13_14,
+            MemoDatabase.MIGRATION_14_15
         )
         .fallbackToDestructiveMigration()
         .build() 

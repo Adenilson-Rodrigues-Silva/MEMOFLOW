@@ -33,6 +33,7 @@ import com.arsdevstudio.memoflow.R
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import kotlinx.coroutines.delay
+import android.util.Log
 
 class ProfileViewModel(
     application: Application,
@@ -89,7 +90,12 @@ class ProfileViewModel(
     private fun loadUserSettings() {
         viewModelScope.launch {
             repository.userSettings.collectLatest { settings ->
-                settings?.let { _userSettings.value = it }
+                Log.d("MemoFlow_Debug", "ProfileViewModel - DB emitindo settings: $settings")
+                if (settings == null) {
+                    _userSettings.value = UserEntity(id = 0)
+                } else {
+                    _userSettings.value = settings
+                }
             }
         }
     }
@@ -213,6 +219,27 @@ class ProfileViewModel(
                 val internalUri = Uri.fromFile(file).toString()
                 saveSettings(current.copy(profilePhotoUri = internalUri))
             } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    fun incrementAppEntryCount() {
+        viewModelScope.launch {
+            val current = repository.userSettings.first()
+            val newCount = (current?.appEntryCount ?: 0) + 1
+            Log.d("MemoFlow_Debug", "ProfileViewModel - Incrementando contador. Antigo: ${current?.appEntryCount}, Novo: $newCount")
+            if (current == null) {
+                saveSettings(UserEntity(id = 0, appEntryCount = newCount))
+            } else {
+                saveSettings(current.copy(appEntryCount = newCount))
+            }
+        }
+    }
+
+    fun resetAppEntryCount() {
+        viewModelScope.launch {
+            _userSettings.value?.let { current ->
+                saveSettings(current.copy(appEntryCount = 0))
+            }
         }
     }
 

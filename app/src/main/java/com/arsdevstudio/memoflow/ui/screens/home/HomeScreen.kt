@@ -1,8 +1,8 @@
 package com.arsdevstudio.memoflow.ui.screens.home
 
-import androidx.compose.ui.res.stringResource
-import com.arsdevstudio.memoflow.R
+import android.util.Log
 import android.widget.Toast
+import com.arsdevstudio.memoflow.R
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType

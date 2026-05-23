@@ -14,7 +14,7 @@ import com.arsdevstudio.memoflow.data.local.entity.UserEntity
 
 @Database(
     entities = [NoteEntity::class, UserEntity::class, GratitudeEntity::class, NotificationEntity::class],
-    version = 14, // Incrementado para adicionar isPremium ao UserEntity
+    version = 15, // Incrementado para adicionar appEntryCount ao UserEntity
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -25,6 +25,43 @@ abstract class MemoDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
 
     companion object {
+        val MIGRATION_14_15 = object : androidx.room.migration.Migration(14, 15) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                var columnExists = false
+                try {
+                    val cursor = db.query("PRAGMA table_info(user_settings)")
+                    while (cursor.moveToNext()) {
+                        val nameIndex = cursor.getColumnIndex("name")
+                        if (nameIndex != -1 && cursor.getString(nameIndex) == "appEntryCount") {
+                            columnExists = true
+                            break
+                        }
+                    }
+                    cursor.close()
+                } catch (e: Exception) {
+                    // Fallback to basic check if PRAGMA fails
+                    try {
+                        val cursor = db.query("SELECT * FROM user_settings LIMIT 0")
+                        columnExists = cursor.columnNames.contains("appEntryCount")
+                        cursor.close()
+                    } catch (inner: Exception) {
+                        // Assume it doesn't exist if check fails
+                    }
+                }
+
+                if (!columnExists) {
+                    try {
+                        db.execSQL("ALTER TABLE user_settings ADD COLUMN appEntryCount INTEGER NOT NULL DEFAULT 0")
+                    } catch (e: Exception) {
+                        // Final safety: if it's a duplicate column error, we're good
+                        if (e.message?.contains("duplicate", ignoreCase = true) == false) {
+                            throw e
+                        }
+                    }
+                }
+            }
+        }
+
         val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE user_settings ADD COLUMN isPremium INTEGER NOT NULL DEFAULT 0")

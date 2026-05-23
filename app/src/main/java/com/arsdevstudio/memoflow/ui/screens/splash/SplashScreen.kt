@@ -14,17 +14,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthViewModel
+import com.arsdevstudio.memoflow.ui.screens.profile.ProfileViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 @Composable
 fun SplashScreen(
     onFinished: (Boolean, Boolean) -> Unit, // ✅ Retorna se está logado e se já viu o onboarding
-    viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory)
+    viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory),
+    profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
 ) {
     val alphaAnim = remember { Animatable(0f) }
     
     LaunchedEffect(Unit) {
+        profileViewModel.incrementAppEntryCount()
         alphaAnim.animateTo(1f, animationSpec = tween(1200))
         
         // Verifica no banco o estado do usuário

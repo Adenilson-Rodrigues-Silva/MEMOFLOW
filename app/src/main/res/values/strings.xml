@@ -250,6 +250,10 @@
     <string name="home_diary_melt_hint">Toque para derreter o gelo ✨</string>
     <string name="home_diary_available_at">Disponível em %1$s</string>
     <string name="home_calendar_desc">Calendário</string>
+    <string name="home_support_dev_title">Apoie o Desenvolvedor ✨</string>
+    <string name="home_support_dev_desc">Você já abriu o Memo Flow várias vezes! Se o app está sendo útil para você, considere apoiar o desenvolvedor com uma contribuição ou adquirindo o Premium.</string>
+    <string name="home_support_dev_confirm">VER OPÇÕES</string>
+    <string name="home_support_dev_later">MAIS TARDE</string>
     <string name="home_notifications_desc">Notificações</string>
     <string name="home_status_premium_desc">Status e Premium</string>
     <string name="home_profile_photo_desc">Foto de Perfil</string>
