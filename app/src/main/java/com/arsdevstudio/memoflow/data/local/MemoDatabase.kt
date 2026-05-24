@@ -27,37 +27,18 @@ abstract class MemoDatabase : RoomDatabase() {
     companion object {
         val MIGRATION_14_15 = object : androidx.room.migration.Migration(14, 15) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                var columnExists = false
+                // Tenta adicionar appEntryCount
                 try {
-                    val cursor = db.query("PRAGMA table_info(user_settings)")
-                    while (cursor.moveToNext()) {
-                        val nameIndex = cursor.getColumnIndex("name")
-                        if (nameIndex != -1 && cursor.getString(nameIndex) == "appEntryCount") {
-                            columnExists = true
-                            break
-                        }
-                    }
-                    cursor.close()
+                    db.execSQL("ALTER TABLE user_settings ADD COLUMN appEntryCount INTEGER NOT NULL DEFAULT 0")
                 } catch (e: Exception) {
-                    // Fallback to basic check if PRAGMA fails
-                    try {
-                        val cursor = db.query("SELECT * FROM user_settings LIMIT 0")
-                        columnExists = cursor.columnNames.contains("appEntryCount")
-                        cursor.close()
-                    } catch (inner: Exception) {
-                        // Assume it doesn't exist if check fails
-                    }
+                    if (e.message?.contains("duplicate", ignoreCase = true) == false) throw e
                 }
 
-                if (!columnExists) {
-                    try {
-                        db.execSQL("ALTER TABLE user_settings ADD COLUMN appEntryCount INTEGER NOT NULL DEFAULT 0")
-                    } catch (e: Exception) {
-                        // Final safety: if it's a duplicate column error, we're good
-                        if (e.message?.contains("duplicate", ignoreCase = true) == false) {
-                            throw e
-                        }
-                    }
+                // Tenta adicionar hasSeenWelcome (caso tenha sido esquecido em migrações anteriores)
+                try {
+                    db.execSQL("ALTER TABLE user_settings ADD COLUMN hasSeenWelcome INTEGER NOT NULL DEFAULT 0")
+                } catch (e: Exception) {
+                    if (e.message?.contains("duplicate", ignoreCase = true) == false) throw e
                 }
             }
         }

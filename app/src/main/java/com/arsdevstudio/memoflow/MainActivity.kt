@@ -105,13 +105,18 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(userSettings?.appEntryCount) {
                     val count = userSettings?.appEntryCount ?: 0
-                    if (count >= 1) {
-                        Log.i("MemoFlow_Debug", "MainActivity - [DIÁLOGO] Contador=$count detectado. Iniciando timer de 4s...")
-                        delay(4000)
+                    val isPremium = userSettings?.isPremium ?: false
+
+                    // Lógica inteligente: Mostra em marcos específicos e apenas para não-premiums
+                    val shouldShow = !isPremium && when (count) {
+                        5, 15, 30 -> true
+                        else -> count > 30 && count % 30 == 0
+                    }
+
+                    if (shouldShow) {
+                        Log.i("MemoFlow_Debug", "MainActivity - [DIÁLOGO] Marco atingido: $count. Exibindo suporte...")
+                        delay(3000) // Delay leve para não "pular" na cara do usuário
                         showSupportDevDialog = true
-                        Log.i("MemoFlow_Debug", "MainActivity - [DIÁLOGO] showSupportDevDialog setado para TRUE")
-                    } else {
-                        Log.d("MemoFlow_Debug", "MainActivity - [CHECK] Contador=$count. Critério não atingido.")
                     }
                 }
 
@@ -293,11 +298,10 @@ class MainActivity : ComponentActivity() {
                         SupportDevDialog(
                             onDismiss = {
                                 showSupportDevDialog = false
-                                profileViewModel.resetAppEntryCount()
+                                // Removido o reset para manter o histórico de entradas
                             },
                             onConfirm = {
                                 showSupportDevDialog = false
-                                profileViewModel.resetAppEntryCount()
                                 navController.navigate(Screen.Store.route)
                             },
                             particles = particles

@@ -47,12 +47,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import com.airbnb.lottie.compose.*
+import com.arsdevstudio.memoflow.R
 import androidx.compose.ui.tooling.preview.Preview
 import com.arsdevstudio.memoflow.ui.theme.MemoFlowTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import com.arsdevstudio.memoflow.R
 import kotlin.random.Random
 
 data class SupportParticle(
@@ -83,7 +83,7 @@ fun rememberAnimatedAiGradient(): Brush {
             repeatMode = RepeatMode.Restart
         ), label = "offset"
     )
-    
+
     return Brush.linearGradient(
         colors = listOf(CyanAI, PurpleAI, CyanAI),
         start = Offset(offset, offset),
@@ -95,10 +95,10 @@ fun rememberAnimatedAiGradient(): Brush {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DiaryNoteCard(
-    emoji: String, 
-    time: String, 
-    title: String, 
-    content: String, 
+    emoji: String,
+    time: String,
+    title: String,
+    content: String,
     isLocked: Boolean = false,
     isTimeCapsule: Boolean = false,
     unlockDate: Long? = null,
@@ -109,7 +109,7 @@ fun DiaryNoteCard(
     val cyan = Color(0xFF00E5FF)
     val iceBlue = Color(0xFFB3E5FC)
     val deepBlue = Color(0xFF01579B)
-    
+
     val isReadyToMelt = remember(unlockDate, isTimeCapsule) {
         if (!isTimeCapsule || unlockDate == null) false
         else {
@@ -118,24 +118,24 @@ fun DiaryNoteCard(
             else {
                 val unlockDay = java.time.Instant.ofEpochMilli(unlockDate)
                     .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-                val today = java.time.LocalDate.now()
+                val today = LocalDate.now()
                 !today.isBefore(unlockDay)
             }
         }
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "card_effects")
-    
+
     val scannerPosition by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(2500, easing = LinearOutSlowInEasing), RepeatMode.Reverse), label = "scanner"
     )
-    
+
     val noiseToggle by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(50, easing = LinearEasing), RepeatMode.Restart), label = "noise"
     )
-    
+
     val borderOffsetLocked by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 500f,
         animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing), RepeatMode.Restart), label = "border_locked"
@@ -159,17 +159,17 @@ fun DiaryNoteCard(
 
     val shakeAnim by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 1f, 
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = keyframes {
                 durationMillis = 3000
-                0f at 0 
-                0f at 1500 
-                -0.8f at 1600 
+                0f at 0
+                0f at 1500
+                (-0.8f) at 1600
                 0.8f at 1700
-                -0.8f at 1800
+                (-0.8f) at 1800
                 0.8f at 1900
-                0f at 2000 
+                0f at 2000
                 0f at 3000
             },
             repeatMode = RepeatMode.Restart
@@ -218,7 +218,7 @@ fun DiaryNoteCard(
             .graphicsLayer {
                 if (isReadyToMelt) {
                     rotationZ = shakeAnim
-                    translationX = shakeAnim * 1f 
+                    translationX = shakeAnim * 1f
                 }
             }
             .clip(RoundedCornerShape(24.dp))
@@ -240,12 +240,12 @@ fun DiaryNoteCard(
                         vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
                     }
                     onClick()
-                }, 
+                },
                 onLongClick = onLongClick
             )
             .border(
-                width = if (isTimeCapsule || isLocked) 2.dp else 1.2.dp, 
-                brush = borderBrush, 
+                width = if (isTimeCapsule || isLocked) 2.dp else 1.2.dp,
+                brush = borderBrush,
                 shape = RoundedCornerShape(24.dp)
             )
             .background(if (isLocked) Color(0xFF080808) else Color(0xFF161616).copy(alpha = 0.85f))
@@ -329,9 +329,9 @@ fun DiaryNoteCard(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .graphicsLayer { 
+                .graphicsLayer {
                     if (isLocked) {
-                        alpha = flickerAlpha 
+                        alpha = flickerAlpha
                     }
                 },
             verticalAlignment = Alignment.CenterVertically
@@ -344,16 +344,16 @@ fun DiaryNoteCard(
                             isLocked -> PurpleAI.copy(alpha = 0.1f)
                             isTimeCapsule -> cyan.copy(alpha = 0.15f)
                             else -> Color.White.copy(alpha = 0.05f)
-                        }, 
+                        },
                         CircleShape
                     )
                     .border(
-                        1.5.dp, 
+                        1.5.dp,
                         when {
                             isLocked -> PurpleAI.copy(alpha = 0.4f)
                             isTimeCapsule -> cyan.copy(alpha = 0.6f)
                             else -> Color.Gray.copy(alpha = 0.4f)
-                        }, 
+                        },
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -370,9 +370,9 @@ fun DiaryNoteCard(
             Column {
                 Text(text = time, color = Color.Gray, fontSize = 11.sp)
                 Text(
-                    text = if (isLocked) stringResource(R.string.home_diary_locked) 
-                           else if (isReadyToMelt) stringResource(R.string.home_diary_ready_melt) 
-                           else if (isTimeCapsule) stringResource(R.string.home_diary_capsule) 
+                    text = if (isLocked) stringResource(R.string.home_diary_locked)
+                           else if (isReadyToMelt) stringResource(R.string.home_diary_ready_melt)
+                           else if (isTimeCapsule) stringResource(R.string.home_diary_capsule)
                            else title,
                     color = if (isLocked) PurpleAI else if (isReadyToMelt) Color.White else if (isTimeCapsule) cyan else Color.White,
                     fontSize = 17.sp,
@@ -380,13 +380,21 @@ fun DiaryNoteCard(
                     maxLines = 1
                 )
                 Text(
-                    text = if (isLocked) stringResource(R.string.home_diary_protected) 
-                           else if (isReadyToMelt) stringResource(R.string.home_diary_melt_hint) 
-                           else if (isTimeCapsule) {
-                               val formattedDate = unlockDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: ""
-                               stringResource(R.string.home_diary_available_at, formattedDate)
-                           } 
-                           else content,
+                    text = when {
+                        isLocked -> stringResource(R.string.home_diary_protected)
+                        isReadyToMelt -> stringResource(R.string.home_diary_melt_hint)
+                        isTimeCapsule -> {
+                            val formattedDate = remember(unlockDate) {
+                                unlockDate?.let {
+                                    java.time.Instant.ofEpochMilli(it)
+                                        .atZone(java.time.ZoneId.systemDefault())
+                                        .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                                } ?: ""
+                            }
+                            stringResource(R.string.home_diary_available_at, formattedDate)
+                        }
+                        else -> content
+                    },
                     color = Color.White.copy(alpha = if (isLocked || isReadyToMelt) 0.8f else 0.6f),
                     fontSize = 14.sp,
                     maxLines = 1
@@ -901,10 +909,10 @@ fun SupportDevDialogDarkPreview() {
                 onDismiss = {},
                 onConfirm = {},
                 particles = listOf(
-                    SupportParticle(1, 100f, 100f, 0f, 0f, 1f, 1f, "💎"),
-                    SupportParticle(2, -100f, -150f, 0f, 0f, 0.8f, 1.2f, "✨"),
-                    SupportParticle(3, 150f, -50f, 0f, 0f, 0.6f, 0.9f, "🍀"),
-                    SupportParticle(4, -50f, 200f, 0f, 0f, 0.9f, 1.1f, "⚡")
+                    SupportParticle(1, 100f, 100f, 0f, 0f, 1f, 1f, "\ud83d\udc8e"),
+                    SupportParticle(2, -100f, -150f, 0f, 0f, 0.8f, 1.2f, "\u2728"),
+                    SupportParticle(3, 150f, -50f, 0f, 0f, 0.6f, 0.9f, "\ud83c\udf40"),
+                    SupportParticle(4, -50f, 200f, 0f, 0f, 0.9f, 1.1f, "\u26a1")
                 )
             )
         }
@@ -920,8 +928,8 @@ fun SupportDevDialogLightPreview() {
                 onDismiss = {},
                 onConfirm = {},
                 particles = listOf(
-                    SupportParticle(1, 100f, 100f, 0f, 0f, 1f, 1f, "💎"),
-                    SupportParticle(2, -100f, -150f, 0f, 0f, 0.8f, 1.2f, "✨")
+                    SupportParticle(1, 100f, 100f, 0f, 0f, 1f, 1f, "\ud83d\udc8e"),
+                    SupportParticle(2, -100f, -150f, 0f, 0f, 0.8f, 1.2f, "\u2728")
                 )
             )
         }
