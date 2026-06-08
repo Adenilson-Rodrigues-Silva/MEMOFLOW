@@ -35,6 +35,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.arsdevstudio.memoflow.data.local.entity.NoteEntity
 import com.arsdevstudio.memoflow.ui.components.home.*
 import com.arsdevstudio.memoflow.ui.viewmodel.HomeViewModel
@@ -89,6 +92,37 @@ fun HomeScreen(
     val unreadCount by notificationViewModel.unreadCount.collectAsState(initial = 0)
 
     val backupViewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory)
+
+    // Configuração Biometria
+    val activity = context as? FragmentActivity
+    val executor = remember { ContextCompat.getMainExecutor(context) }
+    
+    LaunchedEffect(Unit) {
+        if (securitySettings?.isBiometricEnabled == true && activity != null) {
+            val biometricPrompt = BiometricPrompt(
+                activity,
+                executor,
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        Log.d("Biometria", "Sucesso no acesso ao app!")
+                    }
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        if (errorCode != BiometricPrompt.ERROR_USER_CANCELED) {
+                            Log.d("Biometria", "Erro: $errString")
+                        }
+                    }
+                }
+            )
+
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Memo Flow")
+                .setSubtitle("Autentique-se para acessar o app")
+                .setNegativeButtonText("Usar PIN")
+                .build()
+
+            biometricPrompt.authenticate(promptInfo)
+        }
+    }
 
     LaunchedEffect(Unit) {
         backupViewModel.silentRestore(context)

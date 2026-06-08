@@ -29,6 +29,11 @@ class SecurityViewModel(private val repository: MemoRepository) : ViewModel() {
         saveSettings(_userSettings.value.copy(isBiometricEnabled = enabled))
     }
 
+    // Método para ser chamado pela UI para validar biometria
+    fun checkBiometricStatus(): Boolean {
+        return _userSettings.value.isBiometricEnabled
+    }
+
     fun updatePin(pin: String?) {
         saveSettings(_userSettings.value.copy(pin = pin))
     }

@@ -103,20 +103,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(userSettings?.appEntryCount) {
-                    val count = userSettings?.appEntryCount ?: 0
-                    val isPremium = userSettings?.isPremium ?: false
+                // Lógica de verificação do diálogo de suporte
+                LaunchedEffect(userSettings) {
+                    userSettings?.let { settings ->
+                        val count = settings.appEntryCount
+                        val isPremium = settings.isPremium
 
-                    // Lógica inteligente: Mostra em marcos específicos e apenas para não-premiums
-                    val shouldShow = !isPremium && when (count) {
-                        5, 15, 30 -> true
-                        else -> count > 30 && count % 30 == 0
-                    }
+                        // Marco: 5, 15, 30 e depois a cada 30
+                        val shouldShow = !isPremium && (count == 5 || count == 15 || count == 30 || (count > 30 && count % 30 == 0))
 
-                    if (shouldShow) {
-                        Log.i("MemoFlow_Debug", "MainActivity - [DIÁLOGO] Marco atingido: $count. Exibindo suporte...")
-                        delay(3000) // Delay leve para não "pular" na cara do usuário
-                        showSupportDevDialog = true
+                        if (shouldShow) {
+                            Log.i("MemoFlow_Debug", "MainActivity - [DIÁLOGO] Marco atingido: $count. Exibindo suporte...")
+                            delay(2000)
+                            showSupportDevDialog = true
+                        }
                     }
                 }
 
