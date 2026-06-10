@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 @Composable
 fun HomeScreen(
     navController: NavController,
+    activity: FragmentActivity,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
     profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory),
     securityViewModel: SecurityViewModel = viewModel(factory = SecurityViewModel.Factory),
@@ -94,29 +95,27 @@ fun HomeScreen(
     val backupViewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory)
 
     // Configuração Biometria
-    val activity = context as? FragmentActivity
     val executor = remember { ContextCompat.getMainExecutor(context) }
-    
-    LaunchedEffect(Unit) {
-        if (securitySettings?.isBiometricEnabled == true && activity != null) {
+
+    LaunchedEffect(securitySettings?.isBiometricEnabled, activity) {
+        val enabled = securitySettings?.isBiometricEnabled == true
+        if (enabled && activity != null) {
             val biometricPrompt = BiometricPrompt(
                 activity,
                 executor,
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        Log.d("Biometria", "Sucesso no acesso ao app!")
+                        Log.d("Biometria", "Sucesso!")
                     }
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        if (errorCode != BiometricPrompt.ERROR_USER_CANCELED) {
-                            Log.d("Biometria", "Erro: $errString")
-                        }
+                        // Não faz nada em caso de erro para não bloquear o app
                     }
                 }
             )
 
             val promptInfo = BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Memo Flow")
-                .setSubtitle("Autentique-se para acessar o app")
+                .setSubtitle("Autentique-se")
                 .setNegativeButtonText("Usar PIN")
                 .build()
 

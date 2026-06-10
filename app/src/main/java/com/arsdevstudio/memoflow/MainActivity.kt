@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import androidx.fragment.app.FragmentActivity
 import com.arsdevstudio.memoflow.navigation.Screen
 import com.arsdevstudio.memoflow.ui.screens.auth.OnboardingScreen
 import com.arsdevstudio.memoflow.ui.screens.auth.WelcomeAuthScreen
@@ -42,7 +43,7 @@ import com.arsdevstudio.memoflow.ui.viewmodel.AuthEvent
 import com.arsdevstudio.memoflow.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -103,20 +104,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Lógica de verificação do diálogo de suporte
-                LaunchedEffect(userSettings) {
-                    userSettings?.let { settings ->
-                        val count = settings.appEntryCount
-                        val isPremium = settings.isPremium
-
-                        // Marco: 5, 15, 30 e depois a cada 30
-                        val shouldShow = !isPremium && (count == 5 || count == 15 || count == 30 || (count > 30 && count % 30 == 0))
-
-                        if (shouldShow) {
-                            Log.i("MemoFlow_Debug", "MainActivity - [DIÁLOGO] Marco atingido: $count. Exibindo suporte...")
-                            delay(2000)
-                            showSupportDevDialog = true
-                        }
+                // Lógica de teste: mostrar sempre que count >= 3
+                LaunchedEffect(userSettings?.appEntryCount) {
+                    val count = userSettings?.appEntryCount ?: 0
+                    
+                    if (count >= 3) {
+                        Log.i("MemoFlow_Debug", "MainActivity - EXIBINDO DIÁLOGO (DEBUG)! Count: $count")
+                        delay(1000)
+                        showSupportDevDialog = true
                     }
                 }
 
@@ -201,7 +196,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(Screen.Home.route) {
-                            HomeScreen(navController = navController)
+                            HomeScreen(navController = navController, activity = this@MainActivity)
                         }
 
                         composable(Screen.Profile.route) {
