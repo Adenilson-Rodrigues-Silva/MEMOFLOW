@@ -5,12 +5,15 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -18,7 +21,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
-import androidx.fragment.app.FragmentActivity
 import com.arsdevstudio.memoflow.navigation.Screen
 import com.arsdevstudio.memoflow.ui.screens.auth.OnboardingScreen
 import com.arsdevstudio.memoflow.ui.screens.auth.WelcomeAuthScreen
@@ -61,7 +63,6 @@ class MainActivity : FragmentActivity() {
                 var showSupportDevDialog by remember { mutableStateOf(false) }
                 val particles = remember { mutableStateListOf<SupportParticle>() }
 
-                // Lógica de partículas (Efeito diamante/Telegram)
                 LaunchedEffect(showSupportDevDialog) {
                     if (showSupportDevDialog) {
                         val symbols = listOf("✨", "💎", "💖", "💎", "💖")
@@ -81,18 +82,17 @@ class MainActivity : FragmentActivity() {
                                     )
                                 )
                             }
-
                             val iterator = particles.listIterator()
                             while (iterator.hasNext()) {
                                 val p = iterator.next()
-                                val newAlpha = p.alpha - 0.008f // Fica visível por mais tempo (mais sólido)
+                                val newAlpha = p.alpha - 0.008f
                                 if (newAlpha <= 0) {
                                     iterator.remove()
                                 } else {
                                     iterator.set(p.copy(
                                         x = p.x + p.vx,
                                         y = p.y + p.vy,
-                                        vy = p.vy - 0.15f, // Gravidade invertida (flutuar)
+                                        vy = p.vy - 0.15f,
                                         alpha = newAlpha
                                     ))
                                 }
@@ -104,14 +104,40 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                // Lógica de teste: mostrar sempre que count >= 3
+                // Lógica pop-up (Dia ímpar + count >= 3)
                 LaunchedEffect(userSettings?.appEntryCount) {
-                    val count = userSettings?.appEntryCount ?: 0
-                    
-                    if (count >= 3) {
-                        Log.i("MemoFlow_Debug", "MainActivity - EXIBINDO DIÁLOGO (DEBUG)! Count: $count")
-                        delay(1000)
-                        showSupportDevDialog = true
+                    userSettings?.let { settings ->
+                        val count = settings.appEntryCount
+                        val dayOfMonth = java.time.LocalDate.now().dayOfMonth
+                        val isOddDay = dayOfMonth % 2 != 0
+
+                        if (isOddDay && count >= 3) {
+                            Log.i("MemoFlow_Debug", "MainActivity - EXIBINDO DIÁLOGO (Dia Ímpar, Count: $count)")
+                            delay(2000)
+                            showSupportDevDialog = true
+                        }
+                    }
+                }
+                
+                // Lógica Biometria (dispara 1 vez na inicialização)
+                var biometricDone by remember { mutableStateOf(false) }
+                LaunchedEffect(userSettings?.isBiometricEnabled) {
+                    if (userSettings?.isBiometricEnabled == true && !biometricDone) {
+                        biometricDone = true
+                        val executor = ContextCompat.getMainExecutor(this@MainActivity)
+                        val biometricPrompt = BiometricPrompt(this@MainActivity, executor, 
+                            object : BiometricPrompt.AuthenticationCallback() {
+                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                    Log.d("Biometria", "Sucesso no acesso!")
+                                }
+                            }
+                        )
+                        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                            .setTitle("Memo Flow")
+                            .setSubtitle("Autentique-se")
+                            .setNegativeButtonText("PIN")
+                            .build()
+                        biometricPrompt.authenticate(promptInfo)
                     }
                 }
 
@@ -293,7 +319,6 @@ class MainActivity : FragmentActivity() {
                         SupportDevDialog(
                             onDismiss = {
                                 showSupportDevDialog = false
-                                // Removido o reset para manter o histórico de entradas
                             },
                             onConfirm = {
                                 showSupportDevDialog = false

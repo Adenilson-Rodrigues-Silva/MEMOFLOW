@@ -94,34 +94,8 @@ fun HomeScreen(
 
     val backupViewModel: BackupViewModel = viewModel(factory = BackupViewModel.Factory)
 
-    // Configuração Biometria
-    val executor = remember { ContextCompat.getMainExecutor(context) }
+    // Biometria removida daqui para não pedir toda hora ao navegar
 
-    LaunchedEffect(securitySettings?.isBiometricEnabled, activity) {
-        val enabled = securitySettings?.isBiometricEnabled == true
-        if (enabled && activity != null) {
-            val biometricPrompt = BiometricPrompt(
-                activity,
-                executor,
-                object : BiometricPrompt.AuthenticationCallback() {
-                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        Log.d("Biometria", "Sucesso!")
-                    }
-                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        // Não faz nada em caso de erro para não bloquear o app
-                    }
-                }
-            )
-
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Memo Flow")
-                .setSubtitle("Autentique-se")
-                .setNegativeButtonText("Usar PIN")
-                .build()
-
-            biometricPrompt.authenticate(promptInfo)
-        }
-    }
 
     LaunchedEffect(Unit) {
         backupViewModel.silentRestore(context)
