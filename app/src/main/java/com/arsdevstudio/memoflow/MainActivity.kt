@@ -104,17 +104,21 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                // Lógica pop-up (Dia ímpar + count >= 3)
+                // Lógica de verificação do diálogo de suporte (Uma vez ao dia em dias ímpares)
+                val billingPrefs = remember { com.arsdevstudio.memoflow.utils.BillingPrefs(this@MainActivity) }
+                val lastShownDate by billingPrefs.lastSupportPopupDate.collectAsState(initial = "")
+                
                 LaunchedEffect(userSettings?.appEntryCount) {
                     userSettings?.let { settings ->
                         val count = settings.appEntryCount
-                        val dayOfMonth = java.time.LocalDate.now().dayOfMonth
-                        val isOddDay = dayOfMonth % 2 != 0
+                        val today = java.time.LocalDate.now().toString()
+                        val isOddDay = java.time.LocalDate.now().dayOfMonth % 2 != 0
 
-                        if (isOddDay && count >= 3) {
-                            Log.i("MemoFlow_Debug", "MainActivity - EXIBINDO DIÁLOGO (Dia Ímpar, Count: $count)")
+                        if (isOddDay && count >= 3 && lastShownDate != today) {
+                            Log.i("MemoFlow_Debug", "MainActivity - EXIBINDO DIÁLOGO (Hoje: $today, Count: $count)")
                             delay(2000)
                             showSupportDevDialog = true
+                            billingPrefs.setLastSupportPopupDate(today)
                         }
                     }
                 }

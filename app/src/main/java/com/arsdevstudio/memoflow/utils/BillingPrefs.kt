@@ -14,6 +14,17 @@ class BillingPrefs(private val context: Context) {
     companion object {
         val IS_PREMIUM = booleanPreferencesKey("is_premium")
         val LAST_DONATION_SHOWN = longPreferencesKey("last_donation_shown")
+        val LAST_SUPPORT_POPUP_DATE = androidx.datastore.preferences.core.stringPreferencesKey("last_support_popup_date")
+    }
+
+    val lastSupportPopupDate: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[LAST_SUPPORT_POPUP_DATE]
+    }
+
+    suspend fun setLastSupportPopupDate(date: String) {
+        context.dataStore.edit { prefs ->
+            prefs[LAST_SUPPORT_POPUP_DATE] = date
+        }
     }
 
     val isPremium: Flow<Boolean> = context.dataStore.data.map { prefs ->

@@ -18,9 +18,12 @@ android {
         applicationId = "com.arsdevstudio.memoflow"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.4.1"
-
+        versionCode = 8
+        versionName = "1.4.3"
+        
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "x86_64"))
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
